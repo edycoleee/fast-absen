@@ -1,0 +1,143 @@
+import { createContext, useContext, useState, useEffect } from 'react';
+import { User } from '../../core/entities';
+import { STORAGE_KEYS } from '../../core/constants';
+import AuthRepository from '../../data/repositories/AuthRepository';
+import LocalStorage from '../../data/storage/LocalStorage';
+
+/**
+ * Authentication Context
+ * Manages authentication state across the application
+ */
+const AuthContext = createContext(null);
+
+/**
+ * Authentication Provider Component
+ */
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  /**
+   * Initialize authentication state from localStorage
+   */
+  useEffect(() => {
+    const initAuth = () => {
+      try {
+        const userData = LocalStorage.getItem(STORAGE_KEYS.USER);
+        if (userData) {
+          setUser(new User(userData));
+        }
+      } catch (err) {
+        console.error('Error initializing auth:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
+  }, []);
+
+  /**
+   * Login user
+   */
+  const login = async (username, password) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await AuthRepository.login(username, password);
+      
+      if (response.success) {
+        const { access_token, user_id, username: user_name, roles } = response.data;
+        
+        // Store token
+        LocalStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, access_token);
+        
+        // Create user entity
+        const userData = new User({
+          id: user_id,
+          username: user_name,
+          roles: roles
+        });
+        
+        // Store user data
+        LocalStorage.setItem(STORAGE_KEYS.USER, userData.toJSON());
+        setUser(userData);
+        
+        return response;
+      } else {
+        throw new Error(response.message || 'Login failed');
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || 'Login failed';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Logout user
+   */
+  const logout = () => {
+    LocalStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+    LocalStorage.removeItem(STORAGE_KEYS.USER);
+    setUser(null);
+    setError(null);
+  };
+
+  /**
+   * Check if user is authenticated
+   */
+  const isAuthenticated = () => {
+    return !!user && !!LocalStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+  };
+
+  /**
+   * Check if user has specific role
+   */
+  const hasRole = (roleName) => {
+    return user?.hasRole(roleName) || false;
+  };
+
+  /**
+   * Check if user is admin
+   */
+  const isAdmin = () => {
+    return user?.isAdmin() || false;
+  };
+
+  const value = {
+    user,
+    loading,
+    error,
+    login,
+    logout,
+    isAuthenticated,
+    hasRole,
+    isAdmin,
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+/**
+ * useAuth Hook
+ * Access authentication context
+ */
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return context;
+};
+
+export default AuthContext;
