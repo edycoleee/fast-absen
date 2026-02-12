@@ -3,9 +3,11 @@ Pegawai Service
 Business logic for employee management
 """
 import os
+import io
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status, UploadFile
+from PIL import Image
 from schemas.pegawai import PegawaiCreate, PegawaiUpdate, PegawaiResponse
 from repositories.pegawai_repository import PegawaiRepository
 from models.pegawai import Pegawai
@@ -152,7 +154,7 @@ class PegawaiService:
         self.pegawai_repo.delete(pegawai_id)
     
     async def _save_photo(self, foto: UploadFile, pegawai_id: str) -> str:
-        """Save uploaded photo and return filename"""
+        """Save uploaded photo with optimization (resize + compress)"""
         # Validate file type
         allowed_types = ["image/jpeg", "image/jpg", "image/png"]
         if foto.content_type not in allowed_types:
@@ -161,16 +163,37 @@ class PegawaiService:
                 detail=f"Invalid file type. Allowed: {', '.join(allowed_types)}"
             )
         
-        # Get file extension
-        ext = foto.filename.split(".")[-1] if "." in foto.filename else "jpg"
-        
-        # Generate filename
-        filename = f"{pegawai_id}.{ext}"
-        file_path = os.path.join(self.upload_dir, filename)
-        
-        # Save file
+        # Read file contents
         contents = await foto.read()
-        with open(file_path, "wb") as f:
-            f.write(contents)
         
-        return filename
+        try:
+            # Open image with PIL
+            img = Image.open(io.BytesIO(contents))
+            
+            # Convert RGBA to RGB if necessary (for PNG with transparency)
+            if img.mode in ('RGBA', 'LA', 'P'):
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                if img.mode == 'P':
+                    img = img.convert('RGBA')
+                background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                img = background
+            
+            # Resize if image is too large (max 800x800 while maintaining aspect ratio)
+            max_size = (800, 800)
+            if img.size[0] > max_size[0] or img.size[1] > max_size[1]:
+                img.thumbnail(max_size, Image.Resampling.LANCZOS)
+            
+            # Always save as JPEG for consistency and better compression
+            filename = f"{pegawai_id}.jpg"
+            file_path = os.path.join(self.upload_dir, filename)
+            
+            # Save with optimization and compression (quality=85 is good balance)
+            img.save(file_path, 'JPEG', optimize=True, quality=85)
+            
+            return filename
+            
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to process image: {str(e)}"
+            )

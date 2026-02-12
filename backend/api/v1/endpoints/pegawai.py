@@ -61,7 +61,7 @@ async def create_pegawai(
     alamat: Optional[str] = Form(None),
     id_ruang: Optional[int] = Form(None),
     status: Optional[str] = Form(None),
-    foto: Optional[UploadFile] = File(None),
+    foto: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
     """
@@ -143,7 +143,7 @@ async def update_pegawai(
     alamat: Optional[str] = Form(None),
     id_ruang: Optional[int] = Form(None),
     status: Optional[str] = Form(None),
-    foto: Optional[UploadFile] = File(None),
+    foto: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
     """

@@ -13,7 +13,7 @@ from models.user import User
 from utils.response import success_response
 
 
-router = APIRouter()
+router = APIRouter(prefix="/absensi", tags=["Absensi"])
 
 
 # ===== Admin Endpoints =====
