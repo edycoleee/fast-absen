@@ -25,8 +25,13 @@ class RoleService:
         
         result = []
         for role in roles:
-            role_dict = RoleResponse.model_validate(role).model_dump()
-            role_dict["permissions"] = [perm.name for perm in role.permissions]
+            # Convert ORM model to dict, manually construct permissions list
+            role_dict = {
+                "id": role.id,
+                "name": role.name,
+                "description": role.description,
+                "permissions": [perm.name for perm in role.permissions]
+            }
             result.append(RoleResponse(**role_dict))
         
         return result
@@ -41,8 +46,13 @@ class RoleService:
                 detail=f"Role with id {role_id} not found"
             )
         
-        role_dict = RoleResponse.model_validate(role).model_dump()
-        role_dict["permissions"] = [perm.name for perm in role.permissions]
+        # Convert ORM model to dict, manually construct permissions list
+        role_dict = {
+            "id": role.id,
+            "name": role.name,
+            "description": role.description,
+            "permissions": [perm.name for perm in role.permissions]
+        }
         
         return RoleResponse(**role_dict)
     

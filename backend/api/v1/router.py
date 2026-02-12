@@ -29,8 +29,4 @@ api_router.include_router(absensi.router)
 api_router.include_router(login_absensi.router)
 
 # Legacy/Example endpoint
-api_router.include_router(
-    halo.router,
-    prefix="/halo",
-    tags=["Halo"]
-)
+api_router.include_router(halo.router)

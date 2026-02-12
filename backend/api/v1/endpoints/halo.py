@@ -6,7 +6,7 @@ from schemas.halo import HaloRequest, HaloResponse
 from services.halo_service import HaloService
 from utils.response import success_response
 
-router = APIRouter()
+router = APIRouter(prefix="/halo", tags=["Halo"])
 
 
 @router.get("/", response_model=dict)
