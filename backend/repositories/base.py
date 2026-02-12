@@ -4,7 +4,7 @@ Implement generic CRUD operations untuk semua repositories
 """
 from typing import Generic, TypeVar, Type, Optional, List, Any
 from sqlalchemy.orm import Session
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, inspect
 from models.base import BaseModel
 
 ModelType = TypeVar("ModelType", bound=BaseModel)
@@ -47,7 +47,7 @@ class BaseRepository(Generic[ModelType]):
         self,
         skip: int = 0,
         limit: int = 100,
-        order_by: str = "id",
+        order_by: str = None,
         order_dir: str = "asc"
     ) -> List[ModelType]:
         """
@@ -56,7 +56,7 @@ class BaseRepository(Generic[ModelType]):
         Args:
             skip: Number of records to skip
             limit: Maximum number of records to return
-            order_by: Column to sort by
+            order_by: Column to sort by (defaults to primary key)
             order_dir: Sort direction (asc or desc)
         
         Returns:
@@ -64,12 +64,25 @@ class BaseRepository(Generic[ModelType]):
         """
         query = self.db.query(self.model)
         
-        # Apply sorting
-        order_column = getattr(self.model, order_by, self.model.id)
-        if order_dir == "desc":
-            query = query.order_by(desc(order_column))
+        # Get default order column (primary key if order_by not specified)
+        if order_by is None:
+            # Get primary key column
+            mapper = inspect(self.model)
+            pk_columns = mapper.primary_key
+            order_column = pk_columns[0] if pk_columns else None
         else:
-            query = query.order_by(asc(order_column))
+            # Get specified column, fallback to primary key
+            mapper = inspect(self.model)
+            pk_columns = mapper.primary_key
+            default_col = pk_columns[0] if pk_columns else None
+            order_column = getattr(self.model, order_by, default_col)
+        
+        # Apply sorting if order column exists
+        if order_column is not None:
+            if order_dir == "desc":
+                query = query.order_by(desc(order_column))
+            else:
+                query = query.order_by(asc(order_column))
         
         return query.offset(skip).limit(limit).all()
     

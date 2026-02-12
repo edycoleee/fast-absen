@@ -96,7 +96,7 @@ const Users = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded">
-                            {user.role?.nama || '-'}
+                            {user.roles?.[0] || '-'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

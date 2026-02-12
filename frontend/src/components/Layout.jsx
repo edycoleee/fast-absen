@@ -62,7 +62,7 @@ const Layout = ({ children }) => {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-900">{user?.username}</p>
-                <p className="text-xs text-gray-500">{user?.role?.nama || 'Admin'}</p>
+                <p className="text-xs text-gray-500">{user?.roles?.[0] || 'User'}</p>
               </div>
             </div>
             <button

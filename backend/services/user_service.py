@@ -26,9 +26,16 @@ class UserService:
         
         result = []
         for user in users:
-            user_dict = UserDetail.model_validate(user).model_dump()
-            user_dict["roles"] = [role.name for role in user.roles]
-            user_dict["pegawai_nama"] = user.pegawai.nama if user.pegawai else None
+            # Convert ORM model to dict, excluding roles to avoid validation error
+            user_dict = {
+                "id": user.id,
+                "username": user.username,
+                "id_pegawai": user.id_pegawai,
+                "is_active": user.is_active,
+                "created_at": user.created_at,
+                "roles": [role.name for role in user.roles],
+                "pegawai_nama": user.pegawai.nama if user.pegawai else None
+            }
             result.append(UserDetail(**user_dict))
         
         return result
@@ -43,9 +50,16 @@ class UserService:
                 detail=f"User with id {user_id} not found"
             )
         
-        user_dict = UserDetail.model_validate(user).model_dump()
-        user_dict["roles"] = [role.name for role in user.roles]
-        user_dict["pegawai_nama"] = user.pegawai.nama if user.pegawai else None
+        # Convert ORM model to dict, excluding roles to avoid validation error
+        user_dict = {
+            "id": user.id,
+            "username": user.username,
+            "id_pegawai": user.id_pegawai,
+            "is_active": user.is_active,
+            "created_at": user.created_at,
+            "roles": [role.name for role in user.roles],
+            "pegawai_nama": user.pegawai.nama if user.pegawai else None
+        }
         
         return UserDetail(**user_dict)
     

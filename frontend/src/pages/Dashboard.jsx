@@ -45,7 +45,7 @@ const Dashboard = () => {
         <div className="mt-6 flex items-center space-x-4">
           <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
             <p className="text-xs text-primary-100">Role</p>
-            <p className="font-medium">{user?.role?.nama || 'Admin'}</p>
+            <p className="font-medium">{user?.roles?.[0] || 'User'}</p>
           </div>
           <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
             <p className="text-xs text-primary-100">Status</p>

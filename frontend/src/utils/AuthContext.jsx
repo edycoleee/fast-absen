@@ -18,9 +18,16 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     const data = await authService.login(username, password);
-    localStorage.setItem('access_token', data.data.access_token);
-    localStorage.setItem('user', JSON.stringify(data.data.user));
-    setUser(data.data.user);
+    const accessToken = data.data.access_token;
+    const userData = {
+      id: data.data.user_id,
+      username: data.data.username,
+      roles: data.data.roles
+    };
+    
+    localStorage.setItem('access_token', accessToken);
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
     return data;
   };
 
