@@ -2,60 +2,56 @@
 Application Settings and Configuration
 With environment-based configuration and security
 """
-import os
-from typing import List
-from dotenv import load_dotenv
-from pydantic_settings import BaseSettings
-from pydantic import validator
-
-load_dotenv()
+from typing import List, Union
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
 
 
 class Settings(BaseSettings):
     """Application settings from environment variables"""
     
     # Environment
-    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")  # development, staging, production
-    DEBUG: bool = os.getenv("DEBUG", "True").lower() == "true"
+    ENVIRONMENT: str = "development"  # development, staging, production
+    DEBUG: bool = True
     
     # Application
-    APP_NAME: str = os.getenv("APP_NAME", "RSUD Sulfat Attendance System")
-    APP_VERSION: str = os.getenv("APP_VERSION", "2.0.0")
-    APP_DESCRIPTION: str = os.getenv("APP_DESCRIPTION", "Sistem Attendance RSUD Sulfat - PostgreSQL")
+    APP_NAME: str = "RSUD Sulfat Attendance System"
+    APP_VERSION: str = "2.0.0"
+    APP_DESCRIPTION: str = "Sistem Attendance RSUD Sulfat - PostgreSQL"
     
     # Server
-    HOST: str = os.getenv("HOST", "0.0.0.0")
-    PORT: int = int(os.getenv("PORT", "8000"))
-    RELOAD: bool = os.getenv("RELOAD", "True").lower() == "true"
+    HOST: str = "0.0.0.0"
+    PORT: int = 8000
+    RELOAD: bool = True
     
     # Database
-    POSTGRES_DB: str = os.getenv("POSTGRES_DB", "attendance_db")
-    POSTGRES_USER: str = os.getenv("POSTGRES_USER", "sultan")
-    POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "Sulfat123#!")
-    POSTGRES_HOST: str = os.getenv("POSTGRES_HOST", "localhost")
-    POSTGRES_PORT: str = os.getenv("POSTGRES_PORT", "5432")
+    POSTGRES_DB: str = "attendance_db"
+    POSTGRES_USER: str = "sultan"
+    POSTGRES_PASSWORD: str = "Sulfat123#!"
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_PORT: str = "5432"
     
     # API
-    API_V1_PREFIX: str = os.getenv("API_V1_PREFIX", "/api/v1")
+    API_V1_PREFIX: str = "/api/v1"
     
     # CORS
-    CORS_ORIGINS: List[str] = os.getenv(
-        "CORS_ORIGINS",
-        "http://localhost:3000,http://localhost:5173,http://localhost:8080"
-    ).split(",")
+    CORS_ORIGINS: Union[str, List[str]] = "http://localhost:3000,http://localhost:5173,http://localhost:8080"
     CORS_ALLOW_CREDENTIALS: bool = True
     CORS_ALLOW_METHODS: List[str] = ["*"]
     CORS_ALLOW_HEADERS: List[str] = ["*"]
     
     # Security
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
-    ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    SECRET_KEY: str = "your-secret-key-change-in-production"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
-    @validator("CORS_ORIGINS", pre=True)
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
     def parse_cors_origins(cls, v):
         if isinstance(v, str):
             return [origin.strip() for origin in v.split(",")]
+        elif isinstance(v, list):
+            return v
         return v
     
     @property
@@ -87,8 +83,11 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         return self.ENVIRONMENT == "production"
     
-    class Config:
-        case_sensitive = True
+    model_config = SettingsConfigDict(
+        case_sensitive=True,
+        env_file=".env",
+        env_file_encoding="utf-8"
+    )
 
 
 # Global settings instance

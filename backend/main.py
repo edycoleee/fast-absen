@@ -126,6 +126,3 @@ def health_check_detail():
         "environment": settings.ENVIRONMENT,
         "database": db_info
     }
-
-        "database": "PostgreSQL"
-    }
