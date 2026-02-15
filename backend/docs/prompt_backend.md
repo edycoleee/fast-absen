@@ -1,6 +1,6 @@
-# Prompt AI - FastAPI Clean Architecture Boilerplate
+# Prompt AI - FastAPI Clean Architecture Boilerplate (RBAC Permission-Based)
 
-Gunakan prompt ini untuk membuat boilerplate FastAPI backend dengan clean architecture.
+Gunakan prompt ini untuk membuat boilerplate FastAPI backend dengan clean architecture dan RBAC berbasis permission (bukan hanya role).
 
 ---
 
@@ -117,22 +117,19 @@ def list_response(message: str, items: list, total: int) -> dict:
         "data": {"items": items, "total": total}
     }
 
-def paginated_response(message: str, items: list, page: int, 
+def paginated_response(message: str, items: list, page: int,
                        limit: int, total: int) -> dict:
     """Paginated list"""
+    total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return {
         "success": True,
         "message": message,
         "data": {
             "items": items,
-            "pagination": {
-                "page": page,
-                "limit": limit,
-                "total_items": total,
-                "total_pages": (total + limit - 1) // limit,
-                "has_next": page * limit < total,
-                "has_previous": page > 1
-            }
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "totalPages": total_pages
         }
     }
 ```
@@ -173,8 +170,17 @@ class CommonQueryParams:
         self.sort_by = sort_by
         self.order = order
 
-# Placeholder untuk auth
-async def get_current_user():
+# Auth dependencies
+def get_current_user():
+    """Decode JWT, load user + roles + permissions"""
+    pass
+
+def require_permission(permission_name: str):
+    """Check permission on current user"""
+    pass
+
+def require_super_admin():
+    """Allow only super-admin role"""
     pass
 ```
 
@@ -197,6 +203,58 @@ ERROR_MESSAGES = {
     "VALIDATION_ERROR": "Data tidak valid",
     # ...
 }
+```
+
+**utils/permission_registry.py:**
+```python
+PERMISSIONS = {
+    "users.read": "Melihat data user",
+    "users.create": "Membuat user",
+    "users.update": "Mengubah user",
+    "users.delete": "Menghapus user",
+    "roles.read": "Melihat data role",
+    "roles.create": "Membuat role",
+    "roles.update": "Mengubah role",
+    "roles.delete": "Menghapus role",
+    "permissions.read": "Melihat data permission",
+    "permissions.create": "Membuat permission",
+    "permissions.update": "Mengubah permission",
+    "permissions.delete": "Menghapus permission",
+    "pegawai.read": "Melihat data pegawai",
+    "pegawai.create": "Membuat pegawai",
+    "pegawai.update": "Mengubah pegawai",
+    "pegawai.delete": "Menghapus pegawai",
+    "absensi.read": "Melihat data absensi",
+    "absensi.create": "Membuat absensi",
+    "absensi.update": "Mengubah absensi",
+    "absensi.delete": "Menghapus absensi",
+    "login_absensi.read": "Melihat data login absensi",
+    "login_absensi.create": "Membuat login absensi"
+}
+
+class PermissionKeys:
+    USERS_READ = "users.read"
+    USERS_CREATE = "users.create"
+    USERS_UPDATE = "users.update"
+    USERS_DELETE = "users.delete"
+    ROLES_READ = "roles.read"
+    ROLES_CREATE = "roles.create"
+    ROLES_UPDATE = "roles.update"
+    ROLES_DELETE = "roles.delete"
+    PERMISSIONS_READ = "permissions.read"
+    PERMISSIONS_CREATE = "permissions.create"
+    PERMISSIONS_UPDATE = "permissions.update"
+    PERMISSIONS_DELETE = "permissions.delete"
+    PEGAWAI_READ = "pegawai.read"
+    PEGAWAI_CREATE = "pegawai.create"
+    PEGAWAI_UPDATE = "pegawai.update"
+    PEGAWAI_DELETE = "pegawai.delete"
+    ABSENSI_READ = "absensi.read"
+    ABSENSI_CREATE = "absensi.create"
+    ABSENSI_UPDATE = "absensi.update"
+    ABSENSI_DELETE = "absensi.delete"
+    LOGIN_ABSENSI_READ = "login_absensi.read"
+    LOGIN_ABSENSI_CREATE = "login_absensi.create"
 ```
 
 #### C. Configuration
@@ -245,6 +303,19 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "DEBUG"
     LOG_DIR: str = "logs"
+
+    # Bootstrap super-admin (optional)
+    ADMIN_USERNAME: str | None = None
+    ADMIN_PASSWORD: str | None = None
+    ADMIN_ID_PEGAWAI: str | None = None
+    ADMIN_NIP: str | None = None
+    ADMIN_NAMA: str | None = None
+    ADMIN_JENIS_KELAMIN: str | None = None
+    ADMIN_TEMPAT_LAHIR: str | None = None
+    ADMIN_TANGGAL_LAHIR: str | None = None
+    ADMIN_ALAMAT: str | None = None
+    ADMIN_STATUS: str | None = None
+    ADMIN_FORCE_UPDATE: bool = False
     
     # Helper methods
     @property
@@ -310,6 +381,7 @@ from utils.logger import logger
 from utils.middleware import RequestIDMiddleware, RequestLoggingMiddleware
 from utils.exception_handlers import register_exception_handlers
 from api.v1.router import api_router
+from utils.bootstrap_admin import bootstrap_super_admin
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -319,6 +391,7 @@ async def lifespan(app: FastAPI):
     db_ok = await check_database_connection()
     if db_ok:
         logger.info("Database connection OK")
+        bootstrap_super_admin()
     else:
         logger.error("Database connection FAILED")
     
@@ -393,6 +466,13 @@ Buat contoh lengkap dengan endpoint "halo" yang mendemonstrasikan:
 - PUT /api/v1/halo/{id} - Update
 - DELETE /api/v1/halo/{id}?soft=true - Soft delete
 
+#### F. RBAC Rules (Permission-Based)
+
+- Semua endpoint (kecuali login) memakai JWT.
+- Gunakan `require_permission("...")` untuk akses endpoint.
+- Endpoint roles/permissions hanya untuk `super-admin`.
+- `super-admin` otomatis mendapatkan semua permission saat bootstrap.
+
 #### F. Environment Files
 
 **.env.example:**
@@ -420,6 +500,11 @@ CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 # Logging
 LOG_LEVEL=DEBUG
 LOG_DIR=logs
+
+# Bootstrap super-admin (optional)
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123
+ADMIN_FORCE_UPDATE=false
 ```
 
 #### G. Documentation Files
@@ -449,6 +534,7 @@ psycopg2-binary==2.9.9
 ✅ **Response Format:**
 - `data` field SELALU object, NEVER array
 - Array wrapped dalam `items` property
+- Paginated list memakai `{items, page, limit, total, totalPages}`
 - Consistent structure: `{success, message, data}`
 
 ✅ **Clean Architecture:**
@@ -474,6 +560,8 @@ psycopg2-binary==2.9.9
 - Secret key dari .env
 - Password hashing dengan bcrypt
 - JWT token authentication
+- Permission-based RBAC (require_permission)
+- Roles/permissions dikelola super-admin
 
 ### 6. Output Expected
 
