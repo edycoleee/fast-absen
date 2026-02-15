@@ -1,37 +1,33 @@
-import { useState, useEffect } from 'react';
-import { userService } from '../services';
+import { useState, useEffect, useMemo } from 'react';
+import { useUsers } from '../domain/hooks';
 
 const Users = () => {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const {
+    users,
+    loading,
+    error,
+    pagination,
+    fetchUsers,
+    deleteUser
+  } = useUsers();
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+
+  const totalPages = useMemo(() => {
+    const limit = pagination.limit || 10;
+    const total = pagination.total || 0;
+    return Math.max(1, Math.ceil(total / limit));
+  }, [pagination.limit, pagination.total]);
 
   useEffect(() => {
-    fetchUsers();
-  }, [page]);
-
-  const fetchUsers = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const response = await userService.getAll(page, 10);
-      setUsers(response.data.items || []);
-      setTotalPages(response.data.pages || 1);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Gagal memuat data users');
-    } finally {
-      setLoading(false);
-    }
-  };
+    fetchUsers(page, 10);
+  }, [page, fetchUsers]);
 
   const handleDelete = async (id) => {
     if (!confirm('Apakah Anda yakin ingin menghapus user ini?')) return;
     
     try {
-      await userService.delete(id);
-      fetchUsers();
+      await deleteUser(id);
+      fetchUsers(page, 10);
     } catch (err) {
       alert(err.response?.data?.message || 'Gagal menghapus user');
     }
@@ -137,7 +133,7 @@ const Users = () => {
                   Previous
                 </button>
                 <span className="text-sm text-gray-700">
-                  Page {page} of {totalPages}
+                  Page {pagination.page || page} of {totalPages}
                 </span>
                 <button
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}

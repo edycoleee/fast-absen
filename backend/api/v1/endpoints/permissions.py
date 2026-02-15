@@ -9,13 +9,13 @@ from config.database import get_db
 from schemas.permission import PermissionCreate, PermissionUpdate, PermissionResponse
 from services.permission_service import PermissionService
 from utils.response import success_response
-from utils.dependencies import require_admin
+from utils.dependencies import require_super_admin
 
 
 router = APIRouter(prefix="/permissions", tags=["Permissions"])
 
 
-@router.get("/", response_model=dict, dependencies=[Depends(require_admin)])
+@router.get("/", response_model=dict, dependencies=[Depends(require_super_admin)])
 async def get_permissions(
     page: int = 1,
     limit: int = 10,
@@ -35,14 +35,14 @@ async def get_permissions(
     return success_response(
         message="Permissions retrieved successfully",
         data={
-            "permissions": [perm.model_dump() for perm in permissions],
+            "items": [perm.model_dump() for perm in permissions],
             "page": page,
             "limit": limit
         }
     )
 
 
-@router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_admin)])
+@router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_super_admin)])
 async def create_permission(
     permission_data: PermissionCreate,
     db: Session = Depends(get_db)
@@ -62,7 +62,7 @@ async def create_permission(
     )
 
 
-@router.get("/{permission_id}", response_model=dict, dependencies=[Depends(require_admin)])
+@router.get("/{permission_id}", response_model=dict, dependencies=[Depends(require_super_admin)])
 async def get_permission(
     permission_id: int,
     db: Session = Depends(get_db)
@@ -81,7 +81,7 @@ async def get_permission(
     )
 
 
-@router.put("/{permission_id}", response_model=dict, dependencies=[Depends(require_admin)])
+@router.put("/{permission_id}", response_model=dict, dependencies=[Depends(require_super_admin)])
 async def update_permission(
     permission_id: int,
     permission_data: PermissionUpdate,
@@ -103,7 +103,7 @@ async def update_permission(
     )
 
 
-@router.delete("/{permission_id}", response_model=dict, dependencies=[Depends(require_admin)])
+@router.delete("/{permission_id}", response_model=dict, dependencies=[Depends(require_super_admin)])
 async def delete_permission(
     permission_id: int,
     db: Session = Depends(get_db)

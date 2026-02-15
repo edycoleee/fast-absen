@@ -1,38 +1,34 @@
-import { useState, useEffect } from 'react';
-import { pegawaiService } from '../services';
+import { useState, useEffect, useMemo } from 'react';
+import { usePegawai } from '../domain/hooks';
 
 const Pegawai = () => {
-  const [pegawai, setPegawai] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const {
+    pegawai,
+    loading,
+    error,
+    pagination,
+    fetchPegawai,
+    deletePegawai
+  } = usePegawai();
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    fetchPegawai();
-  }, [page, search]);
+  const totalPages = useMemo(() => {
+    const limit = pagination.limit || 10;
+    const total = pagination.total || 0;
+    return Math.max(1, Math.ceil(total / limit));
+  }, [pagination.limit, pagination.total]);
 
-  const fetchPegawai = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const response = await pegawaiService.getAll(page, 10, search);
-      setPegawai(response.data.items || []);
-      setTotalPages(response.data.pages || 1);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Gagal memuat data pegawai');
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    fetchPegawai(page, 10, search);
+  }, [page, search, fetchPegawai]);
 
   const handleDelete = async (id) => {
     if (!confirm('Apakah Anda yakin ingin menghapus pegawai ini?')) return;
     
     try {
-      await pegawaiService.delete(id);
-      fetchPegawai();
+      await deletePegawai(id);
+      fetchPegawai(page, 10, search);
     } catch (err) {
       alert(err.response?.data?.message || 'Gagal menghapus pegawai');
     }
@@ -41,7 +37,6 @@ const Pegawai = () => {
   const handleSearch = (e) => {
     e.preventDefault();
     setPage(1);
-    fetchPegawai();
   };
 
   return (
@@ -171,7 +166,7 @@ const Pegawai = () => {
                   Previous
                 </button>
                 <span className="text-sm text-gray-700">
-                  Page {page} of {totalPages}
+                  Page {pagination.page || page} of {totalPages}
                 </span>
                 <button
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}

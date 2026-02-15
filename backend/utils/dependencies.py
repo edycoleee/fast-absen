@@ -5,7 +5,7 @@ Common dependencies seperti authentication, authorization, pagination, dll
 from typing import Optional
 from fastapi import Header, HTTPException, status, Depends, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from config.database import get_db
 from utils.auth import decode_access_token
 from models.user import User
@@ -65,7 +65,12 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    user = db.query(User).filter(User.id == user_id).first()
+    user = (
+        db.query(User)
+        .options(joinedload(User.roles).joinedload(Role.permissions))
+        .filter(User.id == user_id)
+        .first()
+    )
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -132,8 +137,37 @@ class RoleChecker:
 
 
 # Pre-defined role checkers
-require_admin = RoleChecker(["admin"])
-require_user = RoleChecker(["user", "admin"])
+require_super_admin = RoleChecker(["super-admin", "super_admin", "superadmin"])
+require_admin = RoleChecker(["admin", "super-admin", "super_admin", "superadmin"])
+require_user = RoleChecker(["user", "admin", "super-admin", "super_admin", "superadmin"])
+
+
+class PermissionChecker:
+    """
+    Dependency untuk check user permission
+    """
+
+    def __init__(self, required_permission: str):
+        self.required_permission = required_permission
+
+    def __call__(self, current_user: User = Depends(get_current_user)) -> User:
+        permissions = {
+            perm.name
+            for role in current_user.roles
+            for perm in role.permissions
+        }
+
+        if self.required_permission not in permissions:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Insufficient permissions. Required: {self.required_permission}"
+            )
+
+        return current_user
+
+
+def require_permission(permission_name: str) -> PermissionChecker:
+    return PermissionChecker(permission_name)
 
 
 class CommonQueryParams:

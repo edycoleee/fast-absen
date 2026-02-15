@@ -8,12 +8,13 @@ from config.database import get_db
 from schemas.user import UserCreate, UserUpdate, UserResponse, UserDetail
 from services.user_service import UserService
 from utils.response import success_response
-from utils.dependencies import require_admin, CommonQueryParams
+from utils.dependencies import require_permission, CommonQueryParams
+from utils.permission_registry import PermissionKeys
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
-@router.get("/", response_model=dict, dependencies=[Depends(require_admin)])
+@router.get("/", response_model=dict, dependencies=[Depends(require_permission(PermissionKeys.USERS_READ))])
 def get_users(
     commons: CommonQueryParams = Depends(),
     db: Session = Depends(get_db)
@@ -27,12 +28,12 @@ def get_users(
     users = user_service.get_all(skip=commons.offset, limit=commons.limit)
     
     return success_response(
-        data={"users": [user.model_dump() for user in users], "page": commons.page, "limit": commons.limit},
+        data={"items": [user.model_dump() for user in users], "page": commons.page, "limit": commons.limit},
         message="Users retrieved successfully"
     )
 
 
-@router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_admin)])
+@router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission(PermissionKeys.USERS_CREATE))])
 def create_user(
     user_data: UserCreate,
     db: Session = Depends(get_db)
@@ -55,7 +56,7 @@ def create_user(
     )
 
 
-@router.get("/{user_id}", response_model=dict, dependencies=[Depends(require_admin)])
+@router.get("/{user_id}", response_model=dict, dependencies=[Depends(require_permission(PermissionKeys.USERS_READ))])
 def get_user(
     user_id: int,
     db: Session = Depends(get_db)
@@ -70,7 +71,7 @@ def get_user(
     )
 
 
-@router.put("/{user_id}", response_model=dict, dependencies=[Depends(require_admin)])
+@router.put("/{user_id}", response_model=dict, dependencies=[Depends(require_permission(PermissionKeys.USERS_UPDATE))])
 def update_user(
     user_id: int,
     user_data: UserUpdate,
@@ -90,7 +91,7 @@ def update_user(
     )
 
 
-@router.delete("/{user_id}", response_model=dict, status_code=status.HTTP_200_OK, dependencies=[Depends(require_admin)])
+@router.delete("/{user_id}", response_model=dict, status_code=status.HTTP_200_OK, dependencies=[Depends(require_permission(PermissionKeys.USERS_DELETE))])
 def delete_user(
     user_id: int,
     db: Session = Depends(get_db)

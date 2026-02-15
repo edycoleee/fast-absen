@@ -9,14 +9,15 @@ from config.database import get_db
 from schemas.pegawai import PegawaiCreate, PegawaiUpdate, PegawaiResponse
 from services.pegawai_service import PegawaiService
 from utils.response import success_response
-from utils.dependencies import require_admin
+from utils.dependencies import require_permission
+from utils.permission_registry import PermissionKeys
 from datetime import date
 
 
 router = APIRouter(prefix="/pegawai", tags=["Pegawai"])
 
 
-@router.get("/", response_model=dict, dependencies=[Depends(require_admin)])
+@router.get("/", response_model=dict, dependencies=[Depends(require_permission(PermissionKeys.PEGAWAI_READ))])
 async def get_pegawai(
     page: int = 1,
     limit: int = 10,
@@ -42,7 +43,7 @@ async def get_pegawai(
     return success_response(
         message="Pegawai retrieved successfully",
         data={
-            "pegawai": [p.model_dump() for p in pegawai_list],
+            "items": [p.model_dump() for p in pegawai_list],
             "page": page,
             "limit": limit,
             "search": search
@@ -50,7 +51,7 @@ async def get_pegawai(
     )
 
 
-@router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_admin)])
+@router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission(PermissionKeys.PEGAWAI_CREATE))])
 async def create_pegawai(
     id_pegawai: str = Form(...),
     nip: Optional[str] = Form(None),
@@ -113,7 +114,7 @@ async def create_pegawai(
     )
 
 
-@router.get("/{pegawai_id}", response_model=dict, dependencies=[Depends(require_admin)])
+@router.get("/{pegawai_id}", response_model=dict, dependencies=[Depends(require_permission(PermissionKeys.PEGAWAI_READ))])
 async def get_pegawai_by_id(
     pegawai_id: str,
     db: Session = Depends(get_db)
@@ -132,7 +133,7 @@ async def get_pegawai_by_id(
     )
 
 
-@router.put("/{pegawai_id}", response_model=dict, dependencies=[Depends(require_admin)])
+@router.put("/{pegawai_id}", response_model=dict, dependencies=[Depends(require_permission(PermissionKeys.PEGAWAI_UPDATE))])
 async def update_pegawai(
     pegawai_id: str,
     nip: Optional[str] = Form(None),
@@ -203,7 +204,7 @@ async def update_pegawai(
     )
 
 
-@router.delete("/{pegawai_id}", response_model=dict, dependencies=[Depends(require_admin)])
+@router.delete("/{pegawai_id}", response_model=dict, dependencies=[Depends(require_permission(PermissionKeys.PEGAWAI_DELETE))])
 async def delete_pegawai(
     pegawai_id: str,
     db: Session = Depends(get_db)

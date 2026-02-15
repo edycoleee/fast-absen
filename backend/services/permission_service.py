@@ -44,14 +44,10 @@ class PermissionService:
                 detail=f"Permission with name '{permission_data.name}' already exists"
             )
         
-        # Create permission
-        permission = Permission(
-            name=permission_data.name,
-            description=permission_data.description
-        )
-        
-        # Save to database
-        created_permission = self.permission_repo.create(permission)
+        created_permission = self.permission_repo.create({
+            "name": permission_data.name,
+            "description": permission_data.description
+        })
         
         return PermissionResponse.model_validate(created_permission)
     
@@ -82,7 +78,12 @@ class PermissionService:
             setattr(permission, field, value)
         
         # Save to database
-        updated_permission = self.permission_repo.update(permission)
+        updated_permission = self.permission_repo.update(permission_id, update_data)
+        if updated_permission is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Permission with id {permission_id} not found"
+            )
         
         return PermissionResponse.model_validate(updated_permission)
     

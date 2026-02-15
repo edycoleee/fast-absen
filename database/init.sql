@@ -105,7 +105,8 @@ CREATE TABLE absensi (
 -- Roles
 INSERT INTO roles (name, description) VALUES
 ('admin', 'Full system access'),
-('user', 'Pegawai yang melakukan absensi');
+('user', 'Pegawai yang melakukan absensi'),
+('super-admin', 'Full system access');
 
 -- Permissions
 INSERT INTO permissions (name, description) VALUES

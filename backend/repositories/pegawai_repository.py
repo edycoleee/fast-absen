@@ -14,10 +14,37 @@ class PegawaiRepository(BaseRepository[Pegawai]):
     
     def __init__(self, db: Session):
         super().__init__(Pegawai, db)
+
+    def get(self, pegawai_id: str) -> Optional[Pegawai]:
+        """Get pegawai by ID (id_pegawai)"""
+        return self.db.query(Pegawai).filter(Pegawai.id_pegawai == pegawai_id).first()
     
     def get_by_nip(self, nip: str) -> Optional[Pegawai]:
         """Get pegawai by NIP"""
         return self.db.query(Pegawai).filter(Pegawai.nip == nip).first()
+
+    def create(self, pegawai: Pegawai) -> Pegawai:
+        """Create new pegawai"""
+        self.db.add(pegawai)
+        self.db.commit()
+        self.db.refresh(pegawai)
+        return pegawai
+
+    def update(self, pegawai: Pegawai) -> Pegawai:
+        """Update pegawai"""
+        self.db.commit()
+        self.db.refresh(pegawai)
+        return pegawai
+
+    def delete(self, pegawai_id: str) -> bool:
+        """Delete pegawai by ID (id_pegawai)"""
+        pegawai = self.get(pegawai_id)
+        if not pegawai:
+            return False
+
+        self.db.delete(pegawai)
+        self.db.commit()
+        return True
     
     def search(self, query: str, skip: int = 0, limit: int = 100) -> List[Pegawai]:
         """Search pegawai by name or NIP"""

@@ -3,7 +3,9 @@ RSUD Sulfat Attendance System API
 FastAPI application with Clean Architecture
 """
 from contextlib import asynccontextmanager
+import os
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -18,6 +20,7 @@ from utils.exception_handlers import (
     general_exception_handler
 )
 from utils.logger import logger
+from utils.bootstrap_admin import bootstrap_super_admin
 
 
 @asynccontextmanager
@@ -34,6 +37,7 @@ async def lifespan(app: FastAPI):
     # Check database connection
     if check_database_connection():
         logger.info("Database connection established")
+        bootstrap_super_admin()
     else:
         logger.warning("Database connection failed - app will start but may not work properly")
     
@@ -69,7 +73,7 @@ app.add_exception_handler(Exception, general_exception_handler)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1|192\.168\.171\.\d+|192\.168\.171\.20):\d+",
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1|192\.168\.171\.\d+|192\.168\.30\.\d+):\d+",
     allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
     allow_methods=settings.CORS_ALLOW_METHODS,
     allow_headers=settings.CORS_ALLOW_HEADERS,
@@ -81,6 +85,11 @@ app.add_middleware(RequestLoggingMiddleware)
 
 # Include API v1 router
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
+
+# Serve uploaded files
+uploads_dir = os.path.join(os.getcwd(), "uploads")
+if os.path.isdir(uploads_dir):
+    app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 
 @app.get("/", tags=["Root"])

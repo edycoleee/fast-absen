@@ -16,11 +16,13 @@ Semua endpoint (kecuali `/auth/login`) memerlukan JWT token di header:
 Authorization: Bearer <your_jwt_token>
 ```
 
-### Test Admin Account
+### Test Super Admin Account (Jika Tersedia)
+
+Gunakan kredensial dari env `ADMIN_USERNAME` dan `ADMIN_PASSWORD`.
 
 ```
-Username: admin
-Password: admin123
+Username: <ADMIN_USERNAME>
+Password: <ADMIN_PASSWORD>
 ```
 
 ---
@@ -30,76 +32,71 @@ Password: admin123
 ### 1. Authentication
 
 | Method | Endpoint | Deskripsi | Auth | Role |
-|--------|----------|-----------|------|------|
-| POST | `/auth/login` | Login → JWT | ❌ | - |
 
 ### 2. Users (Implemented ✅)
 
-| Method | Endpoint | Deskripsi | Auth | Role |
-|--------|----------|-----------|------|------|
-| GET | `/users/` | List user | ✔️ | admin |
-| POST | `/users/` | Buat user | ✔️ | admin |
-| GET | `/users/{id}` | Detail user | ✔️ | admin |
-| PUT | `/users/{id}` | Update user | ✔️ | admin |
-| DELETE | `/users/{id}` | Hapus user | ✔️ | admin |
+| Method | Endpoint | Deskripsi | Auth | Permission |
+|--------|----------|-----------|------|------------|
+| GET | `/users/` | List user | ✔️ | `users.read` |
+| POST | `/users/` | Buat user | ✔️ | `users.create` |
+| GET | `/users/{id}` | Detail user | ✔️ | `users.read` |
+| PUT | `/users/{id}` | Update user | ✔️ | `users.update` |
+| DELETE | `/users/{id}` | Hapus user | ✔️ | `users.delete` |
 
 ### 3. Roles (Implemented ✅)
 
-| Method | Endpoint | Deskripsi | Auth | Role |
-|--------|----------|-----------|------|------|
-| GET | `/roles/` | List role | ✔️ | admin |
-| POST | `/roles/` | Buat role | ✔️ | admin |
-| GET | `/roles/{id}` | Detail role | ✔️ | admin |
-| PUT | `/roles/{id}` | Update role | ✔️ | admin |
-| DELETE | `/roles/{id}` | Hapus role | ✔️ | admin |
+| GET | `/roles/` | List role | ✔️ | super-admin |
+| POST | `/roles/` | Buat role | ✔️ | super-admin |
+| GET | `/roles/{id}` | Detail role | ✔️ | super-admin |
+| PUT | `/roles/{id}` | Update role | ✔️ | super-admin |
+| DELETE | `/roles/{id}` | Hapus role | ✔️ | super-admin |
 
 ### 4. Permissions (Implemented ✅)
 
 | Method | Endpoint | Deskripsi | Auth | Role |
 |--------|----------|-----------|------|------|
-| GET | `/permissions/` | List permission | ✔️ | admin |
-| POST | `/permissions/` | Buat permission | ✔️ | admin |
-| GET | `/permissions/{id}` | Detail permission | ✔️ | admin |
-| PUT | `/permissions/{id}` | Update permission | ✔️ | admin |
-| DELETE | `/permissions/{id}` | Hapus permission | ✔️ | admin |
+| GET | `/permissions/` | List permission | ✔️ | super-admin |
+| POST | `/permissions/` | Buat permission | ✔️ | super-admin |
+| GET | `/permissions/{id}` | Detail permission | ✔️ | super-admin |
+| PUT | `/permissions/{id}` | Update permission | ✔️ | super-admin |
+| DELETE | `/permissions/{id}` | Hapus permission | ✔️ | super-admin |
 
 ### 5. Pegawai (Implemented ✅)
 
-| Method | Endpoint | Deskripsi | Auth | Role |
-|--------|----------|-----------|------|------|
-| GET | `/pegawai/` | List/search pegawai | ✔️ | admin |
-| POST | `/pegawai/` | Tambah pegawai | ✔️ | admin |
-| GET | `/pegawai/{id}` | Detail pegawai | ✔️ | admin |
-| PUT | `/pegawai/{id}` | Update pegawai | ✔️ | admin |
-| DELETE | `/pegawai/{id}` | Hapus pegawai | ✔️ | admin |
+| Method | Endpoint | Deskripsi | Auth | Permission |
+|--------|----------|-----------|------|------------|
+| GET | `/pegawai/` | List/search pegawai | ✔️ | `pegawai.read` |
+| POST | `/pegawai/` | Tambah pegawai | ✔️ | `pegawai.create` |
+| GET | `/pegawai/{id}` | Detail pegawai | ✔️ | `pegawai.read` |
+# ===== Privileged Endpoints =====
+| DELETE | `/pegawai/{id}` | Hapus pegawai | ✔️ | `pegawai.delete` |
 
 ### 6. Absensi (Implemented ✅)
 
-**Admin Endpoints**
+**Privileged Endpoints**
 
-| Method | Endpoint | Deskripsi | Auth | Role |
+| Method | Endpoint | Deskripsi | Auth | Permission |
 |--------|----------|-----------|------|------|
-| GET | `/absensi/` | List semua absensi | ✔️ | admin |
-| GET | `/absensi/{id}` | Detail absensi | ✔️ | admin |
-| PUT | `/absensi/{id}` | Update absensi | ✔️ | admin |
-| DELETE | `/absensi/{id}` | Hapus absensi | ✔️ | admin |
+| GET | `/absensi/` | List semua absensi | ✔️ | `absensi.read` |
+| GET | `/absensi/{id}` | Detail absensi | ✔️ | `absensi.read` |
+| PUT | `/absensi/{id}` | Update absensi | ✔️ | `absensi.update` |
+| DELETE | `/absensi/{id}` | Hapus absensi | ✔️ | `absensi.delete` |
 
 **User Dashboard Endpoints**
 
-| Method | Endpoint | Deskripsi | Auth | Role |
+| Method | Endpoint | Deskripsi | Auth | Permission |
 |--------|----------|-----------|------|------|
-| POST | `/absensi/create` | User melakukan absensi | ✔️ | user, admin |
-| GET | `/absensi/me` | List absensi milik user | ✔️ | user, admin |
-| GET | `/absensi/me/{id}` | Detail absensi milik user | ✔️ | user, admin |
+| POST | `/absensi/create` | User melakukan absensi | ✔️ | `absensi.create` |
+| GET | `/absensi/me` | List absensi milik user | ✔️ | `absensi.read` |
+| GET | `/absensi/me/{id}` | Detail absensi milik user | ✔️ | `absensi.read` |
 
 ### 7. Login Absensi (Implemented ✅)
 
-| Method | Endpoint | Deskripsi | Auth | Role |
-|--------|----------|-----------|------|------|
-| POST | `/login-absensi/` | Catat login absensi | ✔️ | user, admin |
-| GET | `/login-absensi/` | List login absensi | ✔️ | admin |
-| GET | `/login-absensi/{id}` | Detail login absensi | ✔️ | admin |
-| GET | `/login-absensi/{id}` | Detail login absensi | ✔️ | admin |
+| Method | Endpoint | Deskripsi | Auth | Permission |
+|--------|----------|-----------|------|------------|
+| POST | `/login-absensi/` | Catat login absensi | ✔️ | `login_absensi.create` |
+| GET | `/login-absensi/` | List login absensi | ✔️ | `login_absensi.read` |
+| GET | `/login-absensi/{id}` | Detail login absensi | ✔️ | `login_absensi.read` |
 
 ---
 
@@ -129,7 +126,7 @@ Login dan mendapatkan JWT token.
     "token_type": "bearer",
     "user_id": 1,
     "username": "admin",
-    "roles": ["admin"]
+    "roles": ["super-admin"]
   }
 }
 ```
@@ -165,7 +162,7 @@ Authorization: Bearer <token>
   "success": true,
   "message": "Users retrieved successfully",
   "data": {
-    "users": [
+    "items": [
       {
         "id": 1,
         "username": "admin",
@@ -321,7 +318,7 @@ Authorization: Bearer <token>
   "success": true,
   "message": "Roles retrieved successfully",
   "data": {
-    "roles": [
+    "items": [
       {
         "id": 1,
         "name": "admin",
@@ -503,7 +500,7 @@ Authorization: Bearer <token>
   "success": true,
   "message": "Permissions retrieved successfully",
   "data": {
-    "permissions": [
+    "items": [
       {
         "id": 1,
         "name": "user.login",
@@ -684,7 +681,7 @@ Authorization: Bearer <token>
   "success": true,
   "message": "Pegawai retrieved successfully",
   "data": {
-    "pegawai": [
+    "items": [
       {
         "id_pegawai": "P001",
         "nip": "123456789",
@@ -862,18 +859,18 @@ Authorization: Bearer <token>
 ### 6. Absensi Management
 
 Absensi endpoints implement **dual access pattern**:
-- **Admin**: Full CRUD access to all absensi records
-- **User**: Can only create and view their own absensi records
+- **Privileged**: Full CRUD access (requires `absensi.read/update/delete`)
+- **User**: Create and view own records (requires `absensi.create/read`)
 
-#### Admin Endpoints
+#### Privileged Endpoints
 
 ##### GET `/absensi/`
 
-Get all absensi records with employee information (admin only).
+Get all absensi records with employee information (requires `absensi.read`).
 
 **Headers:**
 ```
-Authorization: Bearer <admin_token>
+Authorization: Bearer <token_with_permission>
 ```
 
 **Query Parameters:**
@@ -885,25 +882,27 @@ Authorization: Bearer <admin_token>
 {
   "success": true,
   "message": "Absensi retrieved successfully",
-  "data": [
-    {
-      "id": 1,
-      "id_pegawai": "P001",
-      "id_lokasi": "LOK001",
-      "uid": "ABC123",
-      "tanggal": "2026-02-15T08:30:00",
-      "keterangan": "Hadir tepat waktu",
-      "ip_address": "192.168.1.100",
-      "pegawai_nama": "John Doe",
-      "pegawai_nip": "123456"
-    }
-  ]
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "id_pegawai": "P001",
+        "id_lokasi": "LOK001",
+        "uid": "ABC123",
+        "tanggal": "2026-02-15T08:30:00",
+        "keterangan": "Hadir tepat waktu",
+        "ip_address": "192.168.1.100",
+        "pegawai_nama": "John Doe",
+        "pegawai_nip": "123456"
+      }
+    ]
+  }
 }
 ```
 
 ##### GET `/absensi/{id}`
 
-Get specific absensi by ID (admin only).
+Get specific absensi by ID (requires `absensi.read`).
 
 **Response (200 OK):**
 ```json
@@ -926,7 +925,7 @@ Get specific absensi by ID (admin only).
 
 ##### PUT `/absensi/{id}`
 
-Update absensi record (admin only).
+Update absensi record (requires `absensi.update`).
 
 **Request Body:**
 ```json
@@ -954,7 +953,7 @@ Update absensi record (admin only).
 
 ##### DELETE `/absensi/{id}`
 
-Delete absensi record (admin only).
+Delete absensi record (requires `absensi.delete`).
 
 **Response (200 OK):**
 ```json
@@ -1021,17 +1020,19 @@ Authorization: Bearer <user_token>
 {
   "success": true,
   "message": "Your absensi retrieved successfully",
-  "data": [
-    {
-      "id": 1,
-      "id_pegawai": "P001",
-      "id_lokasi": "LOK001",
-      "uid": "ABC123",
-      "tanggal": "2026-02-15T08:30:00",
-      "keterangan": "Hadir tepat waktu",
-      "ip_address": "192.168.1.100"
-    }
-  ]
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "id_pegawai": "P001",
+        "id_lokasi": "LOK001",
+        "uid": "ABC123",
+        "tanggal": "2026-02-15T08:30:00",
+        "keterangan": "Hadir tepat waktu",
+        "ip_address": "192.168.1.100"
+      }
+    ]
+  }
 }
 ```
 
@@ -1108,11 +1109,11 @@ Authorization: Bearer <user_token>
 
 ##### GET `/login-absensi/`
 
-Get all device login records (admin only).
+Get all device login records (requires `login_absensi.read`).
 
 **Headers:**
 ```
-Authorization: Bearer <admin_token>
+Authorization: Bearer <token_with_permission>
 ```
 
 **Query Parameters:**
@@ -1140,7 +1141,7 @@ Authorization: Bearer <admin_token>
 
 ##### GET `/login-absensi/{id}`
 
-Get specific device login record (admin only).
+Get specific device login record (requires `login_absensi.read`).
 
 **Response (200 OK):**
 ```json
@@ -1289,6 +1290,10 @@ Semua endpoint menggunakan format response standar:
 }
 ```
 
+**Catatan koleksi (list):**
+- Untuk list yang dipaginasi, data dibungkus dalam `data.items`.
+- Untuk list non-paginasi tertentu (contoh: `GET /login-absensi/`), response menggunakan array langsung di `data`.
+
 ### Error Response
 ```json
 {
@@ -1322,13 +1327,13 @@ Completed endpoints:
 - ✅ Roles
 - ✅ Permissions
 - ✅ Pegawai
-- ✅ Absensi (Admin & User Dashboard)
+- ✅ Absensi (Privileged & User Dashboard)
 - ✅ Login Absensi
 
 The attendance system API is now complete with:
 - Full RBAC (Role-Based Access Control)
 - JWT authentication
-- Dual access patterns (Admin + User)
+- Dual access patterns (Privileged + User)
 - File upload support (Pegawai photos)
 - IP address tracking (Absensi)
 - Device login tracking (Login Absensi)
@@ -1339,15 +1344,34 @@ The attendance system API is now complete with:
 ## 📝 Database Schema
 
 ### Roles (Default)
-- `admin` - Full system access
+- `super-admin` - Full system access (roles & permissions management)
+- `admin` - Privileged access (depends on assigned permissions)
 - `user` - Pegawai yang melakukan absensi
 
 ### Permissions (Default)
 - `user.login` - Login aplikasi
-- `absensi.create` - Melakukan absensi
+- `users.read` - Melihat data user
+- `users.create` - Membuat user
+- `users.update` - Mengubah user
+- `users.delete` - Menghapus user
+- `roles.read` - Melihat data role
+- `roles.create` - Membuat role
+- `roles.update` - Mengubah role
+- `roles.delete` - Menghapus role
+- `permissions.read` - Melihat data permission
+- `permissions.create` - Membuat permission
+- `permissions.update` - Mengubah permission
+- `permissions.delete` - Menghapus permission
+- `pegawai.read` - Melihat data pegawai
+- `pegawai.create` - Membuat pegawai
+- `pegawai.update` - Mengubah pegawai
+- `pegawai.delete` - Menghapus pegawai
 - `absensi.read` - Melihat data absensi
+- `absensi.create` - Membuat absensi
 - `absensi.update` - Mengubah data absensi
 - `absensi.delete` - Menghapus data absensi
+- `login_absensi.read` - Melihat data login absensi
+- `login_absensi.create` - Membuat login absensi
 
 ---
 

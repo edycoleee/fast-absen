@@ -13,6 +13,10 @@ class PermissionRepository(BaseRepository[Permission]):
     
     def __init__(self, db: Session):
         super().__init__(Permission, db)
+
+    def get(self, permission_id: int) -> Optional[Permission]:
+        """Get permission by ID"""
+        return self.get_by_id(permission_id)
     
     def get_by_name(self, name: str) -> Optional[Permission]:
         """Get permission by name"""

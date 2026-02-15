@@ -3,7 +3,7 @@ API v1 Main Router
 Menggabungkan semua endpoint
 """
 from fastapi import APIRouter
-from api.v1.endpoints import halo, auth, users, roles, permissions, pegawai, absensi, login_absensi
+from api.v1.endpoints import halo, auth, users, roles, permissions, pegawai, absensi, login_absensi, stats
 
 api_router = APIRouter()
 
@@ -27,6 +27,9 @@ api_router.include_router(absensi.router)
 
 # Login Absensi (Device Login Tracking)
 api_router.include_router(login_absensi.router)
+
+# Dashboard stats
+api_router.include_router(stats.router)
 
 # Legacy/Example endpoint
 api_router.include_router(halo.router)

@@ -44,6 +44,19 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "your-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
+    # Initial admin bootstrap (optional)
+    ADMIN_USERNAME: str | None = None
+    ADMIN_PASSWORD: str | None = None
+    ADMIN_ID_PEGAWAI: str | None = None
+    ADMIN_NIP: str | None = None
+    ADMIN_NAMA: str | None = None
+    ADMIN_JENIS_KELAMIN: str | None = None
+    ADMIN_TEMPAT_LAHIR: str | None = None
+    ADMIN_TANGGAL_LAHIR: str | None = None
+    ADMIN_ALAMAT: str | None = None
+    ADMIN_STATUS: str | None = None
+    ADMIN_FORCE_UPDATE: bool = False
     
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

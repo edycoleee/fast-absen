@@ -1,15 +1,51 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../domain/hooks';
+import apiClient from '../../services/api';
 
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [healthDetail, setHealthDetail] = useState(null);
+  const [healthError, setHealthError] = useState('');
+  const [healthLoading, setHealthLoading] = useState(false);
   
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let isMounted = true;
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://192.168.171.15:8000/api/v1';
+    const healthUrl = new URL('/health/detail', apiBaseUrl).toString();
+
+    const fetchHealthDetail = async () => {
+      setHealthError('');
+      setHealthLoading(true);
+
+      try {
+        const response = await apiClient.get(healthUrl);
+        if (isMounted) {
+          setHealthDetail(response.data);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setHealthError(err.response?.data?.message || 'Gagal mengambil status kesehatan API.');
+        }
+      } finally {
+        if (isMounted) {
+          setHealthLoading(false);
+        }
+      }
+    };
+
+    fetchHealthDetail();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -84,6 +120,17 @@ const Login = () => {
               {loading ? 'Memproses...' : 'Login'}
             </button>
           </form>
+
+          <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm">
+            <div className="mb-2 font-medium text-gray-700">Health Check</div>
+            {healthLoading && <div className="text-gray-600">Mengambil status...</div>}
+            {healthError && <div className="text-red-600">{healthError}</div>}
+            {!healthLoading && !healthError && healthDetail && (
+              <pre className="whitespace-pre-wrap text-xs text-gray-700">
+                {JSON.stringify(healthDetail, null, 2)}
+              </pre>
+            )}
+          </div>
 
           <div className="mt-6 text-center text-sm text-gray-500">
             © 2024 RSUD Sulfat. All rights reserved.

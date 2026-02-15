@@ -13,6 +13,7 @@ Modern attendance system backend built with FastAPI using Clean Architecture pri
 - [Development](#development)
 - [API Documentation](#api-documentation)
 - [Architecture](#architecture)
+- [Permission Registry](#permission-registry)
 - [Response Format](#response-format)
 - [Logging](#logging)
 - [Testing](#testing)
@@ -168,6 +169,55 @@ LOG_LEVEL=DEBUG
 LOG_DIR=logs
 ```
 
+### IP, Database, and CORS Settings
+
+Gunakan acuan berikut supaya IP server, database, dan frontend konsisten.
+
+**Backend (.env)**
+
+```bash
+# Server API
+HOST=0.0.0.0
+PORT=8000
+
+# Database (PostgreSQL)
+POSTGRES_HOST=192.168.30.21
+POSTGRES_PORT=5432
+POSTGRES_DB=attendance_db
+POSTGRES_USER=sultan
+POSTGRES_PASSWORD=your-password
+
+# CORS (Frontend origins yang diizinkan)
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8080,http://192.168.30.21:3000
+```
+
+**Frontend (.env)**
+
+```bash
+# Base URL API (wajib sesuai IP server backend)
+VITE_API_BASE_URL=http://192.168.30.21:8000/api/v1
+```
+
+**Frontend Vite Proxy (vite.config.js)**
+
+```js
+server: {
+  proxy: {
+    '/api': {
+      target: 'http://192.168.30.21:8000',
+      changeOrigin: true,
+      rewrite: (path) => path.replace(/^\/api/, '/api/v1')
+    }
+  }
+}
+```
+
+**Catatan penting**
+
+- `CORS_ORIGINS` harus memuat origin frontend yang dipakai (IP:PORT).
+- Jika IP backend berubah, sesuaikan `VITE_API_BASE_URL` dan target proxy.
+- Endpoint health berada di root backend: `GET http://<server-ip>:8000/health/detail`.
+
 ### Environment Modes
 
 | Mode | Debug | Docs | Log Level | CORS |
@@ -214,6 +264,81 @@ GET /health/detail
 #   "timestamp": "2026-02-12T10:00:00"
 # }
 ```
+
+---
+
+## 🔐 Permission Registry
+
+Aturan utama: **registry → sync → protect endpoint → assign role**.
+
+### 1) Tambah permission di registry
+Edit [backend/utils/permission_registry.py](utils/permission_registry.py) dan tambahkan key baru.
+
+```python
+PERMISSIONS = {
+  "pegawai.export": "Export data pegawai",
+  # ...
+}
+
+class PermissionKeys:
+  PEGAWAI_EXPORT = "pegawai.export"
+```
+
+### 2) Sync ke database
+Jalankan sync agar permission baru masuk DB dan otomatis diberikan ke super-admin.
+
+```bash
+python scripts/sync_permissions.py
+```
+
+### 3) Lindungi endpoint dengan permission
+Gunakan dependency `require_permission` di endpoint.
+
+```python
+from fastapi import APIRouter, Depends
+from utils.dependencies import require_permission
+from utils.permission_registry import PermissionKeys
+
+router = APIRouter(prefix="/pegawai", tags=["Pegawai"])
+
+@router.get("/export", dependencies=[Depends(require_permission(PermissionKeys.PEGAWAI_EXPORT))])
+def export_pegawai():
+  # logic export
+  return {"ok": True}
+```
+
+### 4) Assign permission ke role lain (opsional)
+Jika role selain super-admin butuh akses, set lewat UI Roles atau update `role_permissions`.
+
+### Catatan
+- Tambah permission baru **selalu** di registry dulu.
+- Jangan hapus permission dari DB sebelum endpoint yang pakai permission tersebut dihapus.
+
+---
+
+## 👤 Bootstrap Super Admin (First Run)
+
+Saat backend pertama kali berjalan, sistem akan **membuat/menyetel user super-admin otomatis** dari `backend/.env`.
+
+Tambahkan di [backend/.env](.env):
+
+```bash
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123
+ADMIN_ID_PEGAWAI=P001
+ADMIN_NIP=111
+ADMIN_NAMA=Admin Super
+ADMIN_JENIS_KELAMIN=L
+ADMIN_TEMPAT_LAHIR=Makassar
+ADMIN_TANGGAL_LAHIR=1990-01-01
+ADMIN_ALAMAT=Alamat admin
+ADMIN_STATUS=PNS
+```
+
+Catatan:
+- `ADMIN_USERNAME` dan `ADMIN_PASSWORD` wajib diisi agar bootstrap berjalan.
+- `ADMIN_TANGGAL_LAHIR` menerima format `YYYY-MM-DD` atau `YYYYMMDD`.
+- Jika user sudah ada, password akan di-update sesuai env saat backend start.
 
 ### Example Endpoints
 
@@ -376,7 +501,7 @@ psql -h localhost -U postgres -d fast_absen  # Test connection
 ```bash
 lsof -ti:8000 | xargs kill -9  # Kill process
 # Or use different port
-uvicorn main:app --port 8001
+uvicorn main:app --port 8000
 ```
 
 ---

@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 from config.database import get_db
 from schemas.login_absensi import LoginAbsensiCreate, LoginAbsensiResponse, LoginAbsensiDetail
 from services.login_absensi_service import LoginAbsensiService
-from utils.dependencies import get_current_user, require_admin
+from utils.dependencies import get_current_user, require_permission
+from utils.permission_registry import PermissionKeys
 from models.user import User
 from utils.response import success_response
 
@@ -22,7 +23,7 @@ router = APIRouter(prefix="/login-absensi", tags=["Login Absensi"])
 async def create_login_absensi(
     login_data: LoginAbsensiCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permission(PermissionKeys.LOGIN_ABSENSI_CREATE))
 ):
     """Create device login record for current user"""
     service = LoginAbsensiService(db)
@@ -45,7 +46,7 @@ async def get_all_login_absensi(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(require_permission(PermissionKeys.LOGIN_ABSENSI_READ))
 ):
     """Get all login absensi (admin only)"""
     service = LoginAbsensiService(db)
@@ -61,7 +62,7 @@ async def get_all_login_absensi(
 async def get_login_absensi_by_id(
     login_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(require_permission(PermissionKeys.LOGIN_ABSENSI_READ))
 ):
     """Get login absensi by ID (admin only)"""
     service = LoginAbsensiService(db)

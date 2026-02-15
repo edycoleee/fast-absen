@@ -1,22 +1,58 @@
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../domain/hooks';
+import StatsRepository from '../../data/repositories/StatsRepository';
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const [totalUsers, setTotalUsers] = useState('-');
+  const [totalPegawai, setTotalPegawai] = useState('-');
+  const [totalRoles, setTotalRoles] = useState('-');
+  const [absensiToday, setAbsensiToday] = useState('-');
 
-  const stats = [
-    { label: 'Total Users', value: '-', icon: '👥', color: 'bg-blue-500' },
-    { label: 'Total Pegawai', value: '-', icon: '👨‍💼', color: 'bg-green-500' },
-    { label: 'Absensi Hari Ini', value: '-', icon: '📝', color: 'bg-yellow-500' },
-    { label: 'Total Roles', value: '-', icon: '🔐', color: 'bg-purple-500' },
-  ];
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const response = await StatsRepository.getStats();
+        const data = response?.data || {};
+
+        setTotalUsers(data.users_total ?? '-');
+        setTotalPegawai(data.pegawai_total ?? '-');
+        setTotalRoles(data.roles_total ?? '-');
+        setAbsensiToday(data.absensi_today ?? '-');
+      } catch (err) {
+        console.error('Failed to load stats:', err);
+      }
+    };
+
+    loadStats();
+  }, []);
+
+  const stats = useMemo(() => ([
+    { label: 'Total Users', value: totalUsers, icon: '👥', color: 'bg-blue-500' },
+    { label: 'Total Pegawai', value: totalPegawai, icon: '👨‍💼', color: 'bg-green-500' },
+    { label: 'Absensi Hari Ini', value: absensiToday, icon: '📝', color: 'bg-yellow-500' },
+    { label: 'Total Roles', value: totalRoles, icon: '🔐', color: 'bg-purple-500' },
+  ]), [totalUsers, totalPegawai, absensiToday, totalRoles]);
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-2">
-          Selamat datang, <span className="font-medium">{user?.username}</span>
-        </p>
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600 mt-2">
+            Selamat datang, <span className="font-medium">{user?.username}</span>
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            logout();
+            window.location.href = '/login';
+          }}
+          className="btn-secondary"
+        >
+          Logout
+        </button>
       </div>
 
       {/* Stats Grid */}

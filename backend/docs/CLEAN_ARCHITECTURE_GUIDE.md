@@ -9,6 +9,7 @@ Panduan cepat menggunakan base classes untuk implementasi fitur baru.
 2. [Example: Lokasi Entity](#example-lokasi-entity)
 3. [Usage in Endpoints](#usage-in-endpoints)
 4. [Best Practices](#best-practices)
+5. [Alur Sistem](#alur-sistem)
 
 ---
 
@@ -256,6 +257,78 @@ async def create_lokasi(
         message="Lokasi berhasil dibuat",
         data=LokasiResponse.model_validate(lokasi).model_dump()
     )
+
+---
+
+## 5. Alur Sistem
+
+Ringkasan alur utama agar mudah dipahami saat membaca codebase.
+
+### 5.1 Alur Request API (Happy Path)
+
+1. Client mengirim request ke `/api/v1/...`.
+2. Router (`api/v1/router.py`) meneruskan ke endpoint terkait.
+3. Endpoint menjalankan dependencies (auth/permission/pagination).
+4. Endpoint memanggil service untuk business logic.
+5. Service memanggil repository untuk operasi database.
+6. Repository berinteraksi dengan model SQLAlchemy.
+7. Service mengembalikan hasil ke endpoint.
+8. Endpoint membungkus response dengan `success_response` atau `paginated_response`.
+
+**Ringkas:** Controller (endpoint) → Service → Repository → Model → DB → Response.
+
+### 5.2 Alur Autentikasi JWT
+
+1. Client login di `POST /auth/login`.
+2. `auth` service memvalidasi user dan membuat JWT.
+3. Client menyimpan token dan mengirim di header `Authorization: Bearer ...`.
+4. Dependency `get_current_user`:
+   - Decode token.
+   - Load user + roles + permissions.
+   - Cek `is_active`.
+5. Endpoint melanjutkan proses jika valid.
+
+### 5.3 Alur Authorization Permission
+
+1. Endpoint mendeklarasikan `require_permission("...")`.
+2. Dependency mengumpulkan semua permissions dari role user.
+3. Jika permission tidak ada → 403 Forbidden.
+4. Jika ada → lanjut ke service.
+
+### 5.4 Alur Bootstrap Super Admin
+
+1. Saat startup, `bootstrap_super_admin()` dijalankan.
+2. Jika `ADMIN_USERNAME` dan `ADMIN_PASSWORD` kosong → skip.
+3. Pastikan semua permission registry ada di DB.
+4. Pastikan role `super-admin` ada dan punya semua permission.
+5. Buat/update pegawai (optional) sesuai `ADMIN_*` env.
+6. Buat/update user admin (password update jika `ADMIN_FORCE_UPDATE=true`).
+
+### 5.5 Alur CRUD Standar
+
+1. Endpoint menerima request dan validasi schema.
+2. Service melakukan business validation (contoh: cek duplikat).
+3. Repository melakukan operasi DB (create/update/delete).
+4. Endpoint mengembalikan response standar.
+
+### 5.6 Alur Upload Foto Pegawai
+
+1. Client mengirim `multipart/form-data` ke endpoint pegawai.
+2. Endpoint/service menyimpan file ke `uploads/photos`.
+3. Data pegawai disimpan dengan path foto.
+4. File diakses melalui static mount `/uploads`.
+
+### 5.7 Alur Pagination dan Search
+
+1. Endpoint menerima `page`, `limit`, `search` dari `CommonQueryParams`.
+2. Repository melakukan query dengan filter search + limit/offset.
+3. Response memakai `paginated_response` dengan `data.items`.
+
+### 5.8 Alur Error Handling
+
+1. Exception di endpoint/service ditangkap oleh exception handlers.
+2. Response error selalu standar (`success=false`, `message`).
+3. Log tersimpan di `logs/` dengan request id.
 
 
 @router.get("/{id}")

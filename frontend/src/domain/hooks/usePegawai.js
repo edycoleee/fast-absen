@@ -27,12 +27,13 @@ export const usePegawai = () => {
       const response = await PegawaiRepository.getAll(page, limit, search);
       
       if (response.success) {
-        const pegawaiData = response.data.pegawai.map(p => new Pegawai(p));
+        const items = response?.data?.items || [];
+        const pegawaiData = items.map(p => new Pegawai(p));
         setPegawai(pegawaiData);
         setPagination({
-          page: response.data.page,
-          limit: response.data.limit,
-          total: response.data.total || pegawaiData.length
+          page: response?.data?.page,
+          limit: response?.data?.limit,
+          total: response?.data?.total || pegawaiData.length
         });
       } else {
         throw new Error(response.message || 'Failed to fetch pegawai');

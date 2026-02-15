@@ -27,14 +27,13 @@ export const useAbsensi = () => {
       const response = await AbsensiRepository.getAll(page, limit, filters);
       
       if (response.success) {
-        const absensiData = response.data.absensi ? 
-          response.data.absensi.map(a => new Absensi(a)) :
-          [];
+        const items = response?.data?.items || [];
+        const absensiData = items.map(a => new Absensi(a));
         setAbsensi(absensiData);
         setPagination({
-          page: response.data.page || page,
-          limit: response.data.limit || limit,
-          total: response.data.total || absensiData.length
+          page: response?.data?.page || page,
+          limit: response?.data?.limit || limit,
+          total: response?.data?.total || absensiData.length
         });
       } else {
         throw new Error(response.message || 'Failed to fetch absensi');
@@ -159,14 +158,13 @@ export const useAbsensi = () => {
       const response = await AbsensiRepository.getMyAbsensi(page, limit);
       
       if (response.success) {
-        const absensiData = response.data.absensi ?
-          response.data.absensi.map(a => new Absensi(a)) :
-          [];
+        const items = response?.data?.items || [];
+        const absensiData = items.map(a => new Absensi(a));
         setAbsensi(absensiData);
         setPagination({
-          page: response.data.page || page,
-          limit: response.data.limit || limit,
-          total: response.data.total || absensiData.length
+          page: response?.data?.page || page,
+          limit: response?.data?.limit || limit,
+          total: response?.data?.total || absensiData.length
         });
       } else {
         throw new Error(response.message || 'Failed to fetch my absensi');

@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 from config.database import get_db
 from schemas.absensi import AbsensiCreate, AbsensiUpdate, AbsensiResponse, AbsensiDetail
 from services.absensi_service import AbsensiService
-from utils.dependencies import get_current_user, require_admin
+from utils.dependencies import get_current_user, require_permission
+from utils.permission_registry import PermissionKeys
 from models.user import User
 from utils.response import success_response
 
@@ -23,7 +24,7 @@ async def get_all_absensi(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(require_permission(PermissionKeys.ABSENSI_READ))
 ):
     """Get all absensi (admin only)"""
     service = AbsensiService(db)
@@ -31,7 +32,7 @@ async def get_all_absensi(
     
     return success_response(
         message="Absensi retrieved successfully",
-        data=[a.model_dump() for a in absensi_list]
+        data={"items": [a.model_dump() for a in absensi_list]}
     )
 
 
@@ -39,7 +40,7 @@ async def get_all_absensi(
 async def get_absensi_by_id(
     absensi_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(require_permission(PermissionKeys.ABSENSI_READ))
 ):
     """Get absensi by ID (admin only)"""
     service = AbsensiService(db)
@@ -56,7 +57,7 @@ async def update_absensi(
     absensi_id: int,
     absensi_data: AbsensiUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(require_permission(PermissionKeys.ABSENSI_UPDATE))
 ):
     """Update absensi (admin only)"""
     service = AbsensiService(db)
@@ -72,7 +73,7 @@ async def update_absensi(
 async def delete_absensi(
     absensi_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(require_permission(PermissionKeys.ABSENSI_DELETE))
 ):
     """Delete absensi (admin only)"""
     service = AbsensiService(db)
@@ -90,7 +91,7 @@ async def create_user_absensi(
     absensi_data: AbsensiCreate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permission(PermissionKeys.ABSENSI_CREATE))
 ):
     """Create absensi for current user (captures IP address)"""
     service = AbsensiService(db)
@@ -111,7 +112,7 @@ async def get_my_absensi(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permission(PermissionKeys.ABSENSI_READ))
 ):
     """Get absensi for current user"""
     service = AbsensiService(db)
@@ -123,7 +124,7 @@ async def get_my_absensi(
     
     return success_response(
         message="Your absensi retrieved successfully",
-        data=[a.model_dump() for a in absensi_list]
+        data={"items": [a.model_dump() for a in absensi_list]}
     )
 
 
@@ -131,7 +132,7 @@ async def get_my_absensi(
 async def get_my_absensi_by_id(
     absensi_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permission(PermissionKeys.ABSENSI_READ))
 ):
     """Get specific absensi for current user"""
     service = AbsensiService(db)

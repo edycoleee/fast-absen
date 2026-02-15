@@ -1,0 +1,8 @@
+#!/bin/bash
+# ============================================================
+# INIT ADMIN SUPER (Deprecated)
+# Sistem Absensi RSUD Sulfat
+# ============================================================
+
+echo "Bootstrap admin sekarang dilakukan otomatis saat backend start."
+echo "Pastikan ADMIN_USERNAME dan ADMIN_PASSWORD sudah di backend/.env."

@@ -79,16 +79,14 @@ class RoleService:
                 permissions.append(permission)
         
         # Create role
-        role = Role(
-            name=role_data.name,
-            description=role_data.description
-        )
-        
+        created_role = self.role_repo.create({
+            "name": role_data.name,
+            "description": role_data.description
+        })
+
         # Add permissions
-        role.permissions = permissions
-        
-        # Save to database
-        created_role = self.role_repo.create(role)
+        if permissions:
+            created_role = self.role_repo.set_permissions(created_role, permissions)
         
         # Return response
         role_dict = RoleResponse.model_validate(created_role).model_dump()
@@ -119,8 +117,8 @@ class RoleService:
                 )
         
         # Update permissions if provided
+        permissions = []
         if "permission_ids" in update_data:
-            permissions = []
             for perm_id in update_data["permission_ids"]:
                 permission = self.permission_repo.get(perm_id)
                 if not permission:
@@ -129,8 +127,6 @@ class RoleService:
                         detail=f"Permission with id {perm_id} not found"
                     )
                 permissions.append(permission)
-            
-            role.permissions = permissions
             del update_data["permission_ids"]
         
         # Update other fields
@@ -138,7 +134,15 @@ class RoleService:
             setattr(role, field, value)
         
         # Save to database
-        updated_role = self.role_repo.update(role)
+        updated_role = self.role_repo.update(role_id, update_data)
+        if updated_role is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Role with id {role_id} not found"
+            )
+
+        if permissions:
+            updated_role = self.role_repo.set_permissions(updated_role, permissions)
         
         # Return response
         role_dict = RoleResponse.model_validate(updated_role).model_dump()

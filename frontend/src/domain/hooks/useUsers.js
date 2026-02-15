@@ -27,12 +27,13 @@ export const useUsers = () => {
       const response = await UserRepository.getAll(page, limit, search);
       
       if (response.success) {
-        const userData = response.data.users.map(user => new User(user));
+        const items = response?.data?.items || [];
+        const userData = items.map(user => new User(user));
         setUsers(userData);
         setPagination({
-          page: response.data.page,
-          limit: response.data.limit,
-          total: response.data.total || userData.length
+          page: response?.data?.page,
+          limit: response?.data?.limit,
+          total: response?.data?.total || userData.length
         });
       } else {
         throw new Error(response.message || 'Failed to fetch users');

@@ -9,13 +9,13 @@ from config.database import get_db
 from schemas.role import RoleCreate, RoleUpdate, RoleResponse
 from services.role_service import RoleService
 from utils.response import success_response
-from utils.dependencies import require_admin
+from utils.dependencies import require_super_admin
 
 
 router = APIRouter(prefix="/roles", tags=["Roles"])
 
 
-@router.get("/", response_model=dict, dependencies=[Depends(require_admin)])
+@router.get("/", response_model=dict, dependencies=[Depends(require_super_admin)])
 async def get_roles(
     page: int = 1,
     limit: int = 10,
@@ -35,14 +35,14 @@ async def get_roles(
     return success_response(
         message="Roles retrieved successfully",
         data={
-            "roles": [role.model_dump() for role in roles],
+            "items": [role.model_dump() for role in roles],
             "page": page,
             "limit": limit
         }
     )
 
 
-@router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_admin)])
+@router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_super_admin)])
 async def create_role(
     role_data: RoleCreate,
     db: Session = Depends(get_db)
@@ -63,7 +63,7 @@ async def create_role(
     )
 
 
-@router.get("/{role_id}", response_model=dict, dependencies=[Depends(require_admin)])
+@router.get("/{role_id}", response_model=dict, dependencies=[Depends(require_super_admin)])
 async def get_role(
     role_id: int,
     db: Session = Depends(get_db)
@@ -82,7 +82,7 @@ async def get_role(
     )
 
 
-@router.put("/{role_id}", response_model=dict, dependencies=[Depends(require_admin)])
+@router.put("/{role_id}", response_model=dict, dependencies=[Depends(require_super_admin)])
 async def update_role(
     role_id: int,
     role_data: RoleUpdate,
@@ -105,7 +105,7 @@ async def update_role(
     )
 
 
-@router.delete("/{role_id}", response_model=dict, dependencies=[Depends(require_admin)])
+@router.delete("/{role_id}", response_model=dict, dependencies=[Depends(require_super_admin)])
 async def delete_role(
     role_id: int,
     db: Session = Depends(get_db)

@@ -27,12 +27,13 @@ export const useRoles = () => {
       const response = await RoleRepository.getAll(page, limit);
       
       if (response.success) {
-        const roleData = response.data.roles.map(role => new Role(role));
+        const items = response?.data?.items || [];
+        const roleData = items.map(role => new Role(role));
         setRoles(roleData);
         setPagination({
-          page: response.data.page,
-          limit: response.data.limit,
-          total: response.data.total || roleData.length
+          page: response?.data?.page,
+          limit: response?.data?.limit,
+          total: response?.data?.total || roleData.length
         });
       } else {
         throw new Error(response.message || 'Failed to fetch roles');
