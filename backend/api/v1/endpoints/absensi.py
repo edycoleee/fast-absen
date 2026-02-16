@@ -36,55 +36,8 @@ async def get_all_absensi(
     )
 
 
-@router.get("/{absensi_id}", response_model=dict)
-async def get_absensi_by_id(
-    absensi_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission(PermissionKeys.ABSENSI_READ))
-):
-    """Get absensi by ID (admin only)"""
-    service = AbsensiService(db)
-    absensi = service.get_by_id_admin(absensi_id)
-    
-    return success_response(
-        message="Absensi retrieved successfully",
-        data=absensi.model_dump()
-    )
-
-
-@router.put("/{absensi_id}", response_model=dict)
-async def update_absensi(
-    absensi_id: int,
-    absensi_data: AbsensiUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission(PermissionKeys.ABSENSI_UPDATE))
-):
-    """Update absensi (admin only)"""
-    service = AbsensiService(db)
-    updated_absensi = service.update_admin(absensi_id, absensi_data)
-    
-    return success_response(
-        message="Absensi updated successfully",
-        data=updated_absensi.model_dump()
-    )
-
-
-@router.delete("/{absensi_id}", response_model=dict, status_code=status.HTTP_200_OK)
-async def delete_absensi(
-    absensi_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission(PermissionKeys.ABSENSI_DELETE))
-):
-    """Delete absensi (admin only)"""
-    service = AbsensiService(db)
-    service.delete_admin(absensi_id)
-    
-    return success_response(
-        message="Absensi deleted successfully"
-    )
-
-
 # ===== User Endpoints =====
+# NOTE: These must come BEFORE /{absensi_id} to avoid route conflicts
 
 @router.post("/create", response_model=dict, status_code=status.HTTP_201_CREATED)
 async def create_user_absensi(
@@ -145,4 +98,55 @@ async def get_my_absensi_by_id(
     return success_response(
         message="Your absensi retrieved successfully",
         data=absensi.model_dump()
+    )
+
+
+# ===== Admin Endpoints with Path Parameters =====
+# NOTE: These come AFTER /me routes to avoid conflicts
+
+@router.get("/{absensi_id}", response_model=dict)
+async def get_absensi_by_id(
+    absensi_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission(PermissionKeys.ABSENSI_READ))
+):
+    """Get absensi by ID (admin only)"""
+    service = AbsensiService(db)
+    absensi = service.get_by_id_admin(absensi_id)
+    
+    return success_response(
+        message="Absensi retrieved successfully",
+        data=absensi.model_dump()
+    )
+
+
+@router.put("/{absensi_id}", response_model=dict)
+async def update_absensi(
+    absensi_id: int,
+    absensi_data: AbsensiUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission(PermissionKeys.ABSENSI_UPDATE))
+):
+    """Update absensi (admin only)"""
+    service = AbsensiService(db)
+    updated_absensi = service.update_admin(absensi_id, absensi_data)
+    
+    return success_response(
+        message="Absensi updated successfully",
+        data=updated_absensi.model_dump()
+    )
+
+
+@router.delete("/{absensi_id}", response_model=dict, status_code=status.HTTP_200_OK)
+async def delete_absensi(
+    absensi_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission(PermissionKeys.ABSENSI_DELETE))
+):
+    """Delete absensi (admin only)"""
+    service = AbsensiService(db)
+    service.delete_admin(absensi_id)
+    
+    return success_response(
+        message="Absensi deleted successfully"
     )

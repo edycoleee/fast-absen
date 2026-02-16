@@ -9,7 +9,8 @@ class AbsensiRepository {
    * Get all absensi with pagination and filters
    */
   async getAll(page = 1, limit = 10, filters = {}) {
-    const params = new URLSearchParams({ page, limit });
+    const skip = (page - 1) * limit;
+    const params = new URLSearchParams({ skip, limit });
     
     if (filters.start_date) params.append('start_date', filters.start_date);
     if (filters.end_date) params.append('end_date', filters.end_date);
@@ -30,11 +31,10 @@ class AbsensiRepository {
 
   /**
    * Create new absensi (check-in)
+   * POST /api/v1/absensi/create
    */
-  async create(formData) {
-    const response = await apiClient.post('/absensi/', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
+  async create(absensiData = {}) {
+    const response = await apiClient.post('/absensi/create', absensiData);
     return response.data;
   }
 
@@ -58,10 +58,21 @@ class AbsensiRepository {
 
   /**
    * Get my absensi (current user)
+   * GET /api/v1/absensi/me
    */
   async getMyAbsensi(page = 1, limit = 10) {
-    const params = new URLSearchParams({ page, limit });
-    const response = await apiClient.get(`/absensi/my-absensi/?${params}`);
+    const skip = (page - 1) * limit;
+    const params = new URLSearchParams({ skip, limit });
+    const response = await apiClient.get(`/absensi/me?${params}`);
+    return response.data;
+  }
+
+  /**
+   * Get specific absensi by ID for current user
+   * GET /api/v1/absensi/me/{absensi_id}
+   */
+  async getMyAbsensiById(absensiId) {
+    const response = await apiClient.get(`/absensi/me/${absensiId}`);
     return response.data;
   }
 

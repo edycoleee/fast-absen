@@ -107,17 +107,17 @@ class AbsensiService:
         # Capture IP address from request
         client_ip = request.client.host if request.client else None
         
-        # Create absensi
-        absensi = Absensi(
-            id_pegawai=id_pegawai,
-            id_lokasi=absensi_data.id_lokasi,
-            uid=absensi_data.uid,
-            keterangan=absensi_data.keterangan,
-            ip_address=client_ip
-        )
+        # Create absensi data dict for repository
+        absensi_dict = {
+            "id_pegawai": id_pegawai,
+            "id_lokasi": absensi_data.id_lokasi,
+            "uid": absensi_data.uid,
+            "keterangan": absensi_data.keterangan,
+            "ip_address": client_ip
+        }
         
         # Save to database
-        created_absensi = self.absensi_repo.create(absensi)
+        created_absensi = self.absensi_repo.create(absensi_dict)
         
         return AbsensiResponse.model_validate(created_absensi)
     

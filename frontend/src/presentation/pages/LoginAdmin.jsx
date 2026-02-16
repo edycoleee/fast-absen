@@ -1,15 +1,51 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../domain/hooks';
+import apiClient from '../../services/api';
 
-const LoginAbsensi = () => {
+const LoginAdmin = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [healthDetail, setHealthDetail] = useState(null);
+  const [healthError, setHealthError] = useState('');
+  const [healthLoading, setHealthLoading] = useState(false);
   
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let isMounted = true;
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://192.168.171.15:8000/api/v1';
+    const healthUrl = new URL('/health/detail', apiBaseUrl).toString();
+
+    const fetchHealthDetail = async () => {
+      setHealthError('');
+      setHealthLoading(true);
+
+      try {
+        const response = await apiClient.get(healthUrl);
+        if (isMounted) {
+          setHealthDetail(response.data);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setHealthError(err.response?.data?.message || 'Gagal mengambil status kesehatan API.');
+        }
+      } finally {
+        if (isMounted) {
+          setHealthLoading(false);
+        }
+      }
+    };
+
+    fetchHealthDetail();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -18,7 +54,7 @@ const LoginAbsensi = () => {
 
     try {
       await login(username, password);
-      navigate('/absensi-dashboard');
+      navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Login gagal. Periksa username dan password Anda.');
     } finally {
@@ -27,7 +63,7 @@ const LoginAbsensi = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-green-100">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           {/* Back Button */}
@@ -41,10 +77,10 @@ const LoginAbsensi = () => {
           </div>
 
           <div className="text-center mb-8">
-            <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-white text-4xl">✅</span>
+            <div className="w-20 h-20 bg-primary-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-white text-4xl">🏥</span>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Login Absensi</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
             <p className="text-gray-600 mt-2">Sistem Absensi RSUD Sulfat</p>
           </div>
 
@@ -64,10 +100,10 @@ const LoginAbsensi = () => {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="input-field"
                 placeholder="Masukkan username"
                 required
-                disabled={loading}
+                autoFocus
               />
             </div>
 
@@ -80,36 +116,34 @@ const LoginAbsensi = () => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="input-field"
                 placeholder="Masukkan password"
                 required
-                disabled={loading}
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Memproses...
-                </span>
-              ) : (
-                'Masuk'
-              )}
+              {loading ? 'Memproses...' : 'Login'}
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Login menggunakan kredensial pegawai Anda
-            </p>
+          <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm">
+            <div className="mb-2 font-medium text-gray-700">Health Check</div>
+            {healthLoading && <div className="text-gray-600">Mengambil status...</div>}
+            {healthError && <div className="text-red-600">{healthError}</div>}
+            {!healthLoading && !healthError && healthDetail && (
+              <pre className="whitespace-pre-wrap text-xs text-gray-700">
+                {JSON.stringify(healthDetail, null, 2)}
+              </pre>
+            )}
+          </div>
+
+          <div className="mt-6 text-center text-sm text-gray-500">
+            © 2026 RSUD Sulfat. All rights reserved.
           </div>
         </div>
       </div>
@@ -117,4 +151,4 @@ const LoginAbsensi = () => {
   );
 };
 
-export default LoginAbsensi;
+export default LoginAdmin;
