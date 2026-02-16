@@ -131,15 +131,33 @@ const LoginAdmin = () => {
             </button>
           </form>
 
-          <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm">
-            <div className="mb-2 font-medium text-gray-700">Health Check</div>
-            {healthLoading && <div className="text-gray-600">Mengambil status...</div>}
-            {healthError && <div className="text-red-600">{healthError}</div>}
-            {!healthLoading && !healthError && healthDetail && (
-              <pre className="whitespace-pre-wrap text-xs text-gray-700">
-                {JSON.stringify(healthDetail, null, 2)}
-              </pre>
-            )}
+          {/* Health Check Card */}
+          <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+            <div className="text-center mb-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <span className="text-2xl">💚</span>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">
+                Health Check
+              </h3>
+              <p className="text-sm text-gray-600">
+                Status kesehatan sistem dan database
+              </p>
+            </div>
+            
+            <div className="rounded-lg border border-gray-200 bg-white p-3">
+              {healthLoading && (
+                <div className="text-center text-gray-600 text-sm">Mengambil status...</div>
+              )}
+              {healthError && (
+                <div className="text-center text-red-600 text-sm">{healthError}</div>
+              )}
+              {!healthLoading && !healthError && healthDetail && (
+                <pre className="whitespace-pre-wrap text-xs text-gray-700 overflow-auto max-h-64">
+                  {JSON.stringify(healthDetail, null, 2)}
+                </pre>
+              )}
+            </div>
           </div>
 
           <div className="mt-6 text-center text-sm text-gray-500">

@@ -10,7 +10,7 @@ from models.user import User
 from models.user_role import user_roles
 from models.pegawai import Pegawai
 from models.absensi import Absensi
-from models.login_absensi import LoginAbsensi
+from models.user_session import UserSession
 
 __all__ = [
     "Base",
@@ -21,5 +21,5 @@ __all__ = [
     "user_roles",
     "Pegawai",
     "Absensi",
-    "LoginAbsensi"
+    "UserSession"
 ]

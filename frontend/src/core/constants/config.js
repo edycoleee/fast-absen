@@ -17,6 +17,7 @@ export const API_CONFIG = {
 export const STORAGE_KEYS = {
   ACCESS_TOKEN: 'access_token',
   USER: 'user',
+  SESSION_ID: 'session_id',
 };
 
 /**

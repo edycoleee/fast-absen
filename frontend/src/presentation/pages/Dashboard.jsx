@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../domain/hooks';
 import StatsRepository from '../../data/repositories/StatsRepository';
+import AbsensiRepository from '../../data/repositories/AbsensiRepository';
+
+// Status configuration with colors
+const STATUS_CONFIG = {
+  HADIR: { label: 'Hadir', emoji: '✅', color: 'bg-green-500', textColor: 'text-green-700', bgLight: 'bg-green-50' },
+  IZIN: { label: 'Izin', emoji: '📝', color: 'bg-blue-500', textColor: 'text-blue-700', bgLight: 'bg-blue-50' },
+  SAKIT: { label: 'Sakit', emoji: '🤒', color: 'bg-orange-500', textColor: 'text-orange-700', bgLight: 'bg-orange-50' },
+  ALPHA: { label: 'Alpha', emoji: '❌', color: 'bg-red-500', textColor: 'text-red-700', bgLight: 'bg-red-50' },
+  TERLAMBAT: { label: 'Terlambat', emoji: '⏰', color: 'bg-yellow-500', textColor: 'text-yellow-700', bgLight: 'bg-yellow-50' },
+  CUTI: { label: 'Cuti', emoji: '🏖️', color: 'bg-purple-500', textColor: 'text-purple-700', bgLight: 'bg-purple-50' },
+};
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -8,6 +19,9 @@ const Dashboard = () => {
   const [totalPegawai, setTotalPegawai] = useState('-');
   const [totalRoles, setTotalRoles] = useState('-');
   const [absensiToday, setAbsensiToday] = useState('-');
+  const [todayAbsensiList, setTodayAbsensiList] = useState([]);
+  const [statusBreakdown, setStatusBreakdown] = useState({});
+  const [loadingAbsensi, setLoadingAbsensi] = useState(false);
 
   useEffect(() => {
     const loadStats = async () => {
@@ -24,7 +38,44 @@ const Dashboard = () => {
       }
     };
 
+    const loadTodayAbsensi = async () => {
+      try {
+        setLoadingAbsensi(true);
+        // Get today's date in YYYY-MM-DD format
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+
+        // Fetch all absensi (will be filtered on server if endpoint supports it)
+        // For now, we'll get recent absensi and filter client-side
+        const response = await AbsensiRepository.getAll(1, 1000);
+        const items = response?.data?.items || [];
+
+        // Filter for today's absensi
+        const todayItems = items.filter(item => {
+          if (!item.tanggal) return false;
+          const itemDate = new Date(item.tanggal).toISOString().split('T')[0];
+          return itemDate === todayStr;
+        });
+
+        setTodayAbsensiList(todayItems);
+
+        // Calculate status breakdown
+        const breakdown = todayItems.reduce((acc, item) => {
+          const status = item.status || 'HADIR';
+          acc[status] = (acc[status] || 0) + 1;
+          return acc;
+        }, {});
+
+        setStatusBreakdown(breakdown);
+      } catch (err) {
+        console.error('Failed to load today absensi:', err);
+      } finally {
+        setLoadingAbsensi(false);
+      }
+    };
+
     loadStats();
+    loadTodayAbsensi();
   }, []);
 
   const stats = useMemo(() => ([
@@ -90,10 +141,40 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* Absensi Breakdown by Status */}
+      <div className="mt-8">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Absensi Hari Ini - Status Breakdown</h2>
+        {loadingAbsensi ? (
+          <div className="bg-white rounded-lg shadow-md p-8 text-center">
+            <div className="text-gray-500">Loading absensi data...</div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {Object.entries(STATUS_CONFIG).map(([status, config]) => {
+              const count = statusBreakdown[status] || 0;
+              return (
+                <div key={status} className={`${config.bgLight} rounded-lg shadow-md p-5 border-2 border-${config.color.replace('bg-', 'border-')}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-3xl">{config.emoji}</span>
+                    <div className={`${config.color} w-10 h-10 rounded-full flex items-center justify-center`}>
+                      <span className="text-white font-bold text-lg">{count}</span>
+                    </div>
+                  </div>
+                  <p className={`font-semibold ${config.textColor} text-sm`}>{config.label}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {count === 0 ? 'Tidak ada' : `${count} pegawai`}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Quick Actions */}
       <div className="mt-8">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <a
             href="/pegawai"
             className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
@@ -109,6 +190,14 @@ const Dashboard = () => {
             <div className="text-4xl mb-3">📝</div>
             <h3 className="font-semibold text-gray-900">Lihat Absensi</h3>
             <p className="text-sm text-gray-500 mt-1">Monitor kehadiran pegawai</p>
+          </a>
+          <a
+            href="/sessions-monitor"
+            className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
+          >
+            <div className="text-4xl mb-3">📡</div>
+            <h3 className="font-semibold text-gray-900">Monitor Sesi</h3>
+            <p className="text-sm text-gray-500 mt-1">Pantau sesi login pengguna</p>
           </a>
           <a
             href="/users"

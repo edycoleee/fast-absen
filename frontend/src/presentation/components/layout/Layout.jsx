@@ -18,6 +18,7 @@ const Layout = ({ children }) => {
     { path: '/permissions', label: 'Permissions', icon: '🔑' },
     { path: '/pegawai', label: 'Pegawai', icon: '👨‍💼' },
     { path: '/absensi', label: 'Absensi', icon: '📝' },
+    { path: '/sessions-monitor', label: 'Monitor Sesi', icon: '📡' },
     { path: '/login-absensi', label: 'Login Absensi', icon: '🔓' },
   ];
 

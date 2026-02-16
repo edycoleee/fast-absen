@@ -25,4 +25,4 @@ class Pegawai(Base):
     # Relationships
     users = relationship("User", back_populates="pegawai")
     absensi = relationship("Absensi", back_populates="pegawai")
-    login_absensi = relationship("LoginAbsensi", back_populates="pegawai")
+    user_sessions = relationship("UserSession", back_populates="pegawai")

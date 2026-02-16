@@ -15,6 +15,11 @@ const Absensi = () => {
     setError('');
     try {
       const response = await absensiService.getAll(0, 100);
+      console.log('Absensi response:', response);
+      console.log('Absensi data:', response.data);
+      if (response.data && response.data.length > 0) {
+        console.log('Sample absensi item:', response.data[0]);
+      }
       setAbsensi(response.data || []);
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal memuat data absensi');
@@ -31,6 +36,37 @@ const Absensi = () => {
       fetchAbsensi();
     } catch (err) {
       alert(err.response?.data?.message || 'Gagal menghapus absensi');
+    }
+  };
+
+  // Format date only (without time)
+  const formatDateOnly = (dateString) => {
+    if (!dateString) return '-';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('id-ID', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long'
+      });
+    } catch (error) {
+      return '-';
+    }
+  };
+
+  // Format time only
+  const formatTimeOnly = (dateString) => {
+    if (!dateString) return '-';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    } catch (error) {
+      return '-';
     }
   };
 
@@ -109,36 +145,38 @@ const Absensi = () => {
                     <tr key={item.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="font-medium text-gray-900">
-                          {item.pegawai?.nama || '-'}
+                          {item.pegawai_nama || item.pegawai?.nama || item.user?.username || item.username || 'N/A'}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {item.pegawai?.nip || '-'}
+                          {item.id_pegawai || item.pegawai?.nip || (item.user_id ? `User ID: ${item.user_id}` : '-')}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {item.tanggal || '-'}
+                      <td className="px-6 py-4 text-sm">
+                        <div className="font-medium">{formatDateOnly(item.tanggal)}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {formatDate(item.jam_masuk)}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-700">
+                        {item.jam_masuk ? formatTimeOnly(item.jam_masuk) : formatTimeOnly(item.tanggal)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {item.jam_keluar ? formatDate(item.jam_keluar) : '-'}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-orange-700">
+                        {item.jam_keluar ? formatTimeOnly(item.jam_keluar) : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs font-medium rounded ${
-                          item.status === 'hadir' 
+                        <span className={`px-2 py-1 text-xs font-medium rounded uppercase ${
+                          item.status?.toLowerCase() === 'hadir' 
                             ? 'bg-green-100 text-green-800'
-                            : item.status === 'izin'
+                            : item.status?.toLowerCase() === 'izin'
                             ? 'bg-yellow-100 text-yellow-800'
-                            : item.status === 'sakit'
+                            : item.status?.toLowerCase() === 'sakit'
                             ? 'bg-blue-100 text-blue-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {item.status || '-'}
+                          {item.status || 'Hadir'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.ip_address || '-'}
+                      <td className="px-6 py-4 text-sm font-mono">
+                        <div className="text-gray-900">
+                          {item.ip_address || item.ip || '-'}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button className="text-primary-600 hover:text-primary-900 mr-3">

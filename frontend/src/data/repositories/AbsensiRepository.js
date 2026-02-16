@@ -31,10 +31,10 @@ class AbsensiRepository {
 
   /**
    * Create new absensi (check-in)
-   * POST /api/v1/absensi/create
+   * POST /api/v1/absensi/check-in
    */
   async create(absensiData = {}) {
-    const response = await apiClient.post('/absensi/create', absensiData);
+    const response = await apiClient.post('/absensi/check-in', absensiData);
     return response.data;
   }
 
@@ -58,21 +58,21 @@ class AbsensiRepository {
 
   /**
    * Get my absensi (current user)
-   * GET /api/v1/absensi/me
+   * GET /api/v1/absensi/history
    */
   async getMyAbsensi(page = 1, limit = 10) {
     const skip = (page - 1) * limit;
     const params = new URLSearchParams({ skip, limit });
-    const response = await apiClient.get(`/absensi/me?${params}`);
+    const response = await apiClient.get(`/absensi/history?${params}`);
     return response.data;
   }
 
   /**
    * Get specific absensi by ID for current user
-   * GET /api/v1/absensi/me/{absensi_id}
+   * Deprecated - use getById instead
    */
   async getMyAbsensiById(absensiId) {
-    const response = await apiClient.get(`/absensi/me/${absensiId}`);
+    const response = await apiClient.get(`/absensi/${absensiId}`);
     return response.data;
   }
 
@@ -88,6 +88,57 @@ class AbsensiRepository {
    */
   async checkOut(id, formData) {
     return this.update(id, formData);
+  }
+
+  /**
+   * Check-out today's absensi
+   * POST /api/v1/absensi/check-out
+   */
+  async checkOutToday() {
+    const response = await apiClient.post('/absensi/check-out');
+    return response.data;
+  }
+
+  /**
+   * Get today's absensi status
+   * GET /api/v1/absensi/today
+   */
+  async getTodayAbsensi() {
+    const response = await apiClient.get('/absensi/today');
+    return response.data;
+  }
+
+  /**
+   * Get absensi history
+   * GET /api/v1/absensi/history
+   */
+  async getHistory(days = 30) {
+    const response = await apiClient.get(`/absensi/history?days=${days}`);
+    return response.data;
+  }
+
+  /**
+   * Get absensi summary
+   * GET /api/v1/absensi/summary
+   */
+  async getSummary(startDate, endDate) {
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    const response = await apiClient.get(`/absensi/summary?${params}`);
+    return response.data;
+  }
+
+  /**
+   * Get absensi statistics (Admin only)
+   * GET /api/v1/absensi/statistics
+   */
+  async getStatistics(startDate, endDate) {
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    const response = await apiClient.get(`/absensi/statistics?${params}`);
+    return response.data;
   }
 }
 

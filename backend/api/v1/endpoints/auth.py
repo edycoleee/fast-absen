@@ -1,8 +1,8 @@
 """
 Auth Endpoints
-Login with JWT Access Token (localStorage) & Refresh Token (HTTP-only cookie)
+Login with JWT Access Token (localStorage) & Refresh Token (HTTP-only cookie) + Session Tracking
 """
-from fastapi import APIRouter, Depends, status, Response, Cookie, HTTPException
+from fastapi import APIRouter, Depends, status, Response, Cookie, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import Optional
 from config.database import get_db
@@ -11,19 +11,22 @@ from schemas.auth import LoginRequest, TokenResponse
 from services.auth_service import AuthService
 from utils.response import success_response
 from utils.auth import decode_refresh_token, create_access_token
+from utils.dependencies import get_current_user
 from repositories.user_repository import UserRepository
+from models.user import User
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/login", response_model=dict, status_code=status.HTTP_200_OK)
 def login(
-    response: Response,
     login_data: LoginRequest,
+    request: Request,
+    response: Response,
     db: Session = Depends(get_db)
 ):
     """
-    Login endpoint - authenticate user and return JWT tokens
+    Login endpoint - authenticate user and return JWT tokens with session tracking
     
     - **username**: Username (min 3 characters)
     - **password**: Password (min 6 characters)
@@ -31,11 +34,13 @@ def login(
     Returns:
         - **Access Token** (3 hours): Disimpan di localStorage (React)
         - **Refresh Token** (14 days): Disimpan di HTTP-only Secure Cookie (aman dari XSS)
+        - **Session ID**: Tracked in database for security monitoring
     
     Access Token Payload:
         - sub: user_id
         - username: username
         - roles: ["user", "admin"]
+        - session_id: UUID for session tracking
         - iat: issued at timestamp
         - exp: expiration timestamp
         - iss: "auth-server"
@@ -46,9 +51,14 @@ def login(
         - type: "refresh"
         - iat: issued at timestamp
         - exp: expiration timestamp
+    
+    Session Tracking:
+        - Device type, browser, OS detected from User-Agent
+        - IP address logged
+        - Login attempts tracked (success/failed)
     """
     auth_service = AuthService(db)
-    token_data = auth_service.login(login_data)
+    token_data = auth_service.login(login_data, request)
     
     # Set refresh token as HTTP-only Secure cookie
     # - httponly=True: tidak bisa diakses JavaScript (aman dari XSS)
@@ -73,7 +83,8 @@ def login(
             "token_type": token_data.token_type,
             "user_id": token_data.user_id,
             "username": token_data.username,
-            "roles": token_data.roles
+            "roles": token_data.roles,
+            "session_id": token_data.session_id  # Include for heartbeat tracking
         },
         message="Login successful"
     )

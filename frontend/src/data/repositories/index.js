@@ -7,3 +7,4 @@ export { default as PegawaiRepository } from './PegawaiRepository';
 export { default as RoleRepository } from './RoleRepository';
 export { default as PermissionRepository } from './PermissionRepository';
 export { default as AbsensiRepository } from './AbsensiRepository';
+export { default as SessionsRepository } from './SessionsRepository';

@@ -50,10 +50,15 @@ export const AuthProvider = ({ children }) => {
       const response = await AuthRepository.login(username, password);
       
       if (response.success) {
-        const { access_token, user_id, username: user_name, roles } = response.data;
+        const { access_token, user_id, username: user_name, roles, session_id } = response.data;
         
         // Store token
         LocalStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, access_token);
+        
+        // Store session_id for heartbeat tracking
+        if (session_id) {
+          LocalStorage.setItem(STORAGE_KEYS.SESSION_ID, session_id);
+        }
         
         // Create user entity
         const userData = new User({
@@ -93,6 +98,7 @@ export const AuthProvider = ({ children }) => {
       // Always clear local storage and state
       LocalStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
       LocalStorage.removeItem(STORAGE_KEYS.USER);
+      LocalStorage.removeItem(STORAGE_KEYS.SESSION_ID);
       setUser(null);
       setError(null);
     }

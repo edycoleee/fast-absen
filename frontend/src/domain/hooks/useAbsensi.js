@@ -99,13 +99,14 @@ export const useAbsensi = () => {
 
   /**
    * Check-out (update absensi)
+   * Now uses the new /check-out endpoint (no ID required)
    */
-  const checkOut = useCallback(async (id, formData) => {
+  const checkOut = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await AbsensiRepository.checkOut(id, formData);
+      const response = await AbsensiRepository.checkOutToday();
       
       if (response.success) {
         return new Absensi(response.data);
@@ -116,6 +117,31 @@ export const useAbsensi = () => {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to check-out';
       setError(errorMessage);
       console.error('Error checking out:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /**
+   * Get today's absensi status
+   */
+  const getTodayAbsensi = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await AbsensiRepository.getTodayAbsensi();
+      
+      if (response.success) {
+        return response;
+      } else {
+        throw new Error(response.message || 'Failed to get today absensi');
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to get today absensi';
+      setError(errorMessage);
+      console.error('Error getting today absensi:', err);
       throw err;
     } finally {
       setLoading(false);
@@ -189,5 +215,6 @@ export const useAbsensi = () => {
     checkOut,
     deleteAbsensi,
     getMyAbsensi,
+    getTodayAbsensi,
   };
 };

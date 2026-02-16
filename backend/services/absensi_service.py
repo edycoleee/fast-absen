@@ -1,22 +1,24 @@
 """
 Absensi Service
-Business logic for attendance management with dual access (admin + user)
+Business logic for attendance management with check-in/check-out system
 """
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, date
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status, Request
 from schemas.absensi import (
     AbsensiCreate, AbsensiUpdate, AbsensiResponse, 
-    AbsensiDetail, AbsensiAdminCreate
+    AbsensiDetail, AbsensiAdminCreate, AbsensiCheckOut,
+    AbsensiSummary, AbsensiTodayResponse
 )
 from repositories.absensi_repository import AbsensiRepository
 from repositories.pegawai_repository import PegawaiRepository
+from utils.device_detector import get_client_ip
 from models.absensi import Absensi
 
 
 class AbsensiService:
-    """Absensi service with admin and user access patterns"""
+    """Absensi service with check-in/check-out functionality"""
     
     def __init__(self, db: Session):
         self.db = db
@@ -56,7 +58,7 @@ class AbsensiService:
     
     def update_admin(self, absensi_id: int, absensi_data: AbsensiUpdate) -> AbsensiResponse:
         """Update absensi (admin only)"""
-        absensi = self.absensi_repo.get(absensi_id)
+        absensi = self.absensi_repo.get_by_id(absensi_id)
         
         if not absensi:
             raise HTTPException(
@@ -77,7 +79,7 @@ class AbsensiService:
     
     def delete_admin(self, absensi_id: int) -> None:
         """Delete absensi (admin only)"""
-        absensi = self.absensi_repo.get(absensi_id)
+        absensi = self.absensi_repo.get_by_id(absensi_id)
         
         if not absensi:
             raise HTTPException(
@@ -87,17 +89,144 @@ class AbsensiService:
         
         self.absensi_repo.delete(absensi_id)
     
-    # ===== User Methods =====
+    # ===== User Methods (Check-in/Check-out) =====
     
-    async def create_user_absensi(
+    def check_in(
         self,
         id_pegawai: str,
         absensi_data: AbsensiCreate,
         request: Request
     ) -> AbsensiResponse:
-        """Create absensi for current user (captures IP address)"""
+        """
+        Check-in for current user
+        Validates pegawai, checks for duplicate, captures IP
+        """
         # Verify pegawai exists
-        pegawai = self.pegawai_repo.get(id_pegawai)
+        pegawai = self.pegawai_repo.get_by_id(id_pegawai)
+        if not pegawai:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Pegawai with id {id_pegawai} not found"
+            )
+        
+        # Capture IP address from request
+        client_ip = get_client_ip(request)
+        
+        # Create absensi data dict for repository
+        absensi_dict = {
+            "id_pegawai": id_pegawai,
+            "tanggal": date.today(),
+            "jam_masuk": datetime.now(),
+            "status": absensi_data.status,
+            "keterangan": absensi_data.keterangan,
+            "dokumen_pendukung": absensi_data.dokumen_pendukung,
+            "ip_address": client_ip
+        }
+        
+        # Repository will validate no duplicate check-in
+        try:
+            created_absensi = self.absensi_repo.create_check_in(absensi_dict)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
+        
+        return AbsensiResponse.model_validate(created_absensi)
+    
+    def check_out(
+        self,
+        id_pegawai: str,
+        request: Request
+    ) -> AbsensiResponse:
+        """
+        Check-out for current user (today's absensi)
+        """
+        # Get today's absensi
+        today_absensi = self.absensi_repo.get_today_absensi(id_pegawai)
+        
+        if not today_absensi:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Anda belum check-in hari ini. Silakan check-in terlebih dahulu."
+            )
+        
+        if today_absensi.jam_keluar:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Anda sudah check-out hari ini."
+            )
+        
+        # Capture IP address
+        client_ip = get_client_ip(request)
+        
+        # Update check-out
+        try:
+            updated_absensi = self.absensi_repo.update_check_out(
+                today_absensi.id, 
+                client_ip
+            )
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
+        
+        return AbsensiResponse.model_validate(updated_absensi)
+    
+    def get_today_status(self, id_pegawai: str) -> AbsensiTodayResponse:
+        """
+        Get today's absensi status for user
+        Returns whether user has checked-in and can check-out
+        """
+        today_absensi = self.absensi_repo.get_today_absensi(id_pegawai)
+        
+        if not today_absensi:
+            return AbsensiTodayResponse(
+                has_checked_in=False,
+                absensi=None,
+                can_check_out=False
+            )
+        
+        can_check_out = today_absensi.jam_masuk is not None and today_absensi.jam_keluar is None
+        
+        return AbsensiTodayResponse(
+            has_checked_in=True,
+            absensi=AbsensiResponse.model_validate(today_absensi),
+            can_check_out=can_check_out
+        )
+    
+    def get_user_history(
+        self, 
+        id_pegawai: str, 
+        skip: int = 0, 
+        limit: int = 30
+    ) -> List[AbsensiResponse]:
+        """Get absensi history for current user"""
+        absensi_list = self.absensi_repo.get_by_pegawai(id_pegawai, skip=skip, limit=limit)
+        return [AbsensiResponse.model_validate(a) for a in absensi_list]
+    
+    def get_user_summary(
+        self,
+        id_pegawai: str,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None
+    ) -> AbsensiSummary:
+        """Get summary statistics for user"""
+        summary_dict = self.absensi_repo.get_summary_by_pegawai(
+            id_pegawai,
+            start_date,
+            end_date
+        )
+        
+        return AbsensiSummary(
+            total_hadir=summary_dict.get('HADIR', 0),
+            total_izin=summary_dict.get('IZIN', 0),
+            total_sakit=summary_dict.get('SAKIT', 0),
+            total_alpha=summary_dict.get('ALPHA', 0),
+            total_terlambat=summary_dict.get('TERLAMBAT', 0),
+            total_cuti=summary_dict.get('CUTI', 0)
+        )
         if not pegawai:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

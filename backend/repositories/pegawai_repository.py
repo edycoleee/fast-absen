@@ -15,6 +15,13 @@ class PegawaiRepository(BaseRepository[Pegawai]):
     def __init__(self, db: Session):
         super().__init__(Pegawai, db)
 
+    def get_by_id(self, id_pegawai: str) -> Optional[Pegawai]:
+        """
+        Override BaseRepository get_by_id to use id_pegawai instead of id
+        Pegawai model uses id_pegawai as primary key
+        """
+        return self.db.query(Pegawai).filter(Pegawai.id_pegawai == id_pegawai).first()
+
     def get(self, pegawai_id: str) -> Optional[Pegawai]:
         """Get pegawai by ID (id_pegawai)"""
         return self.db.query(Pegawai).filter(Pegawai.id_pegawai == pegawai_id).first()

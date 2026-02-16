@@ -1,9 +1,9 @@
 """
-Login Absensi Model
+Login Absensi Model (DEPRECATED - Use UserSession instead)
+Kept for backward compatibility with old table that might still exist in database
 """
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
 from models.base import Base
 
 
@@ -17,5 +17,5 @@ class LoginAbsensi(Base):
     model = Column(String(250), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Relationships
-    pegawai = relationship("Pegawai", back_populates="login_absensi")
+    # Relationships removed - use UserSession model instead
+    # pegawai = relationship("Pegawai", back_populates="login_absensi")

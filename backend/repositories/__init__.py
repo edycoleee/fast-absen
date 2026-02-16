@@ -7,7 +7,7 @@ from repositories.role_repository import RoleRepository
 from repositories.permission_repository import PermissionRepository
 from repositories.pegawai_repository import PegawaiRepository
 from repositories.absensi_repository import AbsensiRepository
-from repositories.login_absensi_repository import LoginAbsensiRepository
+from repositories.user_session_repository import UserSessionRepository
 
 __all__ = [
     "UserRepository",
@@ -15,5 +15,5 @@ __all__ = [
     "PermissionRepository",
     "PegawaiRepository",
     "AbsensiRepository",
-    "LoginAbsensiRepository",
+    "UserSessionRepository",
 ]

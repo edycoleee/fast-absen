@@ -19,6 +19,7 @@ class TokenResponse(BaseModel):
     user_id: int
     username: str
     roles: list[str]
+    session_id: Optional[str] = None  # Session UUID for tracking
     refresh_token: Optional[str] = None  # Only used internally, not sent in response
 
 
