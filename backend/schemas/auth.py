@@ -1,6 +1,8 @@
 """
 Auth Schemas
+JWT Auth with Access Token (localStorage) & Refresh Token (HTTP-only cookie)
 """
+from typing import Optional
 from pydantic import BaseModel, Field
 
 
@@ -17,10 +19,16 @@ class TokenResponse(BaseModel):
     user_id: int
     username: str
     roles: list[str]
+    refresh_token: Optional[str] = None  # Only used internally, not sent in response
 
 
 class TokenData(BaseModel):
-    """Token payload data"""
-    user_id: int
+    """Token payload data (from JWT)"""
+    sub: str  # user_id as string
     username: str
     roles: list[str]
+
+
+class RefreshTokenRequest(BaseModel):
+    """Refresh token request (cookie will be used)"""
+    pass

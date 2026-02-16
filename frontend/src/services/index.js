@@ -6,9 +6,17 @@ export const authService = {
     return response.data;
   },
   
-  logout: () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('user');
+  logout: async () => {
+    try {
+      // Call backend logout endpoint to clear refresh token cookie
+      await apiClient.post('/auth/logout');
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Always clear local storage
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user');
+    }
   },
   
   getCurrentUser: () => {

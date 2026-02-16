@@ -81,12 +81,21 @@ export const AuthProvider = ({ children }) => {
 
   /**
    * Logout user
+   * Calls backend to clear refresh token cookie
    */
-  const logout = () => {
-    LocalStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-    LocalStorage.removeItem(STORAGE_KEYS.USER);
-    setUser(null);
-    setError(null);
+  const logout = async () => {
+    try {
+      // Call backend logout endpoint to clear refresh token cookie
+      await AuthRepository.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Always clear local storage and state
+      LocalStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+      LocalStorage.removeItem(STORAGE_KEYS.USER);
+      setUser(null);
+      setError(null);
+    }
   };
 
   /**

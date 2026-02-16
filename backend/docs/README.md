@@ -77,7 +77,33 @@ Berisi:
 - ✅ HTTP status codes
 - ✅ Consistency guidelines
 
-### 🔧 Improvements & Roadmap
+### � JWT Authentication
+📖 **[JWT_AUTHENTICATION.md](JWT_AUTHENTICATION.md)** - JWT with Access & Refresh Token
+
+Berisi:
+- ✅ Access Token (3 jam, localStorage)
+- ✅ Refresh Token (14 hari, HTTP-only cookie)
+- ✅ Security best practices
+- ✅ Frontend implementation (React)
+- ✅ Complete code examples
+
+📖 **[JWT_MIGRATION_GUIDE.md](JWT_MIGRATION_GUIDE.md)** - Frontend Migration Guide
+
+Berisi:
+- ✅ Migration dari token lama ke JWT baru
+- ✅ Step-by-step checklist
+- ✅ Auto-refresh implementation
+- ✅ Common issues & solutions
+
+📖 **[JWT_QUICK_REFERENCE.md](JWT_QUICK_REFERENCE.md)** - Quick Reference
+
+Berisi:
+- ✅ Cheat sheet untuk JWT
+- ✅ Code snippets siap pakai
+- ✅ cURL examples
+- ✅ Troubleshooting quick tips
+
+### �🔧 Improvements & Roadmap
 📖 **[IMPROVEMENTS.md](IMPROVEMENTS.md)** - Rencana improvement & roadmap
 
 ### 🤖 Backend Prompt
@@ -126,6 +152,9 @@ Berisi:
 | Butuh informasi tentang... | Lihat di |
 |---------------------------|----------|
 | API endpoints | [API_ENDPOINTS.md](API_ENDPOINTS.md) |
+| JWT Authentication | [JWT_AUTHENTICATION.md](JWT_AUTHENTICATION.md) |
+| JWT Migration (Frontend) | [JWT_MIGRATION_GUIDE.md](JWT_MIGRATION_GUIDE.md) |
+| JWT Quick Reference | [JWT_QUICK_REFERENCE.md](JWT_QUICK_REFERENCE.md) |
 | Response format | [RESPONSE_FORMAT.md](RESPONSE_FORMAT.md) |
 | Database schema | [../../database/DOCKER_DATABASE.md](../../database/DOCKER_DATABASE.md) |
 | Testing | [../tests/README.md](../tests/README.md) |
@@ -135,11 +164,14 @@ Berisi:
 ## 🎯 Fitur Sistem
 
 ### Authentication & Authorization
-- ✅ JWT-based authentication
+- ✅ JWT-based authentication with Access & Refresh tokens
 - ✅ Role-Based Access Control (RBAC)
 - ✅ 2 default roles: `admin` dan `user`
 - ✅ Customizable roles & permissions
-- ✅ Token expiration (30 minutes)
+- ✅ Access Token: 3 hours (localStorage)
+- ✅ Refresh Token: 14 days (HTTP-only cookie)
+- ✅ Auto-refresh mechanism
+- ✅ XSS & CSRF protection
 
 ### User Management
 - ✅ CRUD users

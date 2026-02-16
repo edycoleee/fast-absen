@@ -40,10 +40,13 @@ class Settings(BaseSettings):
     CORS_ALLOW_METHODS: List[str] = ["*"]
     CORS_ALLOW_HEADERS: List[str] = ["*"]
     
-    # Security
+    # Security & JWT
     SECRET_KEY: str = "your-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 180  # 3 hours (recommended: 2-4 hours)
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 14  # 14 days (recommended: 7-30 days)
+    JWT_ISSUER: str = "auth-server"
+    JWT_AUDIENCE: str = "internal-apps"
 
     # Initial admin bootstrap (optional)
     ADMIN_USERNAME: str | None = None

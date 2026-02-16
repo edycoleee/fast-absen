@@ -18,21 +18,28 @@ class AuthRepository {
 
   /**
    * Refresh access token
+   * Uses refresh token from HTTP-only cookie (auto-sent by browser)
    */
-  async refreshToken(refreshToken) {
-    const response = await apiClient.post('/auth/refresh', { 
-      refresh_token: refreshToken 
-    });
+  async refreshToken() {
+    const response = await apiClient.post('/auth/refresh');
     return response.data;
   }
 
   /**
-   * Verify token
+   * Logout user
+   * Clears refresh token cookie on backend
    */
-  async verifyToken(token) {
-    const response = await apiClient.post('/auth/verify', { 
-      token 
-    });
+  async logout() {
+    const response = await apiClient.post('/auth/logout');
+    return response.data;
+  }
+
+  /**
+   * Logout user
+   * Clears refresh token cookie on backend
+   */
+  async logout() {
+    const response = await apiClient.post('/auth/logout');
     return response.data;
   }
 

@@ -1,13 +1,13 @@
 """
 Authentication Service
-Business logic for authentication
+Business logic for authentication with JWT Access & Refresh tokens
 """
 from typing import Optional
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from schemas.auth import LoginRequest, TokenResponse
 from repositories.user_repository import UserRepository
-from utils.auth import verify_password, create_access_token
+from utils.auth import verify_password, create_access_token, create_refresh_token
 from models.user import User
 
 
@@ -44,13 +44,13 @@ class AuthService:
     
     def login(self, login_data: LoginRequest) -> TokenResponse:
         """
-        Login user and return JWT token
+        Login user and return JWT tokens (access + refresh)
         
         Args:
             login_data: Login credentials
         
         Returns:
-            Token response with access token and user info
+            Token response with access token, refresh token, and user info
         
         Raises:
             HTTPException: If credentials are invalid
@@ -70,7 +70,7 @@ class AuthService:
         # Extract role names
         role_names = [role.name for role in user_with_roles.roles]
         
-        # Create access token
+        # Create access token (3 hours, for localStorage)
         access_token = create_access_token(
             data={
                 "user_id": user.id,
@@ -80,10 +80,14 @@ class AuthService:
             }
         )
         
+        # Create refresh token (14 days, for HTTP-only cookie)
+        refresh_token = create_refresh_token(user.id)
+        
         return TokenResponse(
             access_token=access_token,
             token_type="bearer",
             user_id=user.id,
             username=user.username,
-            roles=role_names
+            roles=role_names,
+            refresh_token=refresh_token
         )

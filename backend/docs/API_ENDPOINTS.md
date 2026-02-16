@@ -29,9 +29,17 @@ Password: <ADMIN_PASSWORD>
 
 ## 📋 API Endpoints Summary
 
-### 1. Authentication
+### 1. Authentication (JWT) ✅
 
 | Method | Endpoint | Deskripsi | Auth | Role |
+|--------|----------|-----------|------|------|
+| POST | `/auth/login` | Login & get JWT tokens | ❌ | - |
+| POST | `/auth/refresh` | Refresh access token | 🍪 Cookie | - |
+| POST | `/auth/logout` | Logout & clear cookie | 🍪 Cookie | - |
+
+**JWT Token:**
+- **Access Token**: 3 jam, disimpan di localStorage
+- **Refresh Token**: 14 hari, HTTP-only cookie
 
 ### 2. Users (Implemented ✅)
 
@@ -102,11 +110,13 @@ Password: <ADMIN_PASSWORD>
 
 ## 📖 API Details
 
-### 1. Authentication
+### 1. Authentication (JWT)
 
 #### POST `/auth/login`
 
-Login dan mendapatkan JWT token.
+Login dan mendapatkan JWT tokens (access + refresh).
+
+**🔓 Public Endpoint** - Tidak perlu authentication
 
 **Request Body:**
 ```json
@@ -131,12 +141,152 @@ Login dan mendapatkan JWT token.
 }
 ```
 
+**Cookie Set:**
+```
+Set-Cookie: refresh_token=<token>; HttpOnly; Secure; SameSite=Lax; Max-Age=1209600; Path=/api/v1/auth
+```
+
+**JWT Access Token Payload:**
+```json
+{
+  "sub": "1",
+  "username": "admin",
+  "roles": ["super-admin"],
+  "iat": 1739350000,
+  "exp": 1739360800,
+  "iss": "auth-server",
+  "aud": "internal-apps"
+}
+```
+
 **Error Response (401 Unauthorized):**
 ```json
 {
   "success": false,
   "message": "Incorrect username or password"
 }
+```
+
+**Frontend Usage:**
+```javascript
+const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',  // PENTING: untuk terima cookie
+  body: JSON.stringify({ username: 'admin', password: 'admin123' })
+});
+
+const data = await response.json();
+
+// Simpan access token di localStorage
+localStorage.setItem('access_token', data.data.access_token);
+```
+
+---
+
+#### POST `/auth/refresh`
+
+Refresh access token menggunakan refresh token dari cookie.
+
+**🍪 Cookie Required** - refresh_token dari HTTP-only cookie
+
+**Request:**
+```
+Tidak perlu body. Cookie otomatis dikirim oleh browser.
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Access token refreshed successfully",
+  "data": {
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "token_type": "bearer",
+    "user_id": 1,
+    "username": "admin",
+    "roles": ["super-admin"]
+  }
+}
+```
+
+**Error Response (401 Unauthorized):**
+```json
+{
+  "success": false,
+  "message": "Refresh token not found. Please login again."
+}
+```
+
+**Frontend Usage:**
+```javascript
+const response = await fetch('http://localhost:8000/api/v1/auth/refresh', {
+  method: 'POST',
+  credentials: 'include'  // PENTING: untuk kirim cookie
+});
+
+const data = await response.json();
+
+// Update access token di localStorage
+localStorage.setItem('access_token', data.data.access_token);
+```
+
+**Auto-Refresh dengan Axios Interceptor:**
+```javascript
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401 && !error.config._retry) {
+      error.config._retry = true;
+      
+      const { data } = await axios.post('/auth/refresh', {}, { 
+        withCredentials: true 
+      });
+      
+      localStorage.setItem('access_token', data.data.access_token);
+      error.config.headers.Authorization = `Bearer ${data.data.access_token}`;
+      
+      return api(error.config);
+    }
+    return Promise.reject(error);
+  }
+);
+```
+
+---
+
+#### POST `/auth/logout`
+
+Logout dan hapus refresh token cookie.
+
+**Request:**
+```
+Tidak perlu body
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Logout successful",
+  "data": null
+}
+```
+
+**Frontend Usage:**
+```javascript
+// Call logout endpoint
+await fetch('http://localhost:8000/api/v1/auth/logout', {
+  method: 'POST',
+  credentials: 'include'
+});
+
+// Clear localStorage
+localStorage.removeItem('access_token');
+localStorage.removeItem('user');
+
+// Redirect to login
+window.location.href = '/login';
 ```
 
 ---
