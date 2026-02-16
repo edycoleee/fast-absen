@@ -1,14 +1,17 @@
 import apiClient from '../api/client';
 
 /**
- * Stats Repository
- * Dashboard summary counts
+ * Stats repository.
+ * Provides dashboard summary API operations.
  */
-class StatsRepository {
-  async getStats() {
-    const response = await apiClient.get('/stats/');
-    return response.data;
-  }
-}
+/** Get dashboard summary stats. */
+const getStats = async () => {
+  const response = await apiClient.get('/stats/');
+  return response.data;
+};
 
-export default new StatsRepository();
+const StatsRepository = {
+  getStats,
+};
+
+export default StatsRepository;

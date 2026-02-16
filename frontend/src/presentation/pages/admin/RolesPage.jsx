@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useRoles } from '../../domain/hooks';
-import PermissionRepository from '../../data/repositories/PermissionRepository';
+import { useRoles } from '../../../domain/hooks';
+import PermissionRepository from '../../../data/repositories/PermissionRepository';
 
 const Roles = () => {
   const {

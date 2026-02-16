@@ -2,35 +2,22 @@
  * Permission Entity
  * Represents a permission in the system
  */
-export class Permission {
-  constructor(data = {}) {
-    this.id = data.id || null;
-    this.name = data.name || '';
-    this.description = data.description || '';
-  }
+export function Permission(data = {}) {
+  const entity = {
+    id: data.id || null,
+    name: data.name || '',
+    description: data.description || '',
+  };
 
-  /**
-   * Get permission category (prefix before dot)
-   */
-  getCategory() {
-    return this.name.split('.')[0] || '';
-  }
+  entity.getCategory = () => entity.name.split('.')[0] || '';
 
-  /**
-   * Get permission action (suffix after dot)
-   */
-  getAction() {
-    return this.name.split('.')[1] || '';
-  }
+  entity.getAction = () => entity.name.split('.')[1] || '';
 
-  /**
-   * Convert to plain object
-   */
-  toJSON() {
-    return {
-      id: this.id,
-      name: this.name,
-      description: this.description
-    };
-  }
+  entity.toJSON = () => ({
+    id: entity.id,
+    name: entity.name,
+    description: entity.description
+  });
+
+  return entity;
 }

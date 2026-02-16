@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import PermissionRepository from '../../data/repositories/PermissionRepository';
+import PermissionRepository from '../../../data/repositories/PermissionRepository';
 
 const Permissions = () => {
   const [permissions, setPermissions] = useState([]);

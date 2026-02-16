@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../domain/hooks';
-import apiClient from '../../services/api';
+import { useAuth } from '../../../domain/hooks';
+import apiClient from '../../../data/api/client';
 
 const LoginAdmin = () => {
   const [username, setUsername] = useState('');

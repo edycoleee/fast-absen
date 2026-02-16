@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../domain/hooks';
-import { useAbsensi } from '../../domain/hooks/useAbsensi';
+import { useAuth } from '../../../domain/hooks';
+import { useAbsensi } from '../../../domain/hooks/useAbsensi';
 
 // Status options for attendance
 const STATUS_OPTIONS = [

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '../../domain/hooks';
-import SessionsRepository from '../../data/repositories/SessionsRepository';
+import { useAuth } from '../../../domain/hooks';
+import SessionsRepository from '../../../data/repositories/SessionsRepository';
 
 // Device type icons
 const DEVICE_ICONS = {

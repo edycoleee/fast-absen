@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useAuth } from '../../domain/hooks';
-import StatsRepository from '../../data/repositories/StatsRepository';
-import AbsensiRepository from '../../data/repositories/AbsensiRepository';
+import { useAuth } from '../../../domain/hooks';
+import StatsRepository from '../../../data/repositories/StatsRepository';
+import AbsensiRepository from '../../../data/repositories/AbsensiRepository';
 
 // Status configuration with colors
 const STATUS_CONFIG = {

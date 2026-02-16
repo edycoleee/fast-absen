@@ -2,37 +2,24 @@
  * Role Entity
  * Represents a user role in the system
  */
-export class Role {
-  constructor(data = {}) {
-    this.id = data.id || null;
-    this.name = data.name || '';
-    this.description = data.description || '';
-    this.permissions = data.permissions || [];
-  }
+export function Role(data = {}) {
+  const entity = {
+    id: data.id || null,
+    name: data.name || '',
+    description: data.description || '',
+    permissions: data.permissions || [],
+  };
 
-  /**
-   * Check if role has a specific permission
-   */
-  hasPermission(permissionName) {
-    return this.permissions.includes(permissionName);
-  }
+  entity.hasPermission = (permissionName) => entity.permissions.includes(permissionName);
 
-  /**
-   * Get permission count
-   */
-  getPermissionCount() {
-    return this.permissions.length;
-  }
+  entity.getPermissionCount = () => entity.permissions.length;
 
-  /**
-   * Convert to plain object
-   */
-  toJSON() {
-    return {
-      id: this.id,
-      name: this.name,
-      description: this.description,
-      permissions: this.permissions
-    };
-  }
+  entity.toJSON = () => ({
+    id: entity.id,
+    name: entity.name,
+    description: entity.description,
+    permissions: entity.permissions
+  });
+
+  return entity;
 }

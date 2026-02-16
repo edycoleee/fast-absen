@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useUsers } from '../../domain/hooks';
-import { pegawaiService } from '../../services';
-import RoleRepository from '../../data/repositories/RoleRepository';
+import { useUsers } from '../../../domain/hooks';
+import PegawaiRepository from '../../../data/repositories/PegawaiRepository';
+import RoleRepository from '../../../data/repositories/RoleRepository';
 
 const Users = () => {
   const {
@@ -47,7 +47,7 @@ const Users = () => {
       setPegawaiError('');
 
       try {
-        const response = await pegawaiService.getAll(1, 1000, '');
+        const response = await PegawaiRepository.getAll(1, 1000, '');
         const list = response?.data?.pegawai || response?.data?.items || [];
         setPegawaiOptions(list);
       } catch (err) {

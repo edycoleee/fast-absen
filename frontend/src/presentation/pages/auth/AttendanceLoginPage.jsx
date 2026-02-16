@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../domain/hooks';
+import { useAuth } from '../../../domain/hooks';
 
 const LoginAbsensi = () => {
   const [username, setUsername] = useState('');

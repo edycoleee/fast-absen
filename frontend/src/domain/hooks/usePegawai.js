@@ -28,7 +28,7 @@ export const usePegawai = () => {
       
       if (response.success) {
         const items = response?.data?.items || [];
-        const pegawaiData = items.map(p => new Pegawai(p));
+        const pegawaiData = items.map((p) => Pegawai(p));
         setPegawai(pegawaiData);
         setPagination({
           page: response?.data?.page,
@@ -58,7 +58,7 @@ export const usePegawai = () => {
       const response = await PegawaiRepository.getById(id);
       
       if (response.success) {
-        return new Pegawai(response.data);
+        return Pegawai(response.data);
       } else {
         throw new Error(response.message || 'Failed to fetch pegawai');
       }
@@ -83,7 +83,7 @@ export const usePegawai = () => {
       const response = await PegawaiRepository.create(formData);
       
       if (response.success) {
-        return new Pegawai(response.data);
+        return Pegawai(response.data);
       } else {
         throw new Error(response.message || 'Failed to create pegawai');
       }
@@ -108,7 +108,7 @@ export const usePegawai = () => {
       const response = await PegawaiRepository.update(id, formData);
       
       if (response.success) {
-        return new Pegawai(response.data);
+        return Pegawai(response.data);
       } else {
         throw new Error(response.message || 'Failed to update pegawai');
       }

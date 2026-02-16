@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { usePegawai } from '../../domain/hooks';
+import { usePegawai } from '../../../domain/hooks';
 
 const Pegawai = () => {
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://192.168.171.15:8000/api/v1';

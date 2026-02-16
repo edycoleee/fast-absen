@@ -28,7 +28,7 @@ export const useRoles = () => {
       
       if (response.success) {
         const items = response?.data?.items || [];
-        const roleData = items.map(role => new Role(role));
+        const roleData = items.map((role) => Role(role));
         setRoles(roleData);
         setPagination({
           page: response?.data?.page,
@@ -58,7 +58,7 @@ export const useRoles = () => {
       const response = await RoleRepository.getById(id);
       
       if (response.success) {
-        return new Role(response.data);
+        return Role(response.data);
       } else {
         throw new Error(response.message || 'Failed to fetch role');
       }
@@ -83,7 +83,7 @@ export const useRoles = () => {
       const response = await RoleRepository.create(roleData);
       
       if (response.success) {
-        return new Role(response.data);
+        return Role(response.data);
       } else {
         throw new Error(response.message || 'Failed to create role');
       }
@@ -108,7 +108,7 @@ export const useRoles = () => {
       const response = await RoleRepository.update(id, roleData);
       
       if (response.success) {
-        return new Role(response.data);
+        return Role(response.data);
       } else {
         throw new Error(response.message || 'Failed to update role');
       }

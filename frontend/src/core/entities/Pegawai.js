@@ -2,59 +2,43 @@
  * Pegawai Entity
  * Represents an employee in the system
  */
-export class Pegawai {
-  constructor(data = {}) {
-    this.id_pegawai = data.id_pegawai || null;
-    this.nip = data.nip || '';
-    this.nama = data.nama || '';
-    this.jenis_kelamin = data.jenis_kelamin || 'L';
-    this.tempat_lahir = data.tempat_lahir || '';
-    this.tanggal_lahir = data.tanggal_lahir || null;
-    this.alamat = data.alamat || '';
-    this.id_ruang = data.id_ruang || null;
-    this.status = data.status || 'PNS';
-    this.foto = data.foto || null;
-    this.created_at = data.created_at || null;
-  }
+export function Pegawai(data = {}) {
+  const entity = {
+    id_pegawai: data.id_pegawai || null,
+    nip: data.nip || '',
+    nama: data.nama || '',
+    jenis_kelamin: data.jenis_kelamin || 'L',
+    tempat_lahir: data.tempat_lahir || '',
+    tanggal_lahir: data.tanggal_lahir || null,
+    alamat: data.alamat || '',
+    id_ruang: data.id_ruang || null,
+    status: data.status || 'PNS',
+    foto: data.foto || null,
+    created_at: data.created_at || null,
+  };
 
-  /**
-   * Get full name
-   */
-  getFullName() {
-    return this.nama;
-  }
+  entity.getFullName = () => entity.nama;
 
-  /**
-   * Get gender label
-   */
-  getGenderLabel() {
-    return this.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan';
-  }
+  entity.getGenderLabel = () => (entity.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan');
 
-  /**
-   * Get photo URL
-   */
-  getPhotoUrl(baseUrl = '') {
-    if (!this.foto) return null;
-    return this.foto.startsWith('http') ? this.foto : `${baseUrl}${this.foto}`;
-  }
+  entity.getPhotoUrl = (baseUrl = '') => {
+    if (!entity.foto) return null;
+    return entity.foto.startsWith('http') ? entity.foto : `${baseUrl}${entity.foto}`;
+  };
 
-  /**
-   * Convert to plain object
-   */
-  toJSON() {
-    return {
-      id_pegawai: this.id_pegawai,
-      nip: this.nip,
-      nama: this.nama,
-      jenis_kelamin: this.jenis_kelamin,
-      tempat_lahir: this.tempat_lahir,
-      tanggal_lahir: this.tanggal_lahir,
-      alamat: this.alamat,
-      id_ruang: this.id_ruang,
-      status: this.status,
-      foto: this.foto,
-      created_at: this.created_at
-    };
-  }
+  entity.toJSON = () => ({
+    id_pegawai: entity.id_pegawai,
+    nip: entity.nip,
+    nama: entity.nama,
+    jenis_kelamin: entity.jenis_kelamin,
+    tempat_lahir: entity.tempat_lahir,
+    tanggal_lahir: entity.tanggal_lahir,
+    alamat: entity.alamat,
+    id_ruang: entity.id_ruang,
+    status: entity.status,
+    foto: entity.foto,
+    created_at: entity.created_at
+  });
+
+  return entity;
 }

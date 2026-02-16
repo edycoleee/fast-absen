@@ -1,50 +1,46 @@
 import apiClient from '../api/client';
 
 /**
- * Permission Repository
- * Handles all permission-related API calls
+ * Permission repository.
+ * Provides permission management API operations.
  */
-class PermissionRepository {
-  /**
-   * Get all permissions with pagination
-   */
-  async getAll(page = 1, limit = 100) {
-    const params = new URLSearchParams({ page, limit });
-    const response = await apiClient.get(`/permissions/?${params}`);
-    return response.data;
-  }
+/** List permissions with pagination. */
+const getAll = async (page = 1, limit = 100) => {
+  const params = new URLSearchParams({ page, limit });
+  const response = await apiClient.get(`/permissions/?${params}`);
+  return response.data;
+};
 
-  /**
-   * Get permission by ID
-   */
-  async getById(id) {
-    const response = await apiClient.get(`/permissions/${id}`);
-    return response.data;
-  }
+/** Get permission by ID. */
+const getById = async (id) => {
+  const response = await apiClient.get(`/permissions/${id}`);
+  return response.data;
+};
 
-  /**
-   * Create new permission
-   */
-  async create(permissionData) {
-    const response = await apiClient.post('/permissions/', permissionData);
-    return response.data;
-  }
+/** Create new permission. */
+const create = async (permissionData) => {
+  const response = await apiClient.post('/permissions/', permissionData);
+  return response.data;
+};
 
-  /**
-   * Update permission
-   */
-  async update(id, permissionData) {
-    const response = await apiClient.put(`/permissions/${id}`, permissionData);
-    return response.data;
-  }
+/** Update permission by ID. */
+const update = async (id, permissionData) => {
+  const response = await apiClient.put(`/permissions/${id}`, permissionData);
+  return response.data;
+};
 
-  /**
-   * Delete permission
-   */
-  async delete(id) {
-    const response = await apiClient.delete(`/permissions/${id}`);
-    return response.data;
-  }
-}
+/** Delete permission by ID. */
+const remove = async (id) => {
+  const response = await apiClient.delete(`/permissions/${id}`);
+  return response.data;
+};
 
-export default new PermissionRepository();
+const PermissionRepository = {
+  getAll,
+  getById,
+  create,
+  update,
+  delete: remove,
+};
+
+export default PermissionRepository;

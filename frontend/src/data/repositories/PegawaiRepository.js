@@ -1,65 +1,60 @@
 import apiClient from '../api/client';
 
 /**
- * Pegawai Repository
- * Handles all pegawai (employee) related API calls
+ * Pegawai repository.
+ * Provides employee management API operations.
  */
-class PegawaiRepository {
-  /**
-   * Get all pegawai with pagination and search
-   */
-  async getAll(page = 1, limit = 10, search = '') {
-    const params = new URLSearchParams({ page, limit });
-    if (search) params.append('search', search);
-    
-    const response = await apiClient.get(`/pegawai/?${params}`);
-    return response.data;
-  }
+/** List employees with pagination and optional search. */
+const getAll = async (page = 1, limit = 10, search = '') => {
+  const params = new URLSearchParams({ page, limit });
+  if (search) params.append('search', search);
 
-  /**
-   * Get pegawai by ID
-   */
-  async getById(id) {
-    const response = await apiClient.get(`/pegawai/${id}`);
-    return response.data;
-  }
+  const response = await apiClient.get(`/pegawai/?${params}`);
+  return response.data;
+};
 
-  /**
-   * Create new pegawai
-   */
-  async create(formData) {
-    const response = await apiClient.post('/pegawai/', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-    return response.data;
-  }
+/** Get employee by ID. */
+const getById = async (id) => {
+  const response = await apiClient.get(`/pegawai/${id}`);
+  return response.data;
+};
 
-  /**
-   * Update pegawai
-   */
-  async update(id, formData) {
-    const response = await apiClient.put(`/pegawai/${id}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-    return response.data;
-  }
+/** Create new employee with multipart payload. */
+const create = async (formData) => {
+  const response = await apiClient.post('/pegawai/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return response.data;
+};
 
-  /**
-   * Delete pegawai
-   */
-  async delete(id) {
-    const response = await apiClient.delete(`/pegawai/${id}`);
-    return response.data;
-  }
+/** Update employee by ID with multipart payload. */
+const update = async (id, formData) => {
+  const response = await apiClient.put(`/pegawai/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return response.data;
+};
 
-  /**
-   * Get pegawai photo
-   */
-  getPhotoUrl(filename) {
-    if (!filename) return null;
-    if (filename.startsWith('http')) return filename;
-    return `${apiClient.defaults.baseURL}/static/uploads/${filename}`;
-  }
-}
+/** Delete employee by ID. */
+const remove = async (id) => {
+  const response = await apiClient.delete(`/pegawai/${id}`);
+  return response.data;
+};
 
-export default new PegawaiRepository();
+/** Build absolute photo URL from filename. */
+const getPhotoUrl = (filename) => {
+  if (!filename) return null;
+  if (filename.startsWith('http')) return filename;
+  return `${apiClient.defaults.baseURL}/static/uploads/${filename}`;
+};
+
+const PegawaiRepository = {
+  getAll,
+  getById,
+  create,
+  update,
+  delete: remove,
+  getPhotoUrl,
+};
+
+export default PegawaiRepository;

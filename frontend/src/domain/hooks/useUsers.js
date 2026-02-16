@@ -28,7 +28,7 @@ export const useUsers = () => {
       
       if (response.success) {
         const items = response?.data?.items || [];
-        const userData = items.map(user => new User(user));
+        const userData = items.map((user) => User(user));
         setUsers(userData);
         setPagination({
           page: response?.data?.page,
@@ -58,7 +58,7 @@ export const useUsers = () => {
       const response = await UserRepository.getById(id);
       
       if (response.success) {
-        return new User(response.data);
+        return User(response.data);
       } else {
         throw new Error(response.message || 'Failed to fetch user');
       }
@@ -83,7 +83,7 @@ export const useUsers = () => {
       const response = await UserRepository.create(userData);
       
       if (response.success) {
-        return new User(response.data);
+        return User(response.data);
       } else {
         throw new Error(response.message || 'Failed to create user');
       }
@@ -108,7 +108,7 @@ export const useUsers = () => {
       const response = await UserRepository.update(id, userData);
       
       if (response.success) {
-        return new User(response.data);
+        return User(response.data);
       } else {
         throw new Error(response.message || 'Failed to update user');
       }

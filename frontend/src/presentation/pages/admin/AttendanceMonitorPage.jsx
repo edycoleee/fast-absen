@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '../../domain/hooks';
-import AbsensiRepository from '../../data/repositories/AbsensiRepository';
+import { useAuth } from '../../../domain/hooks';
+import AbsensiRepository from '../../../data/repositories/AbsensiRepository';
 
 // Status configuration
 const STATUS_CONFIG = {

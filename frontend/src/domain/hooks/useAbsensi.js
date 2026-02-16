@@ -28,7 +28,7 @@ export const useAbsensi = () => {
       
       if (response.success) {
         const items = response?.data?.items || [];
-        const absensiData = items.map(a => new Absensi(a));
+        const absensiData = items.map((a) => Absensi(a));
         setAbsensi(absensiData);
         setPagination({
           page: response?.data?.page || page,
@@ -58,7 +58,7 @@ export const useAbsensi = () => {
       const response = await AbsensiRepository.getById(id);
       
       if (response.success) {
-        return new Absensi(response.data);
+        return Absensi(response.data);
       } else {
         throw new Error(response.message || 'Failed to fetch absensi');
       }
@@ -83,7 +83,7 @@ export const useAbsensi = () => {
       const response = await AbsensiRepository.checkIn(formData);
       
       if (response.success) {
-        return new Absensi(response.data);
+        return Absensi(response.data);
       } else {
         throw new Error(response.message || 'Failed to check-in');
       }
@@ -109,7 +109,7 @@ export const useAbsensi = () => {
       const response = await AbsensiRepository.checkOutToday();
       
       if (response.success) {
-        return new Absensi(response.data);
+        return Absensi(response.data);
       } else {
         throw new Error(response.message || 'Failed to check-out');
       }
@@ -185,7 +185,7 @@ export const useAbsensi = () => {
       
       if (response.success) {
         const items = response?.data?.items || [];
-        const absensiData = items.map(a => new Absensi(a));
+        const absensiData = items.map((a) => Absensi(a));
         setAbsensi(absensiData);
         setPagination({
           page: response?.data?.page || page,

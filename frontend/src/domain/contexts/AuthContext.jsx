@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }) => {
       try {
         const userData = LocalStorage.getItem(STORAGE_KEYS.USER);
         if (userData) {
-          setUser(new User(userData));
+          setUser(User(userData));
         }
       } catch (err) {
         console.error('Error initializing auth:', err);
@@ -61,7 +61,7 @@ export const AuthProvider = ({ children }) => {
         }
         
         // Create user entity
-        const userData = new User({
+        const userData = User({
           id: user_id,
           username: user_name,
           roles: roles
@@ -154,5 +154,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-export default AuthContext;
