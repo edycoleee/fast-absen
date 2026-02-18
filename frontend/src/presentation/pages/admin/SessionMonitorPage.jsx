@@ -2,12 +2,40 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../../domain/hooks';
 import SessionsRepository from '../../../data/repositories/SessionsRepository';
 
+// Session active threshold (in minutes) - should match backend SESSION_ACTIVE_MINUTES
+const SESSION_ACTIVE_THRESHOLD_MINUTES = 30;
+
 // Device type icons
 const DEVICE_ICONS = {
   mobile: '📱',
   desktop: '🖥️',
   tablet: '📱',
   other: '❓'
+};
+
+// Session status config
+const SESSION_STATUS = {
+  ACTIVE: {
+    label: 'Active',
+    emoji: '🟢',
+    bgColor: 'bg-green-50',
+    textColor: 'text-green-700',
+    borderColor: 'border-green-200'
+  },
+  IDLE: {
+    label: 'Idle',
+    emoji: '🟡',
+    bgColor: 'bg-yellow-50',
+    textColor: 'text-yellow-700',
+    borderColor: 'border-yellow-200'
+  },
+  LOGGED_OUT: {
+    label: 'Logged Out',
+    emoji: '⚪',
+    bgColor: 'bg-gray-50',
+    textColor: 'text-gray-700',
+    borderColor: 'border-gray-200'
+  }
 };
 
 const SessionsMonitor = () => {
@@ -17,6 +45,7 @@ const SessionsMonitor = () => {
   const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [permissionWarning, setPermissionWarning] = useState(false);
   const [activeTab, setActiveTab] = useState('active'); // 'active' | 'history' | 'stats'
   
   // Filters for history
@@ -27,6 +56,19 @@ const SessionsMonitor = () => {
     limit: 50,
     offset: 0
   });
+
+  // Check if user has admin role
+  useEffect(() => {
+    const userRoles = user?.roles || [];
+    const hasAdminRole = userRoles.some(role => 
+      ['admin', 'super-admin', 'super_admin', 'superadmin'].includes(role.toLowerCase())
+    );
+    
+    if (!hasAdminRole) {
+      setPermissionWarning(true);
+      setError('⚠️ Anda mungkin tidak memiliki izin yang diperlukan. Fitur ini memerlukan role admin atau super-admin.');
+    }
+  }, [user]);
 
   // Load active sessions
   const loadActiveSessions = async () => {
@@ -40,7 +82,15 @@ const SessionsMonitor = () => {
       setActiveSessions(sessionsData);
     } catch (err) {
       console.error('Failed to load active sessions:', err);
-      setError(err.response?.data?.detail || 'Gagal memuat sesi aktif');
+      const statusCode = err.response?.status;
+      let errorMessage = err.response?.data?.detail || 'Gagal memuat sesi aktif';
+      
+      // Check if it's a permission error
+      if (statusCode === 403) {
+        errorMessage = '⚠️ Anda tidak memiliki izin untuk mengakses fitur ini. Silakan login dengan akun admin atau super-admin.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -61,7 +111,15 @@ const SessionsMonitor = () => {
       setSessionHistory(historyData);
     } catch (err) {
       console.error('Failed to load session history:', err);
-      setError(err.response?.data?.detail || 'Gagal memuat riwayat sesi');
+      const statusCode = err.response?.status;
+      let errorMessage = err.response?.data?.detail || 'Gagal memuat riwayat sesi';
+      
+      // Check if it's a permission error
+      if (statusCode === 403) {
+        errorMessage = '⚠️ Anda tidak memiliki izin untuk mengakses fitur ini. Silakan login dengan akun admin atau super-admin.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -79,8 +137,15 @@ const SessionsMonitor = () => {
       setStatistics(statsData);
     } catch (err) {
       console.error('Failed to load sessions statistics:', err);
-      const errorMsg = err.response?.data?.detail || err.response?.data?.message || err.message || 'Gagal memuat statistik';
-      setError(errorMsg);
+      const statusCode = err.response?.status;
+      let errorMessage = err.response?.data?.detail || err.response?.data?.message || err.message || 'Gagal memuat statistik';
+      
+      // Check if it's a permission error
+      if (statusCode === 403) {
+        errorMessage = '⚠️ Anda tidak memiliki izin untuk mengakses fitur ini. Silakan login dengan akun admin atau super-admin.';
+      }
+      
+      setError(errorMessage);
       setStatistics(null);
     } finally {
       setLoading(false);
@@ -130,6 +195,39 @@ const SessionsMonitor = () => {
     return `${hours}j ${mins}m`;
   };
 
+  // Calculate session status based on last_activity
+  const getSessionStatus = (session) => {
+    // If logged out, return LOGGED_OUT
+    if (session.logout_at) {
+      return SESSION_STATUS.LOGGED_OUT;
+    }
+
+    // Check last activity timestamp
+    if (!session.last_activity) {
+      return SESSION_STATUS.IDLE;
+    }
+
+    const lastActivity = new Date(session.last_activity);
+    const now = new Date();
+    const minutesInactive = Math.floor((now - lastActivity) / 60000);
+
+    // If inactive for less than threshold, it's ACTIVE
+    if (minutesInactive <= SESSION_ACTIVE_THRESHOLD_MINUTES) {
+      return SESSION_STATUS.ACTIVE;
+    }
+
+    // Otherwise it's IDLE (hasn't logged out but inactive)
+    return SESSION_STATUS.IDLE;
+  };
+
+  // Calculate minutes since last activity
+  const getMinutesSinceActivity = (lastActivity) => {
+    if (!lastActivity) return null;
+    const lastActivityDate = new Date(lastActivity);
+    const now = new Date();
+    return Math.floor((now - lastActivityDate) / 60000);
+  };
+
   // Load data based on active tab
   useEffect(() => {
     if (activeTab === 'active') {
@@ -149,102 +247,117 @@ const SessionsMonitor = () => {
   }, [filters]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div>
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-blue-500 text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold">Monitor Sesi Pengguna</h1>
-              <p className="text-indigo-100 mt-1">
-                Kelola dan monitor sesi login pengguna
-              </p>
-            </div>
-            <button
-              onClick={logout}
-              className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors"
-            >
-              Logout
-            </button>
+      <div className="mb-6 lg:mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Monitor Sesi Pengguna</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">
+              Kelola dan monitor sesi login pengguna
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-sm mb-6">
-          <div className="flex border-b">
-            <button
-              onClick={() => setActiveTab('active')}
-              className={`px-6 py-3 font-medium transition-colors ${
-                activeTab === 'active'
-                  ? 'border-b-2 border-blue-500 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              📡 Sesi Aktif ({activeSessions.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`px-6 py-3 font-medium transition-colors ${
-                activeTab === 'history'
-                  ? 'border-b-2 border-blue-500 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              📜 Riwayat Sesi
-            </button>
-            <button
-              onClick={() => setActiveTab('stats')}
-              className={`px-6 py-3 font-medium transition-colors ${
-                activeTab === 'stats'
-                  ? 'border-b-2 border-blue-500 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              📊 Statistik
-            </button>
-          </div>
+      {/* Tabs */}
+      <div className="bg-white rounded-lg shadow-sm mb-6">
+        <div className="flex flex-col sm:flex-row border-b overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('active')}
+            className={`px-4 sm:px-6 py-3 font-medium transition-colors text-sm sm:text-base whitespace-nowrap ${
+              activeTab === 'active'
+                ? 'border-b-2 border-blue-500 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            📡 Sesi Aktif ({activeSessions.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`px-4 sm:px-6 py-3 font-medium transition-colors text-sm sm:text-base whitespace-nowrap ${
+              activeTab === 'history'
+                ? 'border-b-2 border-blue-500 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            📜 Riwayat Sesi
+          </button>
+          <button
+            onClick={() => setActiveTab('stats')}
+            className={`px-4 sm:px-6 py-3 font-medium transition-colors text-sm sm:text-base whitespace-nowrap ${
+              activeTab === 'stats'
+                ? 'border-b-2 border-blue-500 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            📊 Statistik
+          </button>
         </div>
+      </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-            {error}
+      {/* Error Message */}
+      {error && (
+        <div className={`${permissionWarning ? 'bg-yellow-50 border-yellow-300 text-yellow-800' : 'bg-red-50 border-red-200 text-red-700'} border px-6 py-4 rounded-lg mb-6 flex items-start justify-between`}>
+          <div className="flex-1">
+            <p className="font-medium">{error}</p>
+            {permissionWarning && (
+              <div className="mt-2 text-sm">
+                <p>Solusi:</p>
+                <ul className="list-disc ml-5 mt-1 space-y-1">
+                  <li>Pastikan Anda login dengan akun yang memiliki role <strong>admin</strong> atau <strong>super-admin</strong></li>
+                  <li>Role Anda saat ini: <strong>{user?.roles?.join(', ') || 'unknown'}</strong></li>
+                  <li>Hubungi administrator sistem untuk menambahkan permission ke akun Anda</li>
+                </ul>
+              </div>
+            )}
           </div>
-        )}
+          <button
+            onClick={() => {
+              setError(null);
+              setPermissionWarning(false);
+            }}
+            className="ml-4 text-gray-500 hover:text-gray-700"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
-        {/* Active Sessions Tab */}
-        {activeTab === 'active' && (
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-gray-800">
+      {/* Active Sessions Tab */}
+      {activeTab === 'active' && (
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div className="px-4 sm:px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-800">
                 Sesi Aktif Saat Ini
               </h2>
               <button
                 onClick={loadActiveSessions}
                 disabled={loading}
-                className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors"
+                className="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors text-sm"
               >
                 {loading ? '⏳ Refresh...' : '🔄 Refresh'}
               </button>
             </div>
 
             {loading ? (
-              <div className="p-8 text-center text-gray-500">
+              <div className="p-6 sm:p-8 text-center text-gray-500 text-sm sm:text-base">
                 Memuat data...
               </div>
             ) : activeSessions.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
+              <div className="p-6 sm:p-8 text-center text-gray-500 text-sm sm:text-base">
                 Tidak ada sesi aktif
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[800px]">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Pengguna
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Perangkat
@@ -270,21 +383,36 @@ const SessionsMonitor = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {activeSessions.map((session) => (
-                      <tr key={session.session_id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {session.pegawai_nama || session.id_pegawai}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center text-sm text-gray-900">
-                            <span className="mr-2">
-                              {DEVICE_ICONS[session.device_type] || '❓'}
+                    {activeSessions.map((session) => {
+                      const status = getSessionStatus(session);
+                      const minutesInactive = getMinutesSinceActivity(session.last_activity);
+                      
+                      return (
+                        <tr key={session.session_id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {session.pegawai_nama || session.id_pegawai}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${status.bgColor} ${status.textColor} ${status.borderColor}`}>
+                              <span className="mr-1">{status.emoji}</span>
+                              {status.label}
+                              {minutesInactive !== null && status.label !== 'Logged Out' && (
+                                <span className="ml-1 text-xs opacity-75">
+                                  ({minutesInactive}m)
+                                </span>
+                              )}
                             </span>
-                            <span className="capitalize">{session.device_type}</span>
-                          </div>
-                        </td>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center text-sm text-gray-900">
+                              <span className="mr-2">
+                                {DEVICE_ICONS[session.device_type] || '❓'}
+                              </span>
+                              <span className="capitalize">{session.device_type}</span>
+                            </div>
+                          </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {session.browser || '-'}
                           {session.os && (
@@ -312,21 +440,22 @@ const SessionsMonitor = () => {
                           </button>
                         </td>
                       </tr>
-                    ))}
+                    );
+                    })}
                   </tbody>
                 </table>
               </div>
             )}
           </div>
-        )}
+      )}
 
-        {/* Session History Tab */}
-        {activeTab === 'history' && (
-          <div className="space-y-6">
+      {/* Session History Tab */}
+      {activeTab === 'history' && (
+        <div className="space-y-6">
             {/* Filters */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Filter</h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">Filter</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Tipe Perangkat
@@ -416,6 +545,9 @@ const SessionsMonitor = () => {
                           Pengguna
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Perangkat
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -436,21 +568,31 @@ const SessionsMonitor = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {sessionHistory.map((session) => (
-                        <tr key={session.session_id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              {session.pegawai_nama || session.id_pegawai}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center text-sm text-gray-900">
-                              <span className="mr-2">
-                                {DEVICE_ICONS[session.device_type] || '❓'}
+                      {sessionHistory.map((session) => {
+                        const status = getSessionStatus(session);
+                        const minutesInactive = getMinutesSinceActivity(session.last_activity);
+                        
+                        return (
+                          <tr key={session.session_id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900">
+                                {session.pegawai_nama || session.id_pegawai}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${status.bgColor} ${status.textColor} ${status.borderColor}`}>
+                                <span className="mr-1">{status.emoji}</span>
+                                {status.label}
                               </span>
-                              <span className="capitalize">{session.device_type}</span>
-                            </div>
-                          </td>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center text-sm text-gray-900">
+                                <span className="mr-2">
+                                  {DEVICE_ICONS[session.device_type] || '❓'}
+                                </span>
+                                <span className="capitalize">{session.device_type}</span>
+                              </div>
+                            </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {session.ip_address || '-'}
                           </td>
@@ -473,7 +615,8 @@ const SessionsMonitor = () => {
                             </span>
                           </td>
                         </tr>
-                      ))}
+                      );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -482,9 +625,9 @@ const SessionsMonitor = () => {
           </div>
         )}
 
-        {/* Statistics Tab */}
-        {activeTab === 'stats' && (
-          <div className="space-y-6">
+      {/* Statistics Tab */}
+      {activeTab === 'stats' && (
+        <div className="space-y-6">
             {loading ? (
               <div className="bg-white rounded-lg shadow-sm p-8 text-center text-gray-500">
                 Memuat statistik...
@@ -588,7 +731,6 @@ const SessionsMonitor = () => {
             )}
           </div>
         )}
-      </div>
     </div>
   );
 };

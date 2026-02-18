@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     JWT_ISSUER: str = "auth-server"
     JWT_AUDIENCE: str = "internal-apps"
 
+    # Session Management
+    SESSION_ACTIVE_MINUTES: int = 30  # Session considered "active" if heartbeat within X minutes
+    SESSION_EXPIRY_HOURS: int = 24  # Auto-logout sessions idle for X hours
+    SESSION_CLEANUP_INTERVAL_MINUTES: int = 60  # Run cleanup every X minutes (default: 1 hour)
+
     # Initial admin bootstrap (optional)
     ADMIN_USERNAME: str | None = None
     ADMIN_PASSWORD: str | None = None

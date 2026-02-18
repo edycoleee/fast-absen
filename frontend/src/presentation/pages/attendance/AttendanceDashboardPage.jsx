@@ -67,6 +67,60 @@ const AbsensiDashboard = () => {
   // Today's attendance status
   const [todayStatus, setTodayStatus] = useState(null);
   const [todayLoading, setTodayLoading] = useState(false);
+  
+  // Device and browser info
+  const [deviceInfo, setDeviceInfo] = useState({
+    browser: '',
+    device: '',
+    os: ''
+  });
+
+  // Get device and browser info
+  useEffect(() => {
+    const userAgent = navigator.userAgent;
+    let browserName = 'Unknown';
+    let deviceType = 'Desktop';
+    let osName = 'Unknown';
+
+    // Detect browser
+    if (userAgent.indexOf('Chrome') > -1 && userAgent.indexOf('Edg') === -1) {
+      browserName = 'Google Chrome';
+    } else if (userAgent.indexOf('Safari') > -1 && userAgent.indexOf('Chrome') === -1) {
+      browserName = 'Safari';
+    } else if (userAgent.indexOf('Firefox') > -1) {
+      browserName = 'Firefox';
+    } else if (userAgent.indexOf('Edg') > -1) {
+      browserName = 'Microsoft Edge';
+    } else if (userAgent.indexOf('Opera') > -1 || userAgent.indexOf('OPR') > -1) {
+      browserName = 'Opera';
+    }
+
+    // Detect device type
+    if (/Mobi|Android/i.test(userAgent)) {
+      deviceType = 'Mobile';
+    } else if (/Tablet|iPad/i.test(userAgent)) {
+      deviceType = 'Tablet';
+    }
+
+    // Detect OS
+    if (userAgent.indexOf('Win') > -1) {
+      osName = 'Windows';
+    } else if (userAgent.indexOf('Mac') > -1) {
+      osName = 'MacOS';
+    } else if (userAgent.indexOf('Linux') > -1) {
+      osName = 'Linux';
+    } else if (userAgent.indexOf('Android') > -1) {
+      osName = 'Android';
+    } else if (userAgent.indexOf('iOS') > -1 || userAgent.indexOf('iPhone') > -1 || userAgent.indexOf('iPad') > -1) {
+      osName = 'iOS';
+    }
+
+    setDeviceInfo({
+      browser: browserName,
+      device: deviceType,
+      os: osName
+    });
+  }, []);
 
   useEffect(() => {
     // Load user's absensi history and today's status
@@ -375,6 +429,88 @@ const AbsensiDashboard = () => {
             </div>
           </div>
         )}
+
+        {/* Device & Session Info Card */}
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
+          <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-4">Informasi Perangkat & Session</h3>
+          
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Left: User Avatar and Basic Info */}
+            <div className="flex-shrink-0 flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-3xl sm:text-4xl font-bold mb-3 shadow-lg">
+                {user?.username?.charAt(0).toUpperCase() || '?'}
+              </div>
+              <p className="text-sm font-semibold text-gray-900 text-center">{user?.username || 'Guest'}</p>
+              <p className="text-xs text-gray-500 text-center">{user?.roles?.[0] || 'user'}</p>
+            </div>
+
+            {/* Right: Device & Session Details Grid */}
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Session Status */}
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
+                <div className="flex items-center space-x-2 mb-2">
+                  <span className="text-xl">🟢</span>
+                  <p className="text-sm font-medium text-gray-600">Status Session</p>
+                </div>
+                <p className="font-bold text-lg text-green-600">Active</p>
+                <p className="text-xs text-gray-500 mt-1">Online</p>
+              </div>
+
+              {/* Device Type */}
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+                <div className="flex items-center space-x-2 mb-2">
+                  <span className="text-xl">
+                    {deviceInfo.device === 'Mobile' ? '📱' : deviceInfo.device === 'Tablet' ? '📱' : '💻'}
+                  </span>
+                  <p className="text-sm font-medium text-gray-600">Perangkat</p>
+                </div>
+                <p className="font-bold text-lg text-purple-600">{deviceInfo.device}</p>
+                <p className="text-xs text-gray-500 mt-1">{deviceInfo.os}</p>
+              </div>
+
+              {/* Browser */}
+              <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-lg p-4 border border-orange-200">
+                <div className="flex items-center space-x-2 mb-2">
+                  <span className="text-xl">
+                    {deviceInfo.browser === 'Chrome' ? '🔷' : 
+                     deviceInfo.browser === 'Firefox' ? '🔶' : 
+                     deviceInfo.browser === 'Safari' ? '🟦' : 
+                     deviceInfo.browser === 'Edge' ? '🔹' : '🌐'}
+                  </span>
+                  <p className="text-sm font-medium text-gray-600">Browser</p>
+                </div>
+                <p className="font-bold text-lg text-orange-600">{deviceInfo.browser}</p>
+                <p className="text-xs text-gray-500 mt-1">Web Browser</p>
+              </div>
+
+              {/* IP Address */}
+              <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg p-4 border border-blue-200">
+                <div className="flex items-center space-x-2 mb-2">
+                  <span className="text-xl">🌐</span>
+                  <p className="text-sm font-medium text-gray-600">IP Address</p>
+                </div>
+                <p className="font-bold text-sm text-blue-600 break-all">
+                  {todayStatus?.absensi?.ip_address || 'N/A'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Current IP</p>
+              </div>
+
+              {/* Location (if available) */}
+              {todayStatus?.absensi?.lokasi && (
+                <div className="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-lg p-4 border border-yellow-200 sm:col-span-2">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <span className="text-xl">📍</span>
+                    <p className="text-sm font-medium text-gray-600">Lokasi Check-In</p>
+                  </div>
+                  <p className="font-semibold text-yellow-700 text-sm break-words">
+                    {todayStatus.absensi.lokasi}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">GPS Location</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
 
         {/* Actions Section */}
         <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">

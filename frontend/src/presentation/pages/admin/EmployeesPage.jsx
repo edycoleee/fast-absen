@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { usePegawai } from '../../../domain/hooks';
+import { useAuth } from '../../../domain/hooks';
+import { formatErrorMessage, formatErrorForAlert } from '../../../utils/errorHandler';
 
 const Pegawai = () => {
+  const { user } = useAuth();
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://192.168.171.15:8000/api/v1';
   const apiOrigin = new URL(apiBaseUrl).origin;
   const {
@@ -46,7 +49,8 @@ const Pegawai = () => {
       await deletePegawai(id);
       fetchPegawai(page, 10, search);
     } catch (err) {
-      alert(err.message || 'Gagal menghapus pegawai');
+      const errorMessage = formatErrorMessage(err, 'Gagal menghapus pegawai', user);
+      alert(formatErrorForAlert(errorMessage));
     }
   };
 
@@ -151,7 +155,8 @@ const Pegawai = () => {
       closeModal();
       fetchPegawai(page, 10, search);
     } catch (err) {
-      setFormError(err.response?.data?.message || err.message || 'Gagal menyimpan data pegawai');
+      const errorMessage = formatErrorMessage(err, 'Gagal menyimpan data pegawai', user);
+      setFormError(errorMessage);
     } finally {
       setFormLoading(false);
     }

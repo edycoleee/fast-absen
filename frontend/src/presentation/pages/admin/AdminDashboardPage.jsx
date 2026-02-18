@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../../domain/hooks';
 import StatsRepository from '../../../data/repositories/StatsRepository';
 import AbsensiRepository from '../../../data/repositories/AbsensiRepository';
+import { formatErrorMessage, formatErrorForAlert } from '../../../utils/errorHandler';
 
 // Status configuration with colors
 const STATUS_CONFIG = {
@@ -22,10 +23,13 @@ const Dashboard = () => {
   const [todayAbsensiList, setTodayAbsensiList] = useState([]);
   const [statusBreakdown, setStatusBreakdown] = useState({});
   const [loadingAbsensi, setLoadingAbsensi] = useState(false);
+  const [error, setError] = useState(null);
+  const [statsError, setStatsError] = useState(null);
 
   useEffect(() => {
     const loadStats = async () => {
       try {
+        setStatsError(null);
         const response = await StatsRepository.getStats();
         const data = response?.data || {};
 
@@ -34,6 +38,8 @@ const Dashboard = () => {
         setTotalRoles(data.roles_total ?? '-');
         setAbsensiToday(data.absensi_today ?? '-');
       } catch (err) {
+        const errorMessage = formatErrorMessage(err, 'Gagal memuat statistik dashboard', user);
+        setStatsError(errorMessage);
         console.error('Failed to load stats:', err);
       }
     };
@@ -41,6 +47,7 @@ const Dashboard = () => {
     const loadTodayAbsensi = async () => {
       try {
         setLoadingAbsensi(true);
+        setError(null);
         // Get today's date in YYYY-MM-DD format
         const today = new Date();
         const todayStr = today.toISOString().split('T')[0];
@@ -68,6 +75,8 @@ const Dashboard = () => {
 
         setStatusBreakdown(breakdown);
       } catch (err) {
+        const errorMessage = formatErrorMessage(err, 'Gagal memuat data absensi hari ini', user);
+        setError(errorMessage);
         console.error('Failed to load today absensi:', err);
       } finally {
         setLoadingAbsensi(false);
@@ -105,6 +114,31 @@ const Dashboard = () => {
           Logout
         </button>
       </div>
+
+      {/* Error Messages */}
+      {statsError && (
+        <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+          <div className="flex items-start">
+            <span className="text-xl mr-3">⚠️</span>
+            <div className="flex-1">
+              <p className="font-semibold mb-1">Error Loading Statistics</p>
+              <pre className="text-sm whitespace-pre-wrap font-sans">{statsError}</pre>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {error && (
+        <div className="mb-6 bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg">
+          <div className="flex items-start">
+            <span className="text-xl mr-3">⚠️</span>
+            <div className="flex-1">
+              <p className="font-semibold mb-1">Error Loading Data</p>
+              <pre className="text-sm whitespace-pre-wrap font-sans">{error}</pre>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">

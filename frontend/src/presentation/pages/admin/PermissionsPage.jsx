@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../../../domain/hooks';
 import PermissionRepository from '../../../data/repositories/PermissionRepository';
+import { formatErrorMessage, formatErrorForAlert } from '../../../utils/errorHandler';
 
 const Permissions = () => {
+  const { user } = useAuth();
   const [permissions, setPermissions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -39,7 +42,8 @@ const Permissions = () => {
         total: response?.data?.total || list.length
       });
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Gagal memuat data permissions');
+      const errorMessage = formatErrorMessage(err, 'Gagal memuat data permissions', user);
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -100,7 +104,8 @@ const Permissions = () => {
       closeModal();
       fetchPermissions(page, pagination.limit);
     } catch (err) {
-      setFormError(err.response?.data?.message || err.message || 'Gagal menyimpan permission');
+      const errorMessage = formatErrorMessage(err, 'Gagal menyimpan permission', user);
+      setFormError(errorMessage);
     } finally {
       setFormLoading(false);
     }
@@ -113,7 +118,8 @@ const Permissions = () => {
       await PermissionRepository.delete(permissionId);
       fetchPermissions(page, pagination.limit);
     } catch (err) {
-      alert(err.response?.data?.message || err.message || 'Gagal menghapus permission');
+      const errorMessage = formatErrorMessage(err, 'Gagal menghapus permission', user);
+      alert(formatErrorForAlert(errorMessage));
     }
   };
 

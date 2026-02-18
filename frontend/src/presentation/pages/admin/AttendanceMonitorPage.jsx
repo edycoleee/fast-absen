@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../../domain/hooks';
 import AbsensiRepository from '../../../data/repositories/AbsensiRepository';
+import { formatErrorMessage, formatErrorForAlert } from '../../../utils/errorHandler';
 
 // Status configuration
 const STATUS_CONFIG = {
@@ -46,8 +47,9 @@ const AbsensiMonitor = () => {
       const response = await AbsensiRepository.getAll(1, filters.limit, cleanFilters);
       setAllAbsensi(response?.data?.items || []);
     } catch (err) {
+      const errorMessage = formatErrorMessage(err, 'Gagal memuat data absensi', user);
+      setError(errorMessage);
       console.error('Failed to load absensi:', err);
-      setError(err.response?.data?.detail || 'Gagal memuat data absensi');
     } finally {
       setLoading(false);
     }
@@ -65,8 +67,9 @@ const AbsensiMonitor = () => {
       });
       setTodayAbsensi(response?.data?.items || []);
     } catch (err) {
+      const errorMessage = formatErrorMessage(err, 'Gagal memuat absensi hari ini', user);
+      setError(errorMessage);
       console.error('Failed to load today absensi:', err);
-      setError(err.response?.data?.detail || 'Gagal memuat absensi hari ini');
     } finally {
       setLoading(false);
     }
@@ -83,10 +86,10 @@ const AbsensiMonitor = () => {
       console.log('Statistics data:', statsData);
       setStatistics(statsData);
     } catch (err) {
-      console.error('Failed to load statistics:', err);
-      const errorMsg = err.response?.data?.detail || err.response?.data?.message || err.message || 'Gagal memuat statistik';
-      setError(errorMsg);
+      const errorMessage = formatErrorMessage(err, 'Gagal memuat statistik', user);
+      setError(errorMessage);
       setStatistics(null);
+      console.error('Failed to load statistics:', err);
     } finally {
       setLoading(false);
     }
@@ -105,8 +108,9 @@ const AbsensiMonitor = () => {
       if (activeTab === 'today') loadTodayAbsensi();
       loadStatistics(); // Update stats
     } catch (err) {
+      const errorMessage = formatErrorMessage(err, 'Gagal menghapus absensi', user);
+      alert(formatErrorForAlert(errorMessage));
       console.error('Failed to delete:', err);
-      alert(err.response?.data?.detail || 'Gagal menghapus absensi');
     }
   };
 
@@ -117,8 +121,9 @@ const AbsensiMonitor = () => {
       setSelectedAbsensi(response?.data);
       setShowDetailModal(true);
     } catch (err) {
+      const errorMessage = formatErrorMessage(err, 'Gagal memuat detail', user);
+      alert(formatErrorForAlert(errorMessage));
       console.error('Failed to load detail:', err);
-      alert(err.response?.data?.detail || 'Gagal memuat detail');
     }
   };
 

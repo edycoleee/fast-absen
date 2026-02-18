@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRoles } from '../../../domain/hooks';
+import { useAuth } from '../../../domain/hooks';
 import PermissionRepository from '../../../data/repositories/PermissionRepository';
+import { formatErrorMessage, formatErrorForAlert } from '../../../utils/errorHandler';
 
 const Roles = () => {
+  const { user } = useAuth();
   const {
     roles,
     loading,
@@ -45,7 +48,8 @@ const Roles = () => {
         const list = response?.data?.permissions || response?.data?.items || [];
         setPermissionOptions(list);
       } catch (err) {
-        setPermissionsError(err.response?.data?.message || 'Gagal memuat permissions');
+        const errorMessage = formatErrorMessage(err, 'Gagal memuat permissions', user);
+        setPermissionsError(errorMessage);
       } finally {
         setPermissionsLoading(false);
       }
@@ -139,7 +143,8 @@ const Roles = () => {
       closeModal();
       fetchRoles(page, 10);
     } catch (err) {
-      setFormError(err.response?.data?.message || err.message || 'Gagal menyimpan role');
+      const errorMessage = formatErrorMessage(err, 'Gagal menyimpan role', user);
+      setFormError(errorMessage);
     } finally {
       setFormLoading(false);
     }
@@ -152,7 +157,8 @@ const Roles = () => {
       await deleteRole(roleId);
       fetchRoles(page, 10);
     } catch (err) {
-      alert(err.response?.data?.message || err.message || 'Gagal menghapus role');
+      const errorMessage = formatErrorMessage(err, 'Gagal menghapus role', user);
+      alert(formatErrorForAlert(errorMessage));
     }
   };
 

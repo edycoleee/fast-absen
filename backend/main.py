@@ -21,6 +21,7 @@ from utils.exception_handlers import (
 )
 from utils.logger import logger
 from utils.bootstrap_admin import bootstrap_super_admin
+from utils.scheduler import start_scheduler, stop_scheduler
 
 
 @asynccontextmanager
@@ -38,6 +39,9 @@ async def lifespan(app: FastAPI):
     if check_database_connection():
         logger.info("Database connection established")
         bootstrap_super_admin()
+        
+        # Start background scheduler for session cleanup
+        start_scheduler()
     else:
         logger.warning("Database connection failed - app will start but may not work properly")
     
@@ -48,6 +52,10 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("Shutting down application")
+    
+    # Stop background scheduler
+    stop_scheduler()
+    
     engine.dispose()
     logger.info("Database connections closed")
 

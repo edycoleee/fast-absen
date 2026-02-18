@@ -1,9 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useUsers } from '../../../domain/hooks';
+import { useAuth } from '../../../domain/hooks';
 import PegawaiRepository from '../../../data/repositories/PegawaiRepository';
 import RoleRepository from '../../../data/repositories/RoleRepository';
+import { formatErrorMessage, formatErrorForAlert } from '../../../utils/errorHandler';
 
 const Users = () => {
+  const { user } = useAuth();
   const {
     users,
     loading,
@@ -51,7 +54,8 @@ const Users = () => {
         const list = response?.data?.pegawai || response?.data?.items || [];
         setPegawaiOptions(list);
       } catch (err) {
-        setPegawaiError(err.response?.data?.message || 'Gagal memuat daftar pegawai');
+        const errorMessage = formatErrorMessage(err, 'Gagal memuat daftar pegawai', user);
+        setPegawaiError(errorMessage);
       } finally {
         setPegawaiLoading(false);
       }
@@ -66,7 +70,8 @@ const Users = () => {
         const list = response?.data?.items || [];
         setRoleOptions(list);
       } catch (err) {
-        setRolesError(err.response?.data?.message || 'Gagal memuat daftar roles');
+        const errorMessage = formatErrorMessage(err, 'Gagal memuat daftar roles', user);
+        setRolesError(errorMessage);
       } finally {
         setRolesLoading(false);
       }
@@ -94,7 +99,8 @@ const Users = () => {
       await deleteUser(id);
       fetchUsers(page, 10);
     } catch (err) {
-      alert(err.message || 'Gagal menghapus user');
+      const errorMessage = formatErrorMessage(err, 'Gagal menghapus user', user);
+      alert(formatErrorForAlert(errorMessage));
     }
   };
 
