@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './domain/contexts/AuthContext'
 import PrivateRoute from './presentation/components/common/PrivateRoute'
+import AttendancePrivateRoute from './presentation/components/common/AttendancePrivateRoute'
 import {
   LandingPage,
   AdminLoginPage,
@@ -54,8 +55,8 @@ function App() {
           <Route path="/login-admin" element={<AdminLoginPage />} />
           <Route path="/login-absensi" element={<AttendanceLoginPage />} />
           
-          {/* Absensi Dashboard (for regular users/pegawai) */}
-          <Route path="/absensi-dashboard" element={<PrivateRoute />}>
+          {/* Absensi Dashboard (for regular users/pegawai) - No admin layout */}
+          <Route path="/absensi-dashboard" element={<AttendancePrivateRoute />}>
             <Route index element={<AttendanceDashboardPage />} />
           </Route>
           

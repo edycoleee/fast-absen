@@ -58,6 +58,7 @@ const AbsensiDashboard = () => {
   const [checkInSuccess, setCheckInSuccess] = useState(false);
   const [checkOutSuccess, setCheckOutSuccess] = useState(false);
   const [activeMenu, setActiveMenu] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   // Check-in form state
   const [status, setStatus] = useState('HADIR');
@@ -164,8 +165,52 @@ const AbsensiDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Mobile Header with Hamburger Button */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 bg-white shadow-md z-40 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
+              <span className="text-white text-lg">🏥</span>
+            </div>
+            <div>
+              <h1 className="text-sm font-bold text-green-600">RSUD Sulfat</h1>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Overlay for mobile */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        ></div>
+      )}
+
       {/* Sidebar */}
-      <aside className="fixed top-0 left-0 w-64 h-full bg-white shadow-lg">
+      <aside className={`fixed top-0 left-0 w-64 h-full bg-white shadow-lg z-50 transform transition-transform duration-300 ease-in-out ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      } lg:translate-x-0`}>
+        {/* Close button for mobile */}
+        <div className="lg:hidden absolute top-4 right-4">
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
@@ -182,7 +227,10 @@ const AbsensiDashboard = () => {
           <ul className="space-y-2">
             <li>
               <button
-                onClick={() => setActiveMenu('dashboard')}
+                onClick={() => {
+                  setActiveMenu('dashboard');
+                  setSidebarOpen(false);
+                }}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
                   activeMenu === 'dashboard'
                     ? 'bg-green-50 text-green-700 font-medium'
@@ -195,7 +243,10 @@ const AbsensiDashboard = () => {
             </li>
             <li>
               <button
-                onClick={() => setActiveMenu('riwayat')}
+                onClick={() => {
+                  setActiveMenu('riwayat');
+                  setSidebarOpen(false);
+                }}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
                   activeMenu === 'riwayat'
                     ? 'bg-green-50 text-green-700 font-medium'
@@ -208,7 +259,10 @@ const AbsensiDashboard = () => {
             </li>
             <li>
               <button
-                onClick={() => setActiveMenu('profil')}
+                onClick={() => {
+                  setActiveMenu('profil');
+                  setSidebarOpen(false);
+                }}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
                   activeMenu === 'profil'
                     ? 'bg-green-50 text-green-700 font-medium'
@@ -247,19 +301,19 @@ const AbsensiDashboard = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="ml-64 p-8">
+      <main className="lg:ml-64 pt-16 lg:pt-0 p-4 lg:p-8">
         {/* Dashboard View */}
         {activeMenu === 'dashboard' && (
           <>
         {/* Welcome Section */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
             Selamat Datang di Absensi Dashboard
           </h2>
-          <p className="text-gray-600 mb-4">Sistem Absensi RSUD Sulfat</p>
+          <p className="text-sm sm:text-base text-gray-600 mb-4">Sistem Absensi RSUD Sulfat</p>
 
           {/* User Info */}
-          <div className="grid md:grid-cols-3 gap-4 mt-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-6">
             <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
               <p className="text-sm text-gray-600 mb-1">Username</p>
               <p className="font-semibold text-gray-900">{user?.username || 'N/A'}</p>
@@ -279,9 +333,9 @@ const AbsensiDashboard = () => {
 
         {/* Today's Status */}
         {todayStatus && (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Status Absensi Hari Ini</h3>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
+            <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-4">Status Absensi Hari Ini</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className={`rounded-lg p-4 border ${todayStatus.has_checked_in ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
                 <p className="text-sm text-gray-600 mb-1">Check-In</p>
                 <p className={`font-bold text-lg ${todayStatus.has_checked_in ? 'text-green-600' : 'text-gray-400'}`}>
@@ -323,8 +377,8 @@ const AbsensiDashboard = () => {
         )}
 
         {/* Actions Section */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Absensi Actions</h3>
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
+          <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-4">Absensi Actions</h3>
           
           {/* Check-in Form */}
           {!todayStatus?.has_checked_in && (
@@ -369,7 +423,7 @@ const AbsensiDashboard = () => {
                 <button
                   onClick={handleCheckIn}
                   disabled={checkInLoading}
-                  className="w-full md:w-auto px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="w-full px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {checkInLoading ? (
                     <span className="flex items-center justify-center">
@@ -394,7 +448,7 @@ const AbsensiDashboard = () => {
                 <button
                   onClick={handleCheckOut}
                   disabled={checkInLoading}
-                  className="w-full md:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {checkInLoading ? (
                     <span className="flex items-center justify-center">
@@ -441,8 +495,8 @@ const AbsensiDashboard = () => {
         </div>
 
         {/* Quick Info */}
-        <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
-          <h3 className="text-lg font-bold text-gray-900 mb-3">ℹ️ Informasi</h3>
+        <div className="bg-blue-50 rounded-lg p-4 sm:p-6 border border-blue-200">
+          <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3">ℹ️ Informasi</h3>
           <ul className="space-y-2 text-sm text-gray-700">
             <li className="flex items-start">
               <span className="mr-2">•</span>
@@ -463,16 +517,16 @@ const AbsensiDashboard = () => {
 
         {/* Riwayat Absensi View */}
         {activeMenu === 'riwayat' && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-3 sm:space-y-0">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Riwayat Absensi</h2>
-                <p className="text-gray-600 mt-1">Daftar lengkap riwayat absensi Anda</p>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Riwayat Absensi</h2>
+                <p className="text-sm sm:text-base text-gray-600 mt-1">Daftar lengkap riwayat absensi Anda</p>
               </div>
               <button
                 onClick={() => getMyAbsensi(1, 10)}
                 disabled={loading}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm font-semibold disabled:bg-gray-400"
+                className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm font-semibold disabled:bg-gray-400"
               >
                 🔄 Refresh
               </button>
@@ -513,7 +567,7 @@ const AbsensiDashboard = () => {
                             </span>
                           </div>
                           
-                          <div className="grid md:grid-cols-2 gap-3 mt-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                             <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
                               <p className="text-xs text-gray-600 mb-1">📅 Tanggal</p>
                               <p className="font-semibold text-gray-900">
@@ -570,17 +624,17 @@ const AbsensiDashboard = () => {
         {/* Profil View */}
         {activeMenu === 'profil' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Profil Saya</h2>
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">Profil Saya</h2>
               
               {/* Profile Header */}
-              <div className="flex items-center space-x-6 mb-6 pb-6 border-b border-gray-200">
-                <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
+              <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6 mb-6 pb-6 border-b border-gray-200">
+                <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
                   <span className="text-green-700 font-bold text-4xl">
                     {user?.username?.charAt(0).toUpperCase()}
                   </span>
                 </div>
-                <div>
+                <div className="text-center sm:text-left">
                   <h3 className="text-xl font-bold text-gray-900">{user?.username}</h3>
                   <p className="text-gray-600">{user?.roles?.[0] || 'user'}</p>
                   <span className="inline-block mt-2 px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
@@ -622,9 +676,9 @@ const AbsensiDashboard = () => {
             </div>
 
             {/* Account Statistics */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">Statistik Akun</h3>
-              <div className="grid md:grid-cols-3 gap-4">
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-4">Statistik Akun</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                   <p className="text-sm text-gray-600 mb-1">Total Absensi</p>
                   <p className="text-2xl font-bold text-blue-600">{absensi?.length || 0}</p>
