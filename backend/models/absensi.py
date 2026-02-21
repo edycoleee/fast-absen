@@ -2,7 +2,7 @@
 Absensi Model
 Updated schema with jam_masuk, jam_keluar, status, and validation
 """
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Date, Text, CheckConstraint, UniqueConstraint
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Date, Text, CheckConstraint
 from sqlalchemy.dialects.postgresql import INET
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -58,7 +58,6 @@ class Absensi(Base):
             "status IN ('HADIR', 'IZIN', 'SAKIT', 'ALPHA', 'TERLAMBAT', 'CUTI')", 
             name='check_absensi_status'
         ),
-        UniqueConstraint('id_pegawai', 'tanggal', name='unique_pegawai_tanggal'),
     )
 
     # Relationships

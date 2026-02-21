@@ -37,8 +37,8 @@ class AbsensiRepository(BaseRepository[Absensi]):
     
     def get_by_pegawai_and_date(self, id_pegawai: str, tanggal: date) -> Optional[Absensi]:
         """
-        Get absensi for specific pegawai on specific date
-        Important for checking if already checked-in today
+        Get latest absensi for specific pegawai on specific date
+        Important for resolving today's status when multiple shifts exist
         """
         return (
             self.db.query(Absensi)
@@ -46,26 +46,51 @@ class AbsensiRepository(BaseRepository[Absensi]):
                 Absensi.id_pegawai == id_pegawai,
                 Absensi.tanggal == tanggal
             ))
+            .order_by(Absensi.jam_masuk.desc(), Absensi.id.desc())
+            .first()
+        )
+
+    def get_active_by_pegawai_and_date(self, id_pegawai: str, tanggal: date) -> Optional[Absensi]:
+        """Get active absensi (checked-in, not yet checked-out) for a specific date"""
+        return (
+            self.db.query(Absensi)
+            .filter(and_(
+                Absensi.id_pegawai == id_pegawai,
+                Absensi.tanggal == tanggal,
+                Absensi.jam_masuk.isnot(None),
+                Absensi.jam_keluar.is_(None)
+            ))
+            .order_by(Absensi.jam_masuk.desc(), Absensi.id.desc())
             .first()
         )
     
     def get_today_absensi(self, id_pegawai: str) -> Optional[Absensi]:
-        """Get today's absensi for a pegawai"""
-        return self.get_by_pegawai_and_date(id_pegawai, date.today())
+        """
+        Get today's relevant absensi for a pegawai.
+        Priority:
+        1) Active session (belum check-out)
+        2) Latest completed session
+        """
+        today = date.today()
+        active = self.get_active_by_pegawai_and_date(id_pegawai, today)
+        if active:
+            return active
+
+        return self.get_by_pegawai_and_date(id_pegawai, today)
     
     def create_check_in(self, absensi_data: dict) -> Absensi:
         """
         Create check-in record
-        Validates that pegawai hasn't checked-in today
+        Validates that pegawai has no active check-in session today
         """
-        # Check if already exists
-        existing = self.get_by_pegawai_and_date(
+        # Check if there's an active session for today
+        active_session = self.get_active_by_pegawai_and_date(
             absensi_data['id_pegawai'],
             absensi_data.get('tanggal', date.today())
         )
         
-        if existing:
-            raise ValueError("Absensi untuk hari ini sudah ada. Tidak bisa check-in lagi.")
+        if active_session:
+            raise ValueError("Anda masih memiliki sesi absensi aktif. Silakan check-out terlebih dahulu sebelum check-in lagi.")
         
         # Set jam_masuk to now if not provided
         if 'jam_masuk' not in absensi_data or absensi_data['jam_masuk'] is None:

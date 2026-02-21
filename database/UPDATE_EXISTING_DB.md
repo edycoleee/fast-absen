@@ -5,7 +5,7 @@ Jika database Anda sudah berjalan SEBELUM update init.sql terbaru, maka:
 - ❌ Permissions tidak lengkap (hanya 5, seharusnya 27)
 - ❌ Role "user" tidak punya `absensi.read` dan `absensi.update`
 - ❌ Role "admin" tidak punya permissions lengkap
-- ❌ Constraint `unique_absensi_per_day` belum ada
+- ❌ Constraint unik absensi harian masih aktif (pegawai tidak bisa check-in lagi setelah check-out di hari yang sama)
 
 ## Solusi
 
@@ -118,10 +118,9 @@ WHERE NOT EXISTS (
     WHERE rp.role_id = 3 AND rp.permission_id = p.id
 );
 
--- 6. Add unique constraint (prevent duplicate check-in per day)
-ALTER TABLE absensi 
-ADD CONSTRAINT unique_absensi_per_day 
-UNIQUE (id_pegawai, tanggal);
+-- 6. Drop old unique constraint agar mendukung multi-shift dalam tanggal yang sama
+ALTER TABLE absensi DROP CONSTRAINT IF EXISTS unique_absensi_per_day;
+ALTER TABLE absensi DROP CONSTRAINT IF EXISTS unique_pegawai_tanggal;
 ```
 
 ## Verifikasi
@@ -166,8 +165,9 @@ Setelah update, test dengan user biasa:
 1. Login sebagai user dengan role "user"
 2. POST /api/v1/absensi/check-in → Should work ✅
 3. POST /api/v1/absensi/check-out → Should work ✅ (ini yang sebelumnya error!)
-4. GET /api/v1/absensi/today → Should work ✅
-5. GET /api/v1/absensi/history → Should work ✅
+4. POST /api/v1/absensi/check-in (lagi di tanggal yang sama setelah check-out) → Should work ✅
+5. GET /api/v1/absensi/today → Should show `completed_today=true` dan `can_check_in=true` saat sesi terakhir sudah check-out ✅
+6. GET /api/v1/absensi/history → Should work ✅
 
 Jika masih error "Forbidden", cek JWT token user apakah sudah ter-refresh dengan permissions baru.
 

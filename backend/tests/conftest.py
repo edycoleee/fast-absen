@@ -103,16 +103,32 @@ def db_with_data(db: Session) -> Session:
         text("INSERT INTO role_permissions (role_id, permission_id) SELECT 1, id FROM permissions")
     )
     
-    # Assign limited permissions to user
+    # Assign user permissions needed for check-in/check-out flow
     db.execute(
-        text("INSERT INTO role_permissions (role_id, permission_id) VALUES (2, 1), (2, 2)")
+        text("INSERT INTO role_permissions (role_id, permission_id) VALUES (2, 1), (2, 2), (2, 3), (2, 4)")
     )
     
+    db.commit()
+
+    # Create pegawai records (required by auth session tracking)
+    admin_pegawai = Pegawai(
+        id_pegawai="PGW001",
+        nip="19800101000001",
+        nama="Admin Test"
+    )
+    user_pegawai = Pegawai(
+        id_pegawai="PGW002",
+        nip="19800101000002",
+        nama="User Test"
+    )
+    db.add(admin_pegawai)
+    db.add(user_pegawai)
     db.commit()
     
     # Create admin user
     admin_user = User(
         id=1,
+        id_pegawai="PGW001",
         username="admin",
         password_hash=get_password_hash("admin123"),
         is_active=True
@@ -127,6 +143,7 @@ def db_with_data(db: Session) -> Session:
     # Create regular user
     regular_user = User(
         id=2,
+        id_pegawai="PGW002",
         username="user1",
         password_hash=get_password_hash("user123"),
         is_active=True

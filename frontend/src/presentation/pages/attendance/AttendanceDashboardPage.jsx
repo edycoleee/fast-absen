@@ -517,7 +517,7 @@ const AbsensiDashboard = () => {
           <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-4">Absensi Actions</h3>
           
           {/* Check-in Form */}
-          {!todayStatus?.has_checked_in && (
+          {(todayStatus?.can_check_in ?? !todayStatus?.has_checked_in) && (
             <div className="space-y-4 mb-6">
               {/* Status Dropdown */}
               <div>
@@ -603,9 +603,9 @@ const AbsensiDashboard = () => {
           )}
 
           {/* Already completed message */}
-          {todayStatus?.has_checked_in && todayStatus?.absensi?.jam_keluar && (
+          {todayStatus?.completed_today && (
             <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
-              ✅ Anda sudah menyelesaikan absensi hari ini (Check-in dan Check-out).
+              ✅ Anda sudah menyelesaikan absensi hari ini (Silahkan Check-In lagi).
             </div>
           )}
 

@@ -114,3 +114,5 @@ class AbsensiTodayResponse(BaseModel):
     has_checked_in: bool
     absensi: Optional[AbsensiResponse] = None
     can_check_out: bool = False
+    can_check_in: bool = True
+    completed_today: bool = False

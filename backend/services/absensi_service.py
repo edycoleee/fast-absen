@@ -69,11 +69,8 @@ class AbsensiService:
         # Update fields
         update_data = absensi_data.model_dump(exclude_unset=True)
         
-        for field, value in update_data.items():
-            setattr(absensi, field, value)
-        
         # Save to database
-        updated_absensi = self.absensi_repo.update(absensi)
+        updated_absensi = self.absensi_repo.update(absensi_id, update_data)
         
         return AbsensiResponse.model_validate(updated_absensi)
     
@@ -142,19 +139,13 @@ class AbsensiService:
         """
         Check-out for current user (today's absensi)
         """
-        # Get today's absensi
-        today_absensi = self.absensi_repo.get_today_absensi(id_pegawai)
+        # Get today's active absensi
+        today_absensi = self.absensi_repo.get_active_by_pegawai_and_date(id_pegawai, date.today())
         
         if not today_absensi:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Anda belum check-in hari ini. Silakan check-in terlebih dahulu."
-            )
-        
-        if today_absensi.jam_keluar:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Anda sudah check-out hari ini."
+                detail="Tidak ada sesi check-in aktif hari ini. Silakan check-in terlebih dahulu."
             )
         
         # Capture IP address
@@ -185,15 +176,21 @@ class AbsensiService:
             return AbsensiTodayResponse(
                 has_checked_in=False,
                 absensi=None,
-                can_check_out=False
+                can_check_out=False,
+                can_check_in=True,
+                completed_today=False
             )
         
         can_check_out = today_absensi.jam_masuk is not None and today_absensi.jam_keluar is None
+        can_check_in = not can_check_out
+        completed_today = today_absensi.jam_masuk is not None and today_absensi.jam_keluar is not None
         
         return AbsensiTodayResponse(
             has_checked_in=True,
             absensi=AbsensiResponse.model_validate(today_absensi),
-            can_check_out=can_check_out
+            can_check_out=can_check_out,
+            can_check_in=can_check_in,
+            completed_today=completed_today
         )
     
     def get_user_history(

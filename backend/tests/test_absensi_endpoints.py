@@ -1,264 +1,191 @@
 """
 Test Absensi Endpoints
-Tests for admin CRUD and user dashboard access
+Updated for check-in/check-out flow + multi-shift same day
 """
-import pytest
-from httpx import AsyncClient
-from datetime import datetime
+from fastapi.testclient import TestClient
 
 
-class TestCreateUserAbsensi:
-    """Test POST /absensi/create - User creates own absensi"""
-    
-    @pytest.mark.asyncio
-    async def test_create_absensi_as_user(self, client: AsyncClient, user_token: dict, db_with_data):
-        """Test user can create own absensi"""
-        # User token has id_pegawai from fixture
-        absensi_data = {
-            "id_lokasi": "LOK001",
-            "uid": "ABC123",
-            "keterangan": "Hadir tepat waktu"
-        }
-        
-        response = await client.post(
-            "/absensi/create",
-            json=absensi_data,
-            headers=user_token
+API_PREFIX = "/api/v1/absensi"
+
+
+class TestAbsensiUserFlow:
+    """User check-in/check-out flow tests"""
+
+    def test_check_in_success(self, client: TestClient, auth_headers_user: dict):
+        response = client.post(
+            f"{API_PREFIX}/check-in",
+            json={"status": "HADIR"},
+            headers=auth_headers_user,
         )
-        
+
         assert response.status_code == 201
-        data = response.json()
-        assert data["success"] is True
-        assert data["message"] == "Absensi created successfully"
-        assert data["data"]["id_lokasi"] == "LOK001"
-        assert data["data"]["uid"] == "ABC123"
-        assert data["data"]["keterangan"] == "Hadir tepat waktu"
-        assert "ip_address" in data["data"]
-        assert "tanggal" in data["data"]
-    
-    @pytest.mark.asyncio
-    async def test_create_absensi_without_auth(self, client: AsyncClient):
-        """Test create absensi requires authentication"""
-        absensi_data = {
-            "id_lokasi": "LOK001",
-            "uid": "ABC123",
-            "keterangan": "Hadir"
-        }
-        
-        response = await client.post("/absensi/create", json=absensi_data)
-        
-        assert response.status_code == 401
+        payload = response.json()
+        assert payload["success"] is True
+        assert payload["message"] == "Check-in berhasil!"
+        assert payload["data"]["status"] == "HADIR"
+        assert payload["data"]["jam_masuk"] is not None
+        assert payload["data"]["jam_keluar"] is None
 
+    def test_check_in_while_active_session_fails(self, client: TestClient, auth_headers_user: dict):
+        first = client.post(
+            f"{API_PREFIX}/check-in",
+            json={"status": "HADIR"},
+            headers=auth_headers_user,
+        )
+        assert first.status_code == 201
 
-class TestGetMyAbsensi:
-    """Test GET /absensi/me - User views own absensi"""
-    
-    @pytest.mark.asyncio
-    async def test_get_my_absensi_list(self, client: AsyncClient, user_token: dict, db_with_data):
-        """Test user can view own absensi list"""
-        # First create an absensi
-        absensi_data = {
-            "id_lokasi": "LOK001",
-            "uid": "UID123",
-            "keterangan": "Hadir"
-        }
-        await client.post("/absensi/create", json=absensi_data, headers=user_token)
-        
-        # Get list
-        response = await client.get("/absensi/me", headers=user_token)
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert isinstance(data["data"], list)
-        assert len(data["data"]) > 0
-    
-    @pytest.mark.asyncio
-    async def test_get_my_absensi_pagination(self, client: AsyncClient, user_token: dict, db_with_data):
-        """Test pagination for user absensi"""
-        response = await client.get("/absensi/me?skip=0&limit=10", headers=user_token)
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data["data"], list)
-    
-    @pytest.mark.asyncio
-    async def test_get_my_absensi_without_auth(self, client: AsyncClient):
-        """Test get my absensi requires authentication"""
-        response = await client.get("/absensi/me")
-        
-        assert response.status_code == 401
+        second = client.post(
+            f"{API_PREFIX}/check-in",
+            json={"status": "HADIR"},
+            headers=auth_headers_user,
+        )
 
+        assert second.status_code == 400
+        payload = second.json()
+        assert payload["success"] is False
+        assert "sesi absensi aktif" in payload["message"]
 
-class TestGetMyAbsensiById:
-    """Test GET /absensi/me/{id} - User views specific own absensi"""
-    
-    @pytest.mark.asyncio
-    async def test_get_my_absensi_by_id(self, client: AsyncClient, user_token: dict, db_with_data):
-        """Test user can view specific own absensi"""
-        # Create absensi
-        absensi_data = {
-            "id_lokasi": "LOK001",
-            "uid": "UID123",
-            "keterangan": "Hadir"
-        }
-        create_response = await client.post("/absensi/create", json=absensi_data, headers=user_token)
-        created_id = create_response.json()["data"]["id"]
-        
-        # Get by ID
-        response = await client.get(f"/absensi/me/{created_id}", headers=user_token)
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert data["data"]["id"] == created_id
-    
-    @pytest.mark.asyncio
-    async def test_get_my_absensi_nonexistent_id(self, client: AsyncClient, user_token: dict, db_with_data):
-        """Test get nonexistent absensi returns 404"""
-        response = await client.get("/absensi/me/99999", headers=user_token)
-        
+    def test_check_out_without_active_session_fails(self, client: TestClient, auth_headers_user: dict):
+        response = client.post(f"{API_PREFIX}/check-out", headers=auth_headers_user)
+
         assert response.status_code == 404
+        payload = response.json()
+        assert payload["success"] is False
+        assert "Tidak ada sesi check-in aktif" in payload["message"]
 
+    def test_multi_shift_same_day_allowed_after_checkout(self, client: TestClient, auth_headers_user: dict):
+        check_in_1 = client.post(
+            f"{API_PREFIX}/check-in",
+            json={"status": "HADIR"},
+            headers=auth_headers_user,
+        )
+        assert check_in_1.status_code == 201
 
-class TestGetAllAbsensiAdmin:
-    """Test GET /absensi/ - Admin views all absensi"""
-    
-    @pytest.mark.asyncio
-    async def test_get_all_absensi_as_admin(self, client: AsyncClient, admin_token: dict, db_with_data):
-        """Test admin can view all absensi"""
-        response = await client.get("/absensi/", headers=admin_token)
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert isinstance(data["data"], list)
-    
-    @pytest.mark.asyncio
-    async def test_get_all_absensi_pagination(self, client: AsyncClient, admin_token: dict, db_with_data):
-        """Test pagination for admin"""
-        response = await client.get("/absensi/?skip=0&limit=10", headers=admin_token)
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data["data"], list)
-    
-    @pytest.mark.asyncio
-    async def test_get_all_absensi_requires_admin(self, client: AsyncClient, user_token: dict):
-        """Test regular user cannot access admin endpoint"""
-        response = await client.get("/absensi/", headers=user_token)
-        
+        check_out_1 = client.post(f"{API_PREFIX}/check-out", headers=auth_headers_user)
+        assert check_out_1.status_code == 200
+
+        check_in_2 = client.post(
+            f"{API_PREFIX}/check-in",
+            json={"status": "HADIR"},
+            headers=auth_headers_user,
+        )
+        assert check_in_2.status_code == 201
+
+        history = client.get(f"{API_PREFIX}/history", headers=auth_headers_user)
+        assert history.status_code == 200
+        history_payload = history.json()
+        assert history_payload["success"] is True
+        assert len(history_payload["data"]["items"]) >= 2
+
+        today = client.get(f"{API_PREFIX}/today", headers=auth_headers_user)
+        assert today.status_code == 200
+        today_payload = today.json()["data"]
+        assert today_payload["has_checked_in"] is True
+        assert today_payload["can_check_out"] is True
+        assert today_payload["can_check_in"] is False
+        assert today_payload["completed_today"] is False
+
+    def test_today_completed_state_allows_check_in_again(self, client: TestClient, auth_headers_user: dict):
+        check_in = client.post(
+            f"{API_PREFIX}/check-in",
+            json={"status": "HADIR"},
+            headers=auth_headers_user,
+        )
+        assert check_in.status_code == 201
+
+        check_out = client.post(f"{API_PREFIX}/check-out", headers=auth_headers_user)
+        assert check_out.status_code == 200
+
+        today = client.get(f"{API_PREFIX}/today", headers=auth_headers_user)
+        assert today.status_code == 200
+
+        data = today.json()["data"]
+        assert data["has_checked_in"] is True
+        assert data["can_check_out"] is False
+        assert data["can_check_in"] is True
+        assert data["completed_today"] is True
+        assert data["absensi"]["jam_keluar"] is not None
+
+    def test_check_in_status_izin_requires_keterangan(self, client: TestClient, auth_headers_user: dict):
+        response = client.post(
+            f"{API_PREFIX}/check-in",
+            json={"status": "IZIN"},
+            headers=auth_headers_user,
+        )
+
+        assert response.status_code == 422
+        payload = response.json()
+        assert payload["success"] is False
+        assert payload["message"] == "Validation error"
+
+    def test_check_in_requires_auth(self, client: TestClient):
+        response = client.post(f"{API_PREFIX}/check-in", json={"status": "HADIR"})
         assert response.status_code == 403
 
 
-class TestGetAbsensiByIdAdmin:
-    """Test GET /absensi/{id} - Admin views absensi by ID"""
-    
-    @pytest.mark.asyncio
-    async def test_get_absensi_by_id_as_admin(self, client: AsyncClient, admin_token: dict, user_token: dict, db_with_data):
-        """Test admin can view any absensi by ID"""
-        # Create absensi as user
-        absensi_data = {
-            "id_lokasi": "LOK001",
-            "uid": "UID123",
-            "keterangan": "Hadir"
-        }
-        create_response = await client.post("/absensi/create", json=absensi_data, headers=user_token)
-        created_id = create_response.json()["data"]["id"]
-        
-        # Admin gets it
-        response = await client.get(f"/absensi/{created_id}", headers=admin_token)
-        
+class TestAbsensiAdminFlow:
+    """Admin CRUD tests for absensi"""
+
+    def test_admin_get_all_absensi(self, client: TestClient, auth_headers_admin: dict, auth_headers_user: dict):
+        create = client.post(
+            f"{API_PREFIX}/check-in",
+            json={"status": "HADIR"},
+            headers=auth_headers_user,
+        )
+        assert create.status_code == 201
+
+        response = client.get(f"{API_PREFIX}/", headers=auth_headers_admin)
         assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert data["data"]["id"] == created_id
-    
-    @pytest.mark.asyncio
-    async def test_get_absensi_by_id_requires_admin(self, client: AsyncClient, user_token: dict, db_with_data):
-        """Test regular user cannot access admin endpoint"""
-        response = await client.get("/absensi/1", headers=user_token)
-        
-        assert response.status_code == 403
+        payload = response.json()
+        assert payload["success"] is True
+        assert "items" in payload["data"]
+        assert payload["data"]["total"] >= 1
 
+    def test_admin_get_absensi_by_id(self, client: TestClient, auth_headers_admin: dict, auth_headers_user: dict):
+        create = client.post(
+            f"{API_PREFIX}/check-in",
+            json={"status": "HADIR"},
+            headers=auth_headers_user,
+        )
+        assert create.status_code == 201
+        absensi_id = create.json()["data"]["id"]
 
-class TestUpdateAbsensiAdmin:
-    """Test PUT /absensi/{id} - Admin updates absensi"""
-    
-    @pytest.mark.asyncio
-    async def test_update_absensi_as_admin(self, client: AsyncClient, admin_token: dict, user_token: dict, db_with_data):
-        """Test admin can update any absensi"""
-        # Create absensi as user
-        absensi_data = {
-            "id_lokasi": "LOK001",
-            "uid": "UID123",
-            "keterangan": "Hadir"
-        }
-        create_response = await client.post("/absensi/create", json=absensi_data, headers=user_token)
-        created_id = create_response.json()["data"]["id"]
-        
-        # Admin updates it
-        update_data = {
-            "keterangan": "Hadir dengan izin terlambat"
-        }
-        response = await client.put(f"/absensi/{created_id}", json=update_data, headers=admin_token)
-        
+        response = client.get(f"{API_PREFIX}/{absensi_id}", headers=auth_headers_admin)
         assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert data["data"]["keterangan"] == "Hadir dengan izin terlambat"
-    
-    @pytest.mark.asyncio
-    async def test_update_absensi_nonexistent(self, client: AsyncClient, admin_token: dict, db_with_data):
-        """Test update nonexistent absensi returns 404"""
-        update_data = {"keterangan": "Updated"}
-        
-        response = await client.put("/absensi/99999", json=update_data, headers=admin_token)
-        
-        assert response.status_code == 404
-    
-    @pytest.mark.asyncio
-    async def test_update_absensi_requires_admin(self, client: AsyncClient, user_token: dict, db_with_data):
-        """Test regular user cannot update absensi"""
-        update_data = {"keterangan": "Updated"}
-        
-        response = await client.put("/absensi/1", json=update_data, headers=user_token)
-        
-        assert response.status_code == 403
+        payload = response.json()
+        assert payload["success"] is True
+        assert payload["data"]["id"] == absensi_id
 
+    def test_admin_update_absensi(self, client: TestClient, auth_headers_admin: dict, auth_headers_user: dict):
+        create = client.post(
+            f"{API_PREFIX}/check-in",
+            json={"status": "HADIR"},
+            headers=auth_headers_user,
+        )
+        assert create.status_code == 201
+        absensi_id = create.json()["data"]["id"]
 
-class TestDeleteAbsensiAdmin:
-    """Test DELETE /absensi/{id} - Admin deletes absensi"""
-    
-    @pytest.mark.asyncio
-    async def test_delete_absensi_as_admin(self, client: AsyncClient, admin_token: dict, user_token: dict, db_with_data):
-        """Test admin can delete any absensi"""
-        # Create absensi as user
-        absensi_data = {
-            "id_lokasi": "LOK001",
-            "uid": "UID123",
-            "keterangan": "Hadir"
-        }
-        create_response = await client.post("/absensi/create", json=absensi_data, headers=user_token)
-        created_id = create_response.json()["data"]["id"]
-        
-        # Admin deletes it
-        response = await client.delete(f"/absensi/{created_id}", headers=admin_token)
-        
+        response = client.put(
+            f"{API_PREFIX}/{absensi_id}",
+            json={"keterangan": "Updated by admin"},
+            headers=auth_headers_admin,
+        )
         assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-    
-    @pytest.mark.asyncio
-    async def test_delete_absensi_nonexistent(self, client: AsyncClient, admin_token: dict, db_with_data):
-        """Test delete nonexistent absensi returns 404"""
-        response = await client.delete("/absensi/99999", headers=admin_token)
-        
-        assert response.status_code == 404
-    
-    @pytest.mark.asyncio
-    async def test_delete_absensi_requires_admin(self, client: AsyncClient, user_token: dict, db_with_data):
-        """Test regular user cannot delete absensi"""
-        response = await client.delete("/absensi/1", headers=user_token)
-        
-        assert response.status_code == 403
+        payload = response.json()
+        assert payload["success"] is True
+        assert payload["data"]["keterangan"] == "Updated by admin"
+
+    def test_admin_delete_absensi(self, client: TestClient, auth_headers_admin: dict, auth_headers_user: dict):
+        create = client.post(
+            f"{API_PREFIX}/check-in",
+            json={"status": "HADIR"},
+            headers=auth_headers_user,
+        )
+        assert create.status_code == 201
+        absensi_id = create.json()["data"]["id"]
+
+        response = client.delete(f"{API_PREFIX}/{absensi_id}", headers=auth_headers_admin)
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["success"] is True
+        assert payload["message"] == "Absensi deleted successfully"
