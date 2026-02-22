@@ -35,13 +35,17 @@ const buildMenuItems = (menuGuard = {}) => {
   // --- Admin management menus (only for is_admin) ---
   if (isAdmin) {
     items.push(
-      { path: '/users',           label: 'Users',           icon: '👥',  divider: true },
+      { path: '/users',           label: 'Users',           icon: '👥', divider: true },
       { path: '/roles',           label: 'Roles',           icon: '🔐' },
       { path: '/permissions',     label: 'Permissions',     icon: '🔑' },
       { path: '/unit',            label: 'Unit',            icon: '🏢' },
       { path: '/pegawai',         label: 'Pegawai',         icon: '👨‍💼' },
       { path: '/shift-kelompok',  label: 'Shift Kelompok',  icon: '🔄' },
-      { path: '/shift-aturan',     label: 'Shift Aturan',     icon: '📋' },
+      { path: '/shift-aturan',    label: 'Shift Aturan',    icon: '📋' },
+      { path: '/shift-pegawai',   label: 'Shift Pegawai',   icon: '👤' },
+      { path: '/roster-upload',   label: 'Roster Upload',   icon: '📄' },
+      { path: '/roster-shift',    label: 'Roster Shift',    icon: '🗓️' },
+      { path: '/penilaian-shift', label: 'Penilaian Shift', icon: '⚖️' },
     );
   }
 
@@ -59,12 +63,15 @@ const Layout = ({ children }) => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/login-admin');
   };
 
   const menuItems = buildMenuItems(user?.menu_guard);
-
   const isActive = (path) => location.pathname === path;
+
+  const isAdmin = !!user?.menu_guard?.is_admin;
+  const isKaUnit = !!user?.menu_guard?.is_kepala_unit;
+  const dashboardTitle = isAdmin ? 'Admin Panel' : isKaUnit ? 'Kepala Unit' : 'Dashboard';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -81,7 +88,7 @@ const Layout = ({ children }) => {
           </button>
           <div>
             <h1 className="text-sm font-bold text-primary-600">RSUD Sulfat</h1>
-            <p className="text-xs text-gray-500">Admin Dashboard</p>
+            <p className="text-xs text-gray-500">{dashboardTitle}</p>
           </div>
         </div>
       </div>
@@ -95,7 +102,7 @@ const Layout = ({ children }) => {
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed top-0 left-0 w-64 h-full bg-white shadow-lg z-50 transform transition-transform duration-300 ease-in-out ${
+      <aside className={`fixed top-0 left-0 w-64 h-full bg-white shadow-lg z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       } lg:translate-x-0`}>
         {/* Close button for mobile */}
@@ -112,10 +119,10 @@ const Layout = ({ children }) => {
 
         <div className="p-6 border-b border-gray-200">
           <h1 className="text-xl font-bold text-primary-600">RSUD Sulfat</h1>
-          <p className="text-sm text-gray-500">Admin Dashboard</p>
+          <p className="text-sm text-gray-500">{dashboardTitle}</p>
         </div>
 
-        <nav className="p-4">
+        <nav className="p-4 flex-1 overflow-y-auto">
           <ul className="space-y-1">
             {menuItems.map((item) => (
               <li key={item.path}>
@@ -139,7 +146,7 @@ const Layout = ({ children }) => {
           </ul>
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
@@ -154,10 +161,11 @@ const Layout = ({ children }) => {
             </div>
             <button
               onClick={handleLogout}
-              className="text-gray-500 hover:text-red-600 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 border border-red-200 transition-colors"
               title="Logout"
             >
-              🚪
+              <span>🚪</span>
+              <span>Logout</span>
             </button>
           </div>
         </div>

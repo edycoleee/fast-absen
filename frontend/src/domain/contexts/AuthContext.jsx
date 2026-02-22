@@ -40,6 +40,27 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   /**
+   * Sync React state when apiClient interceptor updates localStorage after token refresh.
+   * This ensures menu_guard, roles, permissions in React state stay up-to-date
+   * without requiring a full logout/login.
+   */
+  useEffect(() => {
+    const handleUserRefreshed = (event) => {
+      try {
+        const refreshedData = event.detail || LocalStorage.getItem(STORAGE_KEYS.USER);
+        if (refreshedData) {
+          setUser(User(refreshedData));
+        }
+      } catch (err) {
+        console.error('Error syncing refreshed user state:', err);
+      }
+    };
+
+    window.addEventListener('auth:user-refreshed', handleUserRefreshed);
+    return () => window.removeEventListener('auth:user-refreshed', handleUserRefreshed);
+  }, []);
+
+  /**
    * Login user
    */
   const login = async (username, password) => {

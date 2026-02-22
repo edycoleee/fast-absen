@@ -20,6 +20,10 @@ import {
   KpiUnitRolePage,
   ShiftKelompokPage,
   ShiftKelompokAturanPage,
+  PegawaiShiftKelompokPage,
+  RosterUploadBatchPage,
+  RosterShiftPage,
+  PenilaianShiftAbsensiPage,
 } from './presentation/pages'
 import { useAuth, useSessionHeartbeat } from './domain/hooks'
 
@@ -75,6 +79,10 @@ function App() {
             <Route path="pegawai" element={<EmployeesPage />} />
             <Route path="shift-kelompok" element={<ShiftKelompokPage />} />
             <Route path="shift-aturan" element={<ShiftKelompokAturanPage />} />
+            <Route path="shift-pegawai" element={<PegawaiShiftKelompokPage />} />
+            <Route path="roster-upload" element={<RosterUploadBatchPage />} />
+            <Route path="roster-shift" element={<RosterShiftPage />} />
+            <Route path="penilaian-shift" element={<PenilaianShiftAbsensiPage />} />
             <Route path="absensi" element={<AttendanceMonitorPage />} />
             <Route path="sessions-monitor" element={<SessionMonitorPage />} />
             <Route path="approval" element={<ApprovalPage />} />

@@ -69,6 +69,9 @@ apiClient.interceptors.response.use(
           };
           LocalStorage.setItem(STORAGE_KEYS.USER, refreshedUser);
 
+          // Notify AuthContext to sync React state from updated localStorage
+          window.dispatchEvent(new CustomEvent('auth:user-refreshed', { detail: refreshedUser }));
+
           // Retry original request with new token
           originalRequest.headers.Authorization = `Bearer ${data.data.access_token}`;
           return apiClient(originalRequest);
@@ -81,7 +84,7 @@ apiClient.interceptors.response.use(
         
         // Redirect to login if not already there
         if (!window.location.pathname.includes('/login')) {
-          window.location.href = '/login';
+          window.location.href = '/login-admin';
         }
         return Promise.reject(refreshError);
       }

@@ -14,4 +14,8 @@ export {
   KpiUnitRolePage,
   ShiftKelompokPage,
   ShiftKelompokAturanPage,
+  PegawaiShiftKelompokPage,
+  RosterUploadBatchPage,
+  RosterShiftPage,
+  PenilaianShiftAbsensiPage,
 } from './admin';

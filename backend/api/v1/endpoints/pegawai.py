@@ -3,15 +3,19 @@ Pegawai Endpoints
 Admin-only CRUD operations for employees
 """
 from typing import List, Optional
-from fastapi import APIRouter, Depends, status, UploadFile, File, Form
+from io import BytesIO
+from datetime import date as date_type
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
 from config.database import get_db
 from schemas.pegawai import PegawaiCreate, PegawaiUpdate, PegawaiResponse
 from services.pegawai_service import PegawaiService
 from utils.response import success_response
 from utils.dependencies import require_permission
 from utils.permission_registry import PermissionKeys
-from datetime import date
 
 
 router = APIRouter(prefix="/pegawai", tags=["Pegawai"])
@@ -88,9 +92,8 @@ async def create_pegawai(
     tgl_lahir = None
     if tanggal_lahir:
         try:
-            tgl_lahir = date.fromisoformat(tanggal_lahir)
+            tgl_lahir = date_type.fromisoformat(tanggal_lahir)
         except ValueError:
-            from fastapi import HTTPException
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid date format. Use YYYY-MM-DD"
@@ -115,6 +118,170 @@ async def create_pegawai(
     return success_response(
         message="Pegawai created successfully",
         data=pegawai.model_dump()
+    )
+
+
+@router.get("/template/download", dependencies=[Depends(require_permission(PermissionKeys.PEGAWAI_CREATE))])
+async def download_pegawai_template():
+    """
+    Download Excel template for bulk pegawai import.
+    Returns .xlsx file with styled header row and one example row.
+    """
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Pegawai"
+
+    columns = [
+        ("id_pegawai *",               15),
+        ("nip",                         18),
+        ("nama",                         28),
+        ("jenis_kelamin (L/P)",          20),
+        ("tempat_lahir",                 20),
+        ("tanggal_lahir (YYYY-MM-DD)",  25),
+        ("alamat",                       35),
+        ("id_unit",                      10),
+        ("kepala_id_unit",               15),
+        ("status (AKTIF/TIDAK_AKTIF)",   25),
+    ]
+
+    header_font  = Font(bold=True, color="FFFFFF")
+    header_fill  = PatternFill("solid", fgColor="2563EB")
+    header_align = Alignment(horizontal="center", vertical="center")
+
+    for col, (header, width) in enumerate(columns, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font  = header_font
+        cell.fill  = header_fill
+        cell.alignment = header_align
+        ws.column_dimensions[cell.column_letter].width = width
+
+    ws.row_dimensions[1].height = 22
+
+    # Example data row
+    example = [
+        "EMP001", "199001012020011001", "Budi Santoso", "L",
+        "Surabaya", "1990-01-01", "Jl. Merdeka No. 1", "1", "", "AKTIF",
+    ]
+    example_fill  = PatternFill("solid", fgColor="EFF6FF")
+    for col, val in enumerate(example, 1):
+        cell = ws.cell(row=2, column=col, value=val)
+        cell.fill = example_fill
+
+    # Freeze header row
+    ws.freeze_panes = "A2"
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=template_import_pegawai.xlsx"},
+    )
+
+
+@router.post("/import", response_model=dict, dependencies=[Depends(require_permission(PermissionKeys.PEGAWAI_CREATE))])
+async def import_pegawai(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Bulk import pegawai from Excel (.xlsx) file.
+    Returns import summary: success count + per-row error details.
+    """
+    fname = (file.filename or "").lower()
+    if not (fname.endswith(".xlsx") or fname.endswith(".xls")):
+        raise HTTPException(status_code=400, detail="File harus berformat Excel (.xlsx atau .xls)")
+
+    content = await file.read()
+    try:
+        wb = openpyxl.load_workbook(BytesIO(content), read_only=True, data_only=True)
+    except Exception:
+        raise HTTPException(status_code=400, detail="File Excel tidak dapat dibaca. Pastikan format valid.")
+
+    ws  = wb.active
+    rows = list(ws.iter_rows(values_only=True))
+
+    if len(rows) < 2:
+        raise HTTPException(status_code=400, detail="File tidak memiliki data (minimal 1 baris data setelah header).")
+
+    service = PegawaiService(db)
+    ok, errors = 0, []
+
+    def cell_str(val):
+        """Normalise cell value to clean string or None."""
+        if val is None:
+            return None
+        s = str(val).strip()
+        return s if s and s.lower() != "none" else None
+
+    for row_idx, row in enumerate(rows[1:], start=2):
+        # Skip completely empty rows
+        if not any(row):
+            continue
+
+        id_pegawai = cell_str(row[0] if len(row) > 0 else None)
+        if not id_pegawai:
+            errors.append({"row": row_idx, "message": "id_pegawai wajib diisi"})
+            continue
+
+        try:
+            # tanggal_lahir
+            tanggal_lahir = None
+            raw_tgl = cell_str(row[5] if len(row) > 5 else None)
+            if raw_tgl:
+                try:
+                    parts = raw_tgl.split("-")
+                    tanggal_lahir = date_type(int(parts[0]), int(parts[1]), int(parts[2]))
+                except Exception:
+                    errors.append({"row": row_idx, "id_pegawai": id_pegawai,
+                                   "message": f"Format tanggal_lahir tidak valid: '{raw_tgl}'. Gunakan YYYY-MM-DD"})
+                    continue
+
+            # id_unit / kepala_id_unit — allow blank
+            def to_int_or_none(v):
+                s = cell_str(v)
+                if not s:
+                    return None
+                try:
+                    return int(float(s))
+                except ValueError:
+                    return None
+
+            jk = cell_str(row[3] if len(row) > 3 else None)
+            if jk:
+                jk = jk.upper()
+                if jk not in ("L", "P"):
+                    errors.append({"row": row_idx, "id_pegawai": id_pegawai,
+                                   "message": f"jenis_kelamin harus L atau P, dapat: '{jk}'"})
+                    continue
+
+            pegawai_data = PegawaiCreate(
+                id_pegawai     = id_pegawai,
+                nip            = cell_str(row[1] if len(row) > 1 else None),
+                nama           = cell_str(row[2] if len(row) > 2 else None),
+                jenis_kelamin  = jk,
+                tempat_lahir   = cell_str(row[4] if len(row) > 4 else None),
+                tanggal_lahir  = tanggal_lahir,
+                alamat         = cell_str(row[6] if len(row) > 6 else None),
+                id_unit        = to_int_or_none(row[7] if len(row) > 7 else None),
+                kepala_id_unit = to_int_or_none(row[8] if len(row) > 8 else None),
+                status         = (cell_str(row[9] if len(row) > 9 else None) or "AKTIF").upper(),
+            )
+
+            await service.create(pegawai_data, foto=None)
+            ok += 1
+
+        except HTTPException as exc:
+            errors.append({"row": row_idx, "id_pegawai": id_pegawai, "message": exc.detail})
+        except Exception as exc:
+            errors.append({"row": row_idx, "id_pegawai": id_pegawai, "message": str(exc)})
+
+    total = len(rows) - 1
+    return success_response(
+        message=f"Import selesai: {ok} berhasil, {len(errors)} gagal dari {total} baris data",
+        data={"success": ok, "errors": errors, "total": total},
     )
 
 
@@ -173,9 +340,8 @@ async def update_pegawai(
     tgl_lahir = None
     if tanggal_lahir:
         try:
-            tgl_lahir = date.fromisoformat(tanggal_lahir)
+            tgl_lahir = date_type.fromisoformat(tanggal_lahir)
         except ValueError:
-            from fastapi import HTTPException
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid date format. Use YYYY-MM-DD"

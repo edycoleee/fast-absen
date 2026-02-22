@@ -10,3 +10,7 @@ export { default as ApprovalPage } from './ApprovalPage';
 export { default as KpiUnitRolePage } from './KpiUnitRolePage';
 export { default as ShiftKelompokPage } from './ShiftKelompokPage';
 export { default as ShiftKelompokAturanPage } from './ShiftKelompokAturanPage';
+export { default as PegawaiShiftKelompokPage } from './PegawaiShiftKelompokPage';
+export { default as RosterUploadBatchPage } from './RosterUploadBatchPage';
+export { default as RosterShiftPage } from './RosterShiftPage';
+export { default as PenilaianShiftAbsensiPage } from './PenilaianShiftAbsensiPage';

@@ -35,6 +35,15 @@ const canAccessRoute = (pathname, menuGuard = {}) => {
     return isEmpty || isAdmin;
   }
 
+  // Shift / roster / penilaian management (admin only)
+  if (
+    pathname.startsWith('/shift-') ||
+    pathname.startsWith('/roster-') ||
+    pathname.startsWith('/penilaian-shift')
+  ) {
+    return isEmpty || isAdmin;
+  }
+
   // Unknown routes: allow (App.jsx fallback will handle 404)
   return true;
 };

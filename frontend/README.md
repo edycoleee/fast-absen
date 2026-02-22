@@ -1,257 +1,317 @@
-# Frontend Admin Dashboard - Sistem Absensi RSUD Sulfat
+# Frontend Admin Dashboard — Sistem Absensi RSUD Sulfat
 
-Admin dashboard untuk mengelola sistem absensi pegawai RSUD Sulfat.
+Admin dashboard SPA berbasis React untuk mengelola sistem absensi pegawai RSUD Sulfat.
+
+---
 
 ## Tech Stack
 
-- **React 18.3.1** - Library UI
-- **Vite 6.0.11** - Build tool (super fast)
-- **@vitejs/plugin-react-swc 3.7.2** - SWC compiler untuk kompilasi cepat
-- **React Router DOM 6.22.0** - Routing SPA
-- **Axios 1.6.7** - HTTP client untuk API calls
-- **Tailwind CSS 3.4.1** - Utility-first CSS framework
+| Paket | Versi | Keterangan |
+|---|---|---|
+| React | 18.3.1 | Library UI |
+| Vite | 6.4.1 | Build tool + dev server |
+| @vitejs/plugin-react-swc | 3.7.2 | SWC compiler (hot reload cepat) |
+| React Router DOM | 6.22.0 | Client-side routing SPA |
+| Axios | 1.6.7 | HTTP client + interceptors |
+| Tailwind CSS | 3.4.1 | Utility-first CSS framework |
 
-## Fitur
+---
 
-✅ **Authentication**
-- Login dengan JWT token
-- Protected routes
-- Auto redirect ke login jika belum login
-- Auto logout jika token expired
-
-✅ **Dashboard**
-- Overview statistik sistem
-- Quick actions
-- User info display
-
-✅ **Manajemen Data**
-- **Users** - CRUD users dengan pagination
-- **Roles** - Kelola roles (coming soon)
-- **Permissions** - Kelola permissions (coming soon)
-- **Pegawai** - CRUD pegawai dengan foto, search, pagination
-- **Absensi** - Monitor absensi pegawai realtime
-- **Login Absensi** - Track aktivitas login (coming soon)
-
-✅ **UI/UX**
-- Responsive design
-- Modern interface dengan Tailwind CSS
-- Sidebar navigation
-- Loading states
-- Error handling
-- Pagination
-
-## Struktur Folder
+## Arsitektur: Clean Architecture (Layered)
 
 ```
-frontend/
-├── public/              # Static assets
-├── src/
-│   ├── components/      # Reusable components
-│   │   ├── Layout.jsx   # Main layout dengan sidebar
-│   │   └── PrivateRoute.jsx  # Protected route wrapper
-│   ├── pages/          # Page components
-│   │   ├── Login.jsx
-│   │   ├── Dashboard.jsx
-│   │   ├── Users.jsx
-│   │   ├── Roles.jsx
-│   │   ├── Permissions.jsx
-│   │   ├── Pegawai.jsx
-│   │   ├── Absensi.jsx
-│   │   └── LoginAbsensi.jsx
-│   ├── services/       # API services
-│   │   ├── api.js      # Axios instance + interceptors
-│   │   └── index.js    # Service functions
-│   ├── utils/          # Utilities
-│   │   └── AuthContext.jsx  # Authentication context
-│   ├── App.jsx         # Main app component + routing
-│   ├── main.jsx        # Entry point
-│   └── index.css       # Global styles + Tailwind
-├── .env                # Environment variables
-├── index.html
-├── package.json
-├── vite.config.js      # Vite configuration
-├── tailwind.config.js  # Tailwind configuration
-└── postcss.config.js   # PostCSS configuration
+src/
+├── core/                        # Layer 1 — Domain entities & konstanta
+│   ├── constants/
+│   │   ├── config.js            # API_CONFIG, STORAGE_KEYS, dll
+│   │   ├── routes.js            # Route path constants
+│   │   └── index.js
+│   ├── entities/                # Plain object factories (User, Pegawai, dll)
+│   │   ├── User.js
+│   │   ├── Pegawai.js
+│   │   ├── Role.js
+│   │   ├── Permission.js
+│   │   ├── Absensi.js
+│   │   └── index.js
+│   └── index.js
+│
+├── data/                        # Layer 2 — Akses data (API + storage)
+│   ├── api/
+│   │   └── client.js            # Axios instance + JWT interceptors + auto-refresh
+│   ├── repositories/            # Satu file per resource, wraps apiClient
+│   │   ├── AuthRepository.js
+│   │   ├── UserRepository.js            # + downloadTemplate, importExcel
+│   │   ├── PegawaiRepository.js         # + downloadTemplate, importExcel
+│   │   ├── RoleRepository.js
+│   │   ├── PermissionRepository.js
+│   │   ├── UnitRepository.js
+│   │   ├── AbsensiRepository.js
+│   │   ├── SessionsRepository.js
+│   │   ├── ApprovalRepository.js
+│   │   ├── StatsRepository.js
+│   │   ├── ShiftKelompokRepository.js
+│   │   ├── ShiftKelompokAturanRepository.js
+│   │   ├── PegawaiShiftKelompokRepository.js  # + downloadTemplate, importExcel
+│   │   ├── RosterUploadBatchRepository.js
+│   │   ├── RosterShiftRepository.js
+│   │   ├── PenilaianShiftAbsensiRepository.js
+│   │   └── index.js
+│   ├── storage/
+│   │   └── LocalStorage.js      # Wrapper aman untuk localStorage
+│   └── index.js
+│
+├── domain/                      # Layer 3 — Business logic / state management
+│   ├── contexts/
+│   │   └── AuthContext.jsx      # AuthProvider: user, login, logout + token refresh sync
+│   ├── hooks/                   # Custom hooks per domain resource
+│   │   ├── useUsers.js
+│   │   ├── usePegawai.js
+│   │   ├── useRoles.js
+│   │   ├── useAbsensi.js
+│   │   ├── useUnits.js
+│   │   ├── useShiftKelompok.js
+│   │   ├── useShiftKelompokAturan.js
+│   │   ├── usePegawaiShiftKelompok.js
+│   │   ├── useRosterUploadBatch.js
+│   │   ├── useRosterShift.js
+│   │   ├── usePenilaianShiftAbsensi.js
+│   │   ├── useSessionHeartbeat.js
+│   │   └── index.js
+│   └── index.js
+│
+├── presentation/                # Layer 4 — UI (React components + pages)
+│   ├── components/
+│   │   ├── layout/
+│   │   │   └── Layout.jsx       # Sidebar + header + logout (menu_guard-driven)
+│   │   └── common/
+│   │       ├── PrivateRoute.jsx           # Guard admin routes (JWT + is_admin)
+│   │       ├── AttendancePrivateRoute.jsx # Guard absensi-dashboard
+│   │       ├── PegawaiSearchInput.jsx     # Reusable async search + select pegawai
+│   │       └── UnitSearchInput.jsx        # Reusable async search + select unit
+│   └── pages/
+│       ├── auth/
+│       │   ├── AdminLoginPage.jsx         # /login-admin
+│       │   └── AttendanceLoginPage.jsx    # /login-absensi
+│       ├── public/
+│       │   └── LandingPage.jsx            # / (pilih portal)
+│       ├── attendance/
+│       │   └── AttendanceDashboardPage.jsx # /absensi-dashboard (pegawai biasa)
+│       └── admin/
+│           ├── AdminDashboardPage.jsx     # /dashboard (3-varian: admin, ka-unit, user)
+│           ├── UsersPage.jsx              # /users + Excel import
+│           ├── RolesPage.jsx              # /roles
+│           ├── PermissionsPage.jsx        # /permissions
+│           ├── UnitsPage.jsx              # /unit
+│           ├── EmployeesPage.jsx          # /pegawai + Excel import
+│           ├── AttendanceMonitorPage.jsx  # /absensi
+│           ├── SessionMonitorPage.jsx     # /sessions-monitor
+│           ├── ApprovalPage.jsx           # /approval
+│           ├── KpiUnitRolePage.jsx        # /rekap-unit-role
+│           ├── ShiftKelompokPage.jsx      # /shift-kelompok
+│           ├── ShiftKelompokAturanPage.jsx # /shift-aturan
+│           ├── PegawaiShiftKelompokPage.jsx # /shift-pegawai + Excel import
+│           ├── RosterUploadBatchPage.jsx  # /roster-upload
+│           ├── RosterShiftPage.jsx        # /roster-shift
+│           └── PenilaianShiftAbsensiPage.jsx # /penilaian-shift
+│
+├── utils/
+│   └── errorHandler.js          # formatErrorMessage, formatErrorForAlert
+│
+├── App.jsx                      # Routing utama + SessionHeartbeatRunner
+├── main.jsx                     # Entry point
+└── index.css                    # Global styles + Tailwind custom components
 ```
 
-## Installation
+---
 
-```bash
-cd /home/sultan/fast-absen/frontend
-npm install
+## Routing
+
+### Public
+| Path | Komponen | Keterangan |
+|---|---|---|
+| `/` | `LandingPage` | Halaman pilih portal (Admin / Pegawai) |
+| `/login-admin` | `AdminLoginPage` | Login admin / ka-unit |
+| `/login-absensi` | `AttendanceLoginPage` | Login pegawai (absensi) |
+
+### Absensi (guard: `AttendancePrivateRoute`)
+| Path | Komponen |
+|---|---|
+| `/absensi-dashboard` | `AttendanceDashboardPage` |
+
+### Admin (guard: `PrivateRoute` — wajib JWT valid)
+| Path | Komponen |
+|---|---|
+| `/dashboard` | `AdminDashboardPage` |
+| `/users` | `UsersPage` |
+| `/roles` | `RolesPage` |
+| `/permissions` | `PermissionsPage` |
+| `/unit` | `UnitsPage` |
+| `/pegawai` | `EmployeesPage` |
+| `/shift-kelompok` | `ShiftKelompokPage` |
+| `/shift-aturan` | `ShiftKelompokAturanPage` |
+| `/shift-pegawai` | `PegawaiShiftKelompokPage` |
+| `/roster-upload` | `RosterUploadBatchPage` |
+| `/roster-shift` | `RosterShiftPage` |
+| `/penilaian-shift` | `PenilaianShiftAbsensiPage` |
+| `/absensi` | `AttendanceMonitorPage` |
+| `/sessions-monitor` | `SessionMonitorPage` |
+| `/approval` | `ApprovalPage` |
+| `/rekap-unit-role` | `KpiUnitRolePage` |
+| `*` | `Navigate /` (fallback) |
+
+---
+
+## Auth & menu_guard
+
+### Alur Login
+1. `POST /api/v1/auth/login` → response: `access_token` + cookie `refresh_token` (HTTP-only)
+2. `access_token` disimpan di `localStorage` via `LocalStorage.js`
+3. `AuthContext` menyimpan full `user` object termasuk `menu_guard`, `roles`, `permissions`
+
+### Token Refresh (Otomatis)
+- `client.js` interceptor 401 → `POST /auth/refresh` (cookie) → token baru
+- Setelah refresh, React state di-sync via custom event `auth:user-refreshed`
+- Gagal refresh → clear storage → redirect `/login-admin`
+
+### menu_guard — Sumber Kebenaran Tunggal
+Field `menu_guard` dari backend menentukan seluruh perilaku UI frontend:
+
+| Field | Fungsi |
+|---|---|
+| `is_admin` | Tampilkan menu manajemen data (Users, Roles, Pegawai, dll) |
+| `is_kepala_unit` | Tampilkan panel ka-unit di dashboard |
+| `kepala_unit_scope_id` | ID unit otomatis untuk scope KPI |
+| `menus.*.visible` | Visibilitas tiap item di sidebar |
+| `menus.kpi_unit_role.endpoint` | Endpoint KPI yang dipakai (`/kpi/unit-role` atau `/kpi/unit-role/my-unit`) |
+| `menus.approval.can_decide` | Tampilkan tombol approve/reject di ApprovalPage |
+
+### Dashboard 3-Varian
+`AdminDashboardPage` merender panel berbeda berdasarkan `menu_guard`:
+- **Admin panel** (`is_admin = true`) — statistik sistem, quick links manajemen data
+- **Ka-unit panel** (`is_kepala_unit = true`) — KPI unit, daftar approval pending
+- **User panel** (default) — info user login
+
+---
+
+## Fitur Excel Import / Export
+
+Tiga resource mendukung download template + bulk import dari Excel:
+
+| Halaman | Endpoint Template | Endpoint Import |
+|---|---|---|
+| `/pegawai` | `GET /pegawai/template/download` | `POST /pegawai/import` |
+| `/users` | `GET /users/template/download` | `POST /users/import` |
+| `/shift-pegawai` | `GET /pegawai-shift-kelompok/template/download` | `POST /pegawai-shift-kelompok/import` |
+
+**Pola UI di setiap halaman:**
+- Header 3 tombol: ↓ Template Excel | 📂 Import Excel | + Tambah
+- Modal Import: step guide → file picker → hasil (kartu success/fail/total + tabel error per baris)
+
+---
+
+## Sidebar Menu (Layout.jsx)
+
+Menu dibangun dinamis dari `menu_guard` via `buildMenuItems()`:
+
+**Operational** (semua user yang login):
+- Dashboard (selalu ada sebagai fallback)
+- Rekap Unit/Role (`kpi_unit_role.visible`)
+- Monitoring Absensi (`monitoring_absensi.visible`)
+- Approval (`approval.visible`)
+- Monitor Sesi (`user_sessions.visible`)
+
+**Admin Management** (hanya `is_admin = true`):
+- Users, Roles, Permissions
+- Unit, Pegawai
+- Shift Kelompok, Shift Aturan, Shift Pegawai
+- Roster Upload, Roster Shift
+- Penilaian Shift Absensi
+
+Tombol **Logout**: styled pill merah di bagian bawah sidebar.
+
+---
+
+## Komponen Reusable
+
+| Komponen | Lokasi | Fungsi |
+|---|---|---|
+| `PegawaiSearchInput` | `components/common/` | Async search pegawai dengan debounce |
+| `UnitSearchInput` | `components/common/` | Async search unit |
+| `Layout` | `components/layout/` | Sidebar menu_guard-driven + logout |
+| `PrivateRoute` | `components/common/` | Guard JWT + redirect ke `/login-admin` |
+| `AttendancePrivateRoute` | `components/common/` | Guard attendance dashboard |
+
+### Searchable Combobox (UsersPage)
+Form tambah/edit user menggunakan custom inline combobox untuk memilih `id_pegawai`:
+- Filter real-time by nama/id (max 60 hasil)
+- Tombol ✕ clear
+- Konfirmasi `✓ Terpilih: ID xxx`
+
+---
+
+## Session Heartbeat
+
+`SessionHeartbeatRunner` (mounting di `App.jsx`) memanggil `POST /user-sessions/heartbeat` setiap **5 menit** selama user login aktif, menjaga sesi hidup di backend.
+
+---
+
+## Error Handling
+
+`utils/errorHandler.js` menyediakan:
+- `formatErrorMessage(err, fallback, user)` — ekstrak pesan error dari response backend
+- `formatErrorForAlert(msg)` — format string untuk `alert()` dialog
+
+---
+
+## Environment Variables
+
+File `.env`:
+```env
+VITE_API_BASE_URL=http://192.168.30.21:8000/api/v1
+VITE_APP_TITLE=Admin Dashboard - Sistem Absensi RSUD Sulfat
 ```
+
+---
 
 ## Development
 
 ```bash
+cd /home/sultan/fast-absen/frontend
+npm install
 npm run dev
+# Dev server: http://192.168.30.21:3000
 ```
-
-Server akan berjalan di: **http://192.168.171.15:3000**
 
 ## Build Production
 
 ```bash
 npm run build
+# Output: dist/
 ```
 
-Output akan ada di folder `dist/`
-
-## Preview Production Build
-
-```bash
-npm run preview
-```
-
-## Environment Variables
-
-File `.env`:
-
-```env
-VITE_API_BASE_URL=http://192.168.171.15:8000/api/v1
-VITE_APP_TITLE=Admin Dashboard - Sistem Absensi RSUD Sulfat
-```
-
-## API Integration
-
-Frontend berkomunikasi dengan backend melalui proxy Vite:
-
-**Development:**
-- `/api/*` → `http://192.168.171.15:8000/api/v1/*`
-
-**Services:**
-- `authService` - Login, logout, user info
-- `userService` - CRUD users
-- `pegawaiService` - CRUD pegawai (dengan upload foto)
-- `absensiService` - Read, update, delete absensi
-
-**Axios Interceptors:**
-- Request: Auto-add JWT token ke header `Authorization: Bearer <token>`
-- Response: Auto-redirect ke `/login` jika token expired (401)
+---
 
 ## Default Credentials
-
-Gunakan credentials admin dari backend:
 
 ```
 Username: admin
 Password: admin123
 ```
 
-## Routing
-
-**Public Routes:**
-- `/login` - Login page
-
-**Protected Routes:**
-- `/dashboard` - Dashboard overview
-- `/users` - User management
-- `/roles` - Role management (placeholder)
-- `/permissions` - Permission management (placeholder)
-- `/pegawai` - Employee management
-- `/absensi` - Attendance monitoring
-- `/login-absensi` - Login tracking (placeholder)
-
-## Features Implemented
-
-### ✅ Login Page
-- Form login dengan validation
-- Error handling
-- Loading state
-- Auto redirect ke dashboard setelah login
-
-### ✅ Dashboard
-- Stats cards (placeholder)
-- Welcome card dengan user info
-- Quick actions link
-
-### ✅ Users Page
-- List users dengan pagination
-- Role badge
-- Active/Inactive status
-- Delete functionality
-- Error handling
-
-### ✅ Pegawai Page
-- List pegawai dengan foto
-- Search functionality (nama, NIP, email)
-- Pagination
-- Photo display (optimized dengan backend)
-- Delete functionality
-
-### ✅ Absensi Page
-- List absensi realtime
-- Status badge (hadir, izin, sakit, alpha)
-- Timestamp formatting
-- IP address tracking
-- Refresh button
-
-## Development Notes
-
-**Fast Refresh dengan SWC:**
-- SWC compiler membuat hot reload sangat cepat
-- Perubahan code langsung reflected tanpa full reload
-
-**Vite Dev Server:**
-- Host: `0.0.0.0` (accessible dari network)
-- Port: `3000`
-- Auto proxy `/api` ke backend
-
-**Tailwind CSS:**
-- Utility classes untuk styling cepat
-- Custom components di `index.css` (btn-primary, input-field, card)
-- Custom primary color palette
-
-## Next Steps / Improvements
-
-🔲 **CRUD Operations:**
-- Add modal untuk create/edit user
-- Add modal untuk create/edit pegawai dengan upload foto
-- Implement Roles CRUD
-- Implement Permissions CRUD
-
-🔲 **Features:**
-- Filtering & sorting tables
-- Export data (CSV, PDF)
-- Dashboard dengan real stats dari API
-- Login Absensi page implementation
-- User profile page
-- Change password functionality
-
-🔲 **UI/UX:**
-- Toast notifications (react-hot-toast)
-- Confirmation dialogs (custom modal)
-- Form validation (react-hook-form)
-- Better error messages
-- Empty states illustrations
-
-🔲 **Performance:**
-- Lazy loading pages (React.lazy + Suspense)
-- Infinite scroll untuk tables
-- Image lazy loading
-- Cache API responses (React Query)
+---
 
 ## Troubleshooting
 
-**Error: ECONNREFUSED saat hit API**
-- Pastikan backend running di `http://192.168.171.15:8000`
-- Check `.env` untuk VITE_API_BASE_URL
-- Restart dev server setelah ubah `.env`
+| Gejala | Solusi |
+|---|---|
+| 401 terus-menerus | `localStorage.clear()` lalu login ulang |
+| Menu tidak muncul | Cek `menu_guard` di response login via DevTools → Network |
+| 403 KPI dashboard | Tambahkan permission `penilaian_shift_absensi.read` ke role |
+| Approval 422 | Pastikan `getAssigned(skip, limit)` — bukan object `{skip, limit}` |
+| Redirect ke `/login` 404 | Semua redirect harus ke `/login-admin` |
+| Foto tidak muncul | Cek CORS + `foto_url` dari API response di Network tab |
+| Import Excel gagal | Pastikan kolom sesuai template; kode shift/role harus ada di master data |
 
-**Token expired terus-menerus**
-- Check expiry time di backend JWT settings
-- Clear localStorage: `localStorage.clear()`
+---
 
-**Photos tidak muncul**
-- Check CORS settings di backend
-- Verify foto_url dari API response
-- Check network tab untuk 404 errors
-
-**Vite dev server tidak bisa diakses dari network**
-- Vite sudah config `host: 0.0.0.0`
-- Check firewall settings
-- Verify IP address: `ip addr show`
-
-## License
-
-Internal use - RSUD Sulfat
+*Last updated: 22 Februari 2026*

@@ -3,6 +3,7 @@ import { useUsers } from '../../../domain/hooks';
 import { useAuth } from '../../../domain/hooks';
 import PegawaiRepository from '../../../data/repositories/PegawaiRepository';
 import RoleRepository from '../../../data/repositories/RoleRepository';
+import UserRepository from '../../../data/repositories/UserRepository';
 import { formatErrorMessage, formatErrorForAlert } from '../../../utils/errorHandler';
 
 const Users = () => {
@@ -21,10 +22,16 @@ const Users = () => {
   const [pegawaiOptions, setPegawaiOptions] = useState([]);
   const [pegawaiLoading, setPegawaiLoading] = useState(false);
   const [pegawaiError, setPegawaiError] = useState('');
+  const [pegawaiSearch, setPegawaiSearch] = useState('');
+  const [pegawaiDropdownOpen, setPegawaiDropdownOpen] = useState(false);
   const [roleOptions, setRoleOptions] = useState([]);
   const [rolesLoading, setRolesLoading] = useState(false);
   const [rolesError, setRolesError] = useState('');
   const [pendingRoleNames, setPendingRoleNames] = useState([]);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResult, setImportResult] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create');
   const [editingId, setEditingId] = useState(null);
@@ -115,6 +122,8 @@ const Users = () => {
     setEditingId(null);
     setFormError('');
     setPendingRoleNames([]);
+    setPegawaiSearch('');
+    setPegawaiDropdownOpen(false);
   };
 
   const openCreateModal = () => {
@@ -161,6 +170,30 @@ const Users = () => {
   };
 
   const roleSelection = useMemo(() => new Set(formData.role_ids), [formData.role_ids]);
+
+  // Filter pegawai berdasarkan teks pencarian (nama atau id)
+  const filteredPegawai = useMemo(() => {
+    const q = pegawaiSearch.trim().toLowerCase();
+    const list = q
+      ? pegawaiOptions.filter(
+          (p) =>
+            (p.nama || '').toLowerCase().includes(q) ||
+            String(p.id_pegawai).toLowerCase().includes(q)
+        )
+      : pegawaiOptions;
+    return list.slice(0, 60);
+  }, [pegawaiSearch, pegawaiOptions]);
+
+  // Sinkronkan label tampilan saat mode edit dan pegawaiOptions sudah terisi
+  useEffect(() => {
+    if (!formData.id_pegawai || pegawaiOptions.length === 0) return;
+    const found = pegawaiOptions.find(
+      (p) => String(p.id_pegawai) === String(formData.id_pegawai)
+    );
+    if (found) {
+      setPegawaiSearch(`${found.nama || '-'} (${found.id_pegawai})`);
+    }
+  }, [formData.id_pegawai, pegawaiOptions]);
 
   const buildPayload = () => {
     const payload = {
@@ -231,9 +264,35 @@ const Users = () => {
           <h1 className="text-3xl font-bold text-gray-900">Users</h1>
           <p className="text-gray-600 mt-1">Kelola data pengguna sistem</p>
         </div>
-        <button className="btn-primary" onClick={openCreateModal}>
-          + Tambah User
-        </button>
+        <div className="flex gap-2">
+          <button
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-green-700 hover:bg-green-50 border border-green-300 bg-white"
+            onClick={async () => {
+              try {
+                const blob = await UserRepository.downloadTemplate();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'template_user.xlsx';
+                a.click();
+                URL.revokeObjectURL(url);
+              } catch (err) {
+                alert('Gagal mengunduh template');
+              }
+            }}
+          >
+            ↓ Template Excel
+          </button>
+          <button
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-blue-700 hover:bg-blue-50 border border-blue-300 bg-white"
+            onClick={() => { setImportOpen(true); setImportFile(null); setImportResult(null); }}
+          >
+            📂 Import Excel
+          </button>
+          <button className="btn-primary" onClick={openCreateModal}>
+            + Tambah User
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -342,6 +401,96 @@ const Users = () => {
         )}
       </div>
 
+      {importOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Import User dari Excel</h2>
+              <button onClick={() => setImportOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <ol className="text-sm text-gray-600 space-y-1 list-decimal list-inside bg-gray-50 rounded-lg p-4">
+                <li>Unduh template Excel dengan tombol <strong>↓ Template Excel</strong></li>
+                <li>Isi data sesuai kolom — password default: <code className="bg-gray-200 px-1 rounded">Absen@1234</code></li>
+                <li>Kolom <strong>role_names</strong>: nama role dipisah koma, contoh: <code className="bg-gray-200 px-1 rounded">user</code></li>
+                <li>Pilih file .xlsx lalu klik <strong>Upload &amp; Import</strong></li>
+              </ol>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Pilih File Excel</label>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={e => { setImportFile(e.target.files[0]); setImportResult(null); }}
+                  className="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg px-3 py-2"
+                />
+              </div>
+              {importResult && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <div className="text-2xl font-bold text-green-700">{importResult.data?.success ?? 0}</div>
+                      <div className="text-xs text-green-600">Berhasil</div>
+                    </div>
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                      <div className="text-2xl font-bold text-red-700">{importResult.data?.errors?.length ?? 0}</div>
+                      <div className="text-xs text-red-600">Gagal</div>
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="text-2xl font-bold text-blue-700">{importResult.data?.total ?? 0}</div>
+                      <div className="text-xs text-blue-600">Total</div>
+                    </div>
+                  </div>
+                  {importResult.data?.errors?.length > 0 && (
+                    <div className="max-h-48 overflow-y-auto border border-red-200 rounded-lg">
+                      <table className="w-full text-xs">
+                        <thead className="bg-red-50 sticky top-0">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-red-700">Baris</th>
+                            <th className="px-3 py-2 text-left text-red-700">Username</th>
+                            <th className="px-3 py-2 text-left text-red-700">Keterangan</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-red-100">
+                          {importResult.data.errors.map((e, i) => (
+                            <tr key={i}>
+                              <td className="px-3 py-1.5 text-gray-500">{e.row}</td>
+                              <td className="px-3 py-1.5 text-gray-700">{e.username || '-'}</td>
+                              <td className="px-3 py-1.5 text-red-600">{e.error}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button onClick={() => setImportOpen(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50">Tutup</button>
+              <button
+                disabled={!importFile || importLoading}
+                onClick={async () => {
+                  if (!importFile) return;
+                  setImportLoading(true);
+                  try {
+                    const result = await UserRepository.importExcel(importFile);
+                    setImportResult(result);
+                    fetchUsers(page, 10);
+                  } catch (err) {
+                    alert(formatErrorForAlert(formatErrorMessage(err, 'Gagal import', user)));
+                  } finally {
+                    setImportLoading(false);
+                  }
+                }}
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {importLoading ? 'Mengimport...' : 'Upload & Import'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 px-4 py-6">
           <div className="mx-auto w-full max-w-xl rounded-lg bg-white p-6 shadow-xl max-h-[calc(100vh-3rem)] overflow-y-auto">
@@ -389,19 +538,88 @@ const Users = () => {
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">ID Pegawai</label>
-                <select
-                  value={formData.id_pegawai}
-                  onChange={(e) => handleFormChange('id_pegawai', e.target.value)}
-                  className="input-field"
-                >
-                  <option value="">Pilih pegawai (kosongkan untuk admin)</option>
-                  {pegawaiOptions.map((pegawai) => (
-                    <option key={pegawai.id_pegawai} value={pegawai.id_pegawai}>
-                      {pegawai.nama || 'Tanpa nama'} ({pegawai.id_pegawai})
-                    </option>
-                  ))}
-                </select>
-                {pegawaiLoading && <p className="mt-1 text-xs text-gray-500">Memuat pegawai...</p>}
+                <div className="relative">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={pegawaiSearch}
+                      onChange={(e) => {
+                        setPegawaiSearch(e.target.value);
+                        handleFormChange('id_pegawai', '');
+                        setPegawaiDropdownOpen(true);
+                      }}
+                      onFocus={() => setPegawaiDropdownOpen(true)}
+                      onBlur={() => setTimeout(() => setPegawaiDropdownOpen(false), 150)}
+                      className="input-field pr-8"
+                      placeholder={pegawaiLoading ? 'Memuat pegawai…' : 'Ketik nama atau ID pegawai…'}
+                      autoComplete="off"
+                      disabled={pegawaiLoading}
+                    />
+                    {formData.id_pegawai ? (
+                      <button
+                        type="button"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 text-base leading-none"
+                        onMouseDown={(e) => { e.preventDefault(); setPegawaiSearch(''); handleFormChange('id_pegawai', ''); }}
+                        title="Hapus pilihan"
+                      >
+                        ✕
+                      </button>
+                    ) : (
+                      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+                    )}
+                  </div>
+
+                  {pegawaiDropdownOpen && !pegawaiLoading && (
+                    <div className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-52 overflow-y-auto">
+                      {/* Opsi kosong */}
+                      <div
+                        className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 border-b border-gray-100 ${
+                          !formData.id_pegawai ? 'text-primary-600 font-medium' : 'text-gray-400'
+                        }`}
+                        onMouseDown={() => {
+                          setPegawaiSearch('');
+                          handleFormChange('id_pegawai', '');
+                          setPegawaiDropdownOpen(false);
+                        }}
+                      >
+                        — Tanpa pegawai (admin murni) —
+                      </div>
+
+                      {filteredPegawai.length === 0 ? (
+                        <div className="px-3 py-3 text-sm text-gray-400 text-center">Tidak ada hasil</div>
+                      ) : (
+                        filteredPegawai.map((p) => (
+                          <div
+                            key={p.id_pegawai}
+                            onMouseDown={() => {
+                              handleFormChange('id_pegawai', p.id_pegawai);
+                              setPegawaiSearch(`${p.nama || '-'} (${p.id_pegawai})`);
+                              setPegawaiDropdownOpen(false);
+                            }}
+                            className={`px-3 py-2 text-sm cursor-pointer hover:bg-primary-50 flex items-center justify-between ${
+                              String(formData.id_pegawai) === String(p.id_pegawai)
+                                ? 'bg-primary-50 text-primary-700'
+                                : 'text-gray-700'
+                            }`}
+                          >
+                            <span className="font-medium truncate">{p.nama || 'Tanpa nama'}</span>
+                            <span className="ml-2 shrink-0 text-xs text-gray-400 font-mono">{p.id_pegawai}</span>
+                          </div>
+                        ))
+                      )}
+
+                      {pegawaiOptions.length > 60 && filteredPegawai.length === 60 && (
+                        <div className="px-3 py-1.5 text-xs text-gray-400 text-center border-t border-gray-100">
+                          Ketik lebih spesifik untuk mempersempit hasil
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {formData.id_pegawai && (
+                  <p className="mt-1 text-xs text-green-600">✓ Terpilih: ID {formData.id_pegawai}</p>
+                )}
                 {pegawaiError && <p className="mt-1 text-xs text-red-600">{pegawaiError}</p>}
               </div>
 

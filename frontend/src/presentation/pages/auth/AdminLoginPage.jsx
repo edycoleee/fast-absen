@@ -53,10 +53,16 @@ const LoginAdmin = () => {
     setLoading(true);
 
     try {
-      await login(username, password);
-      navigate('/dashboard');
+      const response = await login(username, password);
+      const menuGuard = response?.data?.menu_guard ?? {};
+      // Regular pegawai who used admin login → redirect to absensi dashboard
+      if (!menuGuard.is_admin && !menuGuard.is_kepala_unit) {
+        navigate('/absensi-dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
-      setError(err.response?.data?.message || 'Login gagal. Periksa username dan password Anda.');
+      setError(err.message || 'Login gagal. Periksa username dan password Anda.');
     } finally {
       setLoading(false);
     }

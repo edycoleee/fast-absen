@@ -24,7 +24,8 @@ export const formatErrorMessage = (error, defaultMessage = 'Terjadi kesalahan', 
     permissionError += 'Anda tidak memiliki izin untuk mengakses fitur ini.\n\n';
     
     if (user) {
-      permissionError += `**Role Anda saat ini:** ${user.role || 'tidak diketahui'}\n\n`;
+      const roleName = user.roles?.[0] || user.role || 'tidak diketahui';
+      permissionError += `**Role Anda saat ini:** ${roleName}\n\n`;
     }
     
     permissionError += '**Cara Mengatasi:**\n';

@@ -25,6 +25,12 @@ const Pegawai = () => {
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
   const [currentPhoto, setCurrentPhoto] = useState('');
+
+  // Excel import state
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResult, setImportResult] = useState(null);
   const [formData, setFormData] = useState({
     id_pegawai: '',
     nip: '',
@@ -45,13 +51,45 @@ const Pegawai = () => {
 
   const handleDelete = async (id) => {
     if (!confirm('Apakah Anda yakin ingin menghapus pegawai ini?')) return;
-    
     try {
       await deletePegawai(id);
       fetchPegawai(page, 10, search);
     } catch (err) {
       const errorMessage = formatErrorMessage(err, 'Gagal menghapus pegawai', user);
       alert(formatErrorForAlert(errorMessage));
+    }
+  };
+
+  // --- Excel import handlers ---
+  const handleDownloadTemplate = async () => {
+    try {
+      const blob = await PegawaiRepository.downloadTemplate();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'template_import_pegawai.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Gagal mengunduh template: ' + (err.message || 'Error tidak diketahui'));
+    }
+  };
+
+  const handleImportSubmit = async () => {
+    if (!importFile) return;
+    setImportLoading(true);
+    setImportResult(null);
+    try {
+      const res = await PegawaiRepository.importExcel(importFile);
+      setImportResult(res?.data ?? null);
+      fetchPegawai(page, 10, search);
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.message || 'Import gagal';
+      alert('Gagal import: ' + msg);
+    } finally {
+      setImportLoading(false);
     }
   };
 
@@ -196,14 +234,29 @@ const Pegawai = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center mb-6 gap-3">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Pegawai</h1>
           <p className="text-gray-600 mt-1">Kelola data pegawai</p>
         </div>
-        <button className="btn-primary" onClick={openCreateModal}>
-          + Tambah Pegawai
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            className="btn-secondary flex items-center gap-1.5"
+            onClick={handleDownloadTemplate}
+            title="Download template Excel untuk import massal"
+          >
+            ⬇️ Template Excel
+          </button>
+          <button
+            className="btn-secondary flex items-center gap-1.5"
+            onClick={() => { setImportFile(null); setImportResult(null); setImportOpen(true); }}
+          >
+            📂 Import Excel
+          </button>
+          <button className="btn-primary" onClick={openCreateModal}>
+            + Tambah Pegawai
+          </button>
+        </div>
       </div>
 
       {/* Search Bar */}
@@ -521,6 +574,113 @@ const Pegawai = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Import Excel Modal ────────────────────────────────────────── */}
+      {importOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 px-4 py-6">
+          <div className="mx-auto w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-900">Import Pegawai dari Excel</h2>
+              <button className="text-gray-400 hover:text-gray-600" onClick={() => setImportOpen(false)}>✕</button>
+            </div>
+
+            {/* Step guide */}
+            {!importResult && (
+              <div className="mb-4 rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-800 space-y-1">
+                <p className="font-medium">📋 Cara penggunaan:</p>
+                <ol className="list-decimal list-inside space-y-0.5">
+                  <li>Klik <strong>Download Template</strong> untuk mendapatkan file contoh</li>
+                  <li>Isi data pegawai di baris berikutnya (jangan ubah header)</li>
+                  <li>Kolom bertanda <strong>*</strong> wajib diisi</li>
+                  <li>Upload file yang sudah diisi, lalu klik <strong>Import</strong></li>
+                </ol>
+              </div>
+            )}
+
+            {/* Result view */}
+            {importResult ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="rounded-lg bg-green-50 border border-green-200 p-3">
+                    <p className="text-2xl font-bold text-green-700">{importResult.success}</p>
+                    <p className="text-xs text-green-600">Berhasil</p>
+                  </div>
+                  <div className="rounded-lg bg-red-50 border border-red-200 p-3">
+                    <p className="text-2xl font-bold text-red-700">{importResult.errors?.length ?? 0}</p>
+                    <p className="text-xs text-red-600">Gagal</p>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                    <p className="text-2xl font-bold text-gray-700">{importResult.total}</p>
+                    <p className="text-xs text-gray-500">Total baris</p>
+                  </div>
+                </div>
+
+                {importResult.errors?.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium text-red-700 mb-2">Detail error per baris:</p>
+                    <div className="max-h-48 overflow-y-auto rounded-lg border border-red-200 divide-y divide-red-100">
+                      {importResult.errors.map((e, i) => (
+                        <div key={i} className="px-3 py-2 text-xs text-red-800">
+                          <span className="font-medium">Baris {e.row}</span>
+                          {e.id_pegawai && <span className="text-gray-500"> ({e.id_pegawai})</span>}
+                          {': '}
+                          {e.message}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2">
+                  <button
+                    className="btn-secondary"
+                    onClick={() => { setImportResult(null); setImportFile(null); }}
+                  >
+                    Import Lagi
+                  </button>
+                  <button className="btn-primary" onClick={() => setImportOpen(false)}>Tutup</button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">File Excel (.xlsx)</label>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                  />
+                  {importFile && (
+                    <p className="mt-1 text-xs text-gray-500">✓ {importFile.name} ({(importFile.size / 1024).toFixed(1)} KB)</p>
+                  )}
+                </div>
+
+                <div className="flex justify-between items-center gap-2">
+                  <button
+                    type="button"
+                    className="btn-secondary text-sm flex items-center gap-1"
+                    onClick={handleDownloadTemplate}
+                  >
+                    ⬇️ Download Template
+                  </button>
+                  <div className="flex gap-2">
+                    <button type="button" className="btn-secondary" onClick={() => setImportOpen(false)}>Batal</button>
+                    <button
+                      type="button"
+                      className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={!importFile || importLoading}
+                      onClick={handleImportSubmit}
+                    >
+                      {importLoading ? '⏳ Mengimpor...' : '📥 Import'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

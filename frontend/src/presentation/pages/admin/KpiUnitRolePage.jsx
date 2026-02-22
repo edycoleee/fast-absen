@@ -74,9 +74,22 @@ const KpiUnitRolePage = () => {
           </p>
         </div>
         {watermark && (
-          <span className="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full">
-            {watermark}
-          </span>
+          <div className="flex flex-col items-end gap-0.5 text-xs text-gray-400">
+            <span className="bg-gray-100 px-3 py-1 rounded-full">
+              📅 Per: {watermark.as_of ?? '-'}
+            </span>
+            {watermark.data_freshness_minutes != null && (
+              <span className={`px-3 py-1 rounded-full ${
+                watermark.data_freshness_minutes < 60
+                  ? 'bg-green-50 text-green-600'
+                  : watermark.data_freshness_minutes < 240
+                  ? 'bg-yellow-50 text-yellow-600'
+                  : 'bg-red-50 text-red-600'
+              }`}>
+                ⚡ {watermark.data_freshness_minutes} mnt lalu
+              </span>
+            )}
+          </div>
         )}
       </div>
 

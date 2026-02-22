@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../../domain/hooks';
 import AbsensiRepository from '../../../data/repositories/AbsensiRepository';
+import UnitRepository from '../../../data/repositories/UnitRepository';
 import { formatErrorMessage, formatErrorForAlert } from '../../../utils/errorHandler';
 
 // Status configuration
@@ -14,7 +15,7 @@ const STATUS_CONFIG = {
 };
 
 const AbsensiMonitor = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [allAbsensi, setAllAbsensi] = useState([]);
   const [todayAbsensi, setTodayAbsensi] = useState([]);
   const [statistics, setStatistics] = useState(null);
@@ -38,6 +39,9 @@ const AbsensiMonitor = () => {
     skip: 0
   });
 
+  // Unit list for filter dropdown
+  const [units, setUnits] = useState([]);
+
   // Detail modal
   const [selectedAbsensi, setSelectedAbsensi] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -55,6 +59,13 @@ const AbsensiMonitor = () => {
       setFilters((prev) => ({ ...prev, id_unit: String(kaUnitScopeId) }));
     }
   }, [isKaUnit, kaUnitScopeId]);
+
+  // Load unit list for dropdown (semua role — ka-unit butuh nama unit juga)
+  useEffect(() => {
+    UnitRepository.getAll(0, 500)
+      .then((res) => setUnits(res?.data?.items ?? []))
+      .catch(() => {});
+  }, []);
 
   // Load all absensi
   const loadAllAbsensi = async () => {
@@ -101,9 +112,7 @@ const AbsensiMonitor = () => {
       setLoading(true);
       setError(null);
       const response = await AbsensiRepository.getStatistics();
-      console.log('Statistics response:', response);
       const statsData = response?.data?.data || response?.data || null;
-      console.log('Statistics data:', statsData);
       setStatistics(statsData);
     } catch (err) {
       const errorMessage = formatErrorMessage(err, 'Gagal memuat statistik', user);
@@ -202,28 +211,14 @@ const AbsensiMonitor = () => {
   }, [filters]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div>
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-blue-500 text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold">Monitor Absensi</h1>
-              <p className="text-indigo-100 mt-1">
-                Kelola dan monitor data kehadiran pegawai
-              </p>
-            </div>
-            <button
-              onClick={logout}
-              className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Monitor Absensi</h1>
+        <p className="text-sm text-gray-500 mt-1">Kelola dan monitor data kehadiran pegawai</p>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div>
         {/* Tabs */}
         <div className="bg-white rounded-lg shadow-sm mb-6">
           <div className="flex border-b">
@@ -300,15 +295,28 @@ const AbsensiMonitor = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ID Unit</label>
-                  <input
-                    type="number"
-                    value={filters.id_unit}
-                    disabled={isKaUnit}
-                    onChange={(e) => setFilters({ ...filters, id_unit: e.target.value, skip: 0 })}
-                    placeholder={isKaUnit ? `Unit ${kaUnitScopeId}` : 'Semua unit'}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Unit</label>
+                  {isKaUnit ? (
+                    <input
+                      type="text"
+                      value={`${kaUnitScopeId}: ${units.find(u => String(u.id_unit) === String(kaUnitScopeId))?.nama_unit ?? '-'}`}
+                      disabled
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed text-sm"
+                    />
+                  ) : (
+                    <select
+                      value={filters.id_unit}
+                      onChange={(e) => setFilters({ ...filters, id_unit: e.target.value, skip: 0 })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Semua unit</option>
+                      {units.map((u) => (
+                        <option key={u.id_unit} value={String(u.id_unit)}>
+                          {u.id_unit}: {u.nama_unit}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Shift</label>

@@ -274,9 +274,11 @@ def get_all_absensi(
     from models.penilaian_shift_absensi import PenilaianShiftAbsensi
     from models.roster_shift import RosterShift
 
-    # Base query for IDs (stable pagination under joins)
+    # Base query for IDs (stable pagination under joins).
+    # Include tanggal + jam_masuk in SELECT so PostgreSQL allows ORDER BY on them
+    # when DISTINCT is used (PG requires ORDER BY cols to appear in SELECT list).
     ids_query = (
-        db.query(Absensi.id)
+        db.query(Absensi.id, Absensi.tanggal, Absensi.jam_masuk)
         .join(Pegawai, Pegawai.id_pegawai == Absensi.id_pegawai)
     )
 

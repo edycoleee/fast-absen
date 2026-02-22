@@ -34,11 +34,15 @@ Refresh token dikirim via HTTP-only cookie (`refresh_token`) untuk endpoint `/au
 
 | Method | Endpoint | Auth | Permission |
 |---|---|---|---|
+| GET | `/users/template/download` | ✅ | `users.create` |
+| POST | `/users/import` | ✅ | `users.create` |
 | GET | `/users/` | ✅ | `users.read` |
 | POST | `/users/` | ✅ | `users.create` |
 | GET | `/users/{user_id}` | ✅ | `users.read` |
 | PUT | `/users/{user_id}` | ✅ | `users.update` |
 | DELETE | `/users/{user_id}` | ✅ | `users.delete` |
+
+Contoh kolom template `users/import`: `username *`, `password (default: Absen@1234)`, `id_pegawai`, `role_names (e.g: user)`, `is_active (TRUE/FALSE)`
 
 ## 3) Roles (`/roles`) *(super-admin)*
 
@@ -64,11 +68,15 @@ Refresh token dikirim via HTTP-only cookie (`refresh_token`) untuk endpoint `/au
 
 | Method | Endpoint | Auth | Permission |
 |---|---|---|---|
+| GET | `/pegawai/template/download` | ✅ | `pegawai.create` |
+| POST | `/pegawai/import` | ✅ | `pegawai.create` |
 | GET | `/pegawai/` | ✅ | `pegawai.read` |
 | POST | `/pegawai/` | ✅ | `pegawai.create` |
 | GET | `/pegawai/{pegawai_id}` | ✅ | `pegawai.read` |
 | PUT | `/pegawai/{pegawai_id}` | ✅ | `pegawai.update` |
 | DELETE | `/pegawai/{pegawai_id}` | ✅ | `pegawai.delete` |
+
+Contoh kolom template `pegawai/import`: `id_pegawai *`, `nip`, `nama *`, `jenis_kelamin (L/P)`, `tempat_lahir`, `tanggal_lahir (YYYY-MM-DD)`, `alamat`, `id_unit`, `kepala_id_unit`, `status`
 
 ## 6) Unit (`/unit`)
 
@@ -104,11 +112,15 @@ Refresh token dikirim via HTTP-only cookie (`refresh_token`) untuk endpoint `/au
 
 | Method | Endpoint | Auth | Permission |
 |---|---|---|---|
+| GET | `/pegawai-shift-kelompok/template/download` | ✅ | `pegawai_shift_kelompok.create` |
+| POST | `/pegawai-shift-kelompok/import` | ✅ | `pegawai_shift_kelompok.create` |
 | GET | `/pegawai-shift-kelompok/` | ✅ | `pegawai_shift_kelompok.read` |
 | POST | `/pegawai-shift-kelompok/` | ✅ | `pegawai_shift_kelompok.create` |
 | GET | `/pegawai-shift-kelompok/{assignment_id}` | ✅ | `pegawai_shift_kelompok.read` |
 | PUT | `/pegawai-shift-kelompok/{assignment_id}` | ✅ | `pegawai_shift_kelompok.update` |
 | DELETE | `/pegawai-shift-kelompok/{assignment_id}` | ✅ | `pegawai_shift_kelompok.delete` |
+
+Contoh kolom template `pegawai-shift-kelompok/import`: `id_pegawai *`, `shift_kelompok_kode *`, `effective_start_date * (YYYY-MM-DD)`, `effective_end_date (YYYY-MM-DD)`, `is_default (TRUE/FALSE)`, `catatan`
 
 ## 10) Roster Upload Batch (`/roster-upload-batch`)
 

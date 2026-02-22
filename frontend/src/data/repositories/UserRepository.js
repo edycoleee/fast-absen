@@ -46,6 +46,24 @@ const changePassword = async (id, oldPassword, newPassword) => {
   return response.data;
 };
 
+/** Download Excel template for user import. */
+const downloadTemplate = async () => {
+  const response = await apiClient.get('/users/template/download', {
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
+/** Import users from Excel file. */
+const importExcel = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await apiClient.post('/users/import', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+};
+
 const UserRepository = {
   getAll,
   getById,
@@ -53,6 +71,8 @@ const UserRepository = {
   update,
   delete: remove,
   changePassword,
+  downloadTemplate,
+  importExcel,
 };
 
 export default UserRepository;

@@ -58,6 +58,24 @@ const PegawaiRepository = {
   update,
   delete: remove,
   getPhotoUrl,
+
+  /** Download Excel template for bulk import. Returns a Blob. */
+  downloadTemplate: async () => {
+    const response = await apiClient.get('/pegawai/template/download', {
+      responseType: 'blob',
+    });
+    return response.data; // Blob
+  },
+
+  /** Bulk import pegawai from an Excel file. Returns import summary. */
+  importExcel: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post('/pegawai/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
 };
 
 export default PegawaiRepository;
