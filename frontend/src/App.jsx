@@ -12,9 +12,14 @@ import {
   UsersPage,
   RolesPage,
   PermissionsPage,
+  UnitsPage,
   EmployeesPage,
   AttendanceMonitorPage,
   SessionMonitorPage,
+  ApprovalPage,
+  KpiUnitRolePage,
+  ShiftKelompokPage,
+  ShiftKelompokAturanPage,
 } from './presentation/pages'
 import { useAuth, useSessionHeartbeat } from './domain/hooks'
 
@@ -66,9 +71,14 @@ function App() {
             <Route path="users" element={<UsersPage />} />
             <Route path="roles" element={<RolesPage />} />
             <Route path="permissions" element={<PermissionsPage />} />
+            <Route path="unit" element={<UnitsPage />} />
             <Route path="pegawai" element={<EmployeesPage />} />
+            <Route path="shift-kelompok" element={<ShiftKelompokPage />} />
+            <Route path="shift-aturan" element={<ShiftKelompokAturanPage />} />
             <Route path="absensi" element={<AttendanceMonitorPage />} />
             <Route path="sessions-monitor" element={<SessionMonitorPage />} />
+            <Route path="approval" element={<ApprovalPage />} />
+            <Route path="rekap-unit-role" element={<KpiUnitRolePage />} />
           </Route>
 
           {/* Fallback */}

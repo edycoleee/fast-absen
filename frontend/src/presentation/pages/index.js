@@ -6,7 +6,12 @@ export {
   UsersPage,
   RolesPage,
   PermissionsPage,
+  UnitsPage,
   EmployeesPage,
   AttendanceMonitorPage,
   SessionMonitorPage,
+  ApprovalPage,
+  KpiUnitRolePage,
+  ShiftKelompokPage,
+  ShiftKelompokAturanPage,
 } from './admin';

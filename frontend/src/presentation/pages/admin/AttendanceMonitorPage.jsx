@@ -22,19 +22,39 @@ const AbsensiMonitor = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'today' | 'stats'
   
-  // Filters
+  // Derived KA-UNIT scope from menu_guard
+  const isKaUnit = !!user?.menu_guard?.is_kepala_unit;
+  const kaUnitScopeId = user?.menu_guard?.kepala_unit_scope_id;
+
+  // Filters (DOC section 5B: lengkap 6 filter)
   const [filters, setFilters] = useState({
     start_date: '',
     end_date: '',
     id_pegawai: '',
+    id_unit: '',
+    shift: '',
     status: '',
-    limit: 100,
+    limit: 20,
     skip: 0
   });
 
   // Detail modal
   const [selectedAbsensi, setSelectedAbsensi] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+
+  useEffect(() => {
+    if (!showDetailModal) return;
+    const handleEsc = (event) => { if (event.key === 'Escape') setShowDetailModal(false); };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [showDetailModal]);
+
+  // KA-UNIT scope: auto-fill id_unit dari kepala_unit_scope_id, tidak bisa diubah manual
+  useEffect(() => {
+    if (isKaUnit && kaUnitScopeId) {
+      setFilters((prev) => ({ ...prev, id_unit: String(kaUnitScopeId) }));
+    }
+  }, [isKaUnit, kaUnitScopeId]);
 
   // Load all absensi
   const loadAllAbsensi = async () => {
@@ -252,39 +272,64 @@ const AbsensiMonitor = () => {
           <div className="space-y-6">
             {/* Filters */}
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Filter</h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">Filter</h3>
+                {isKaUnit && (
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                    KA-UNIT — Unit {kaUnitScopeId} (terkunci)
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tanggal Mulai
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Mulai</label>
                   <input
                     type="date"
                     value={filters.start_date}
-                    onChange={(e) => setFilters({ ...filters, start_date: e.target.value })}
+                    onChange={(e) => setFilters({ ...filters, start_date: e.target.value, skip: 0 })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tanggal Akhir
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Akhir</label>
                   <input
                     type="date"
                     value={filters.end_date}
-                    onChange={(e) => setFilters({ ...filters, end_date: e.target.value })}
+                    onChange={(e) => setFilters({ ...filters, end_date: e.target.value, skip: 0 })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Status
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">ID Unit</label>
+                  <input
+                    type="number"
+                    value={filters.id_unit}
+                    disabled={isKaUnit}
+                    onChange={(e) => setFilters({ ...filters, id_unit: e.target.value, skip: 0 })}
+                    placeholder={isKaUnit ? `Unit ${kaUnitScopeId}` : 'Semua unit'}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Shift</label>
+                  <select
+                    value={filters.shift}
+                    onChange={(e) => setFilters({ ...filters, shift: e.target.value, skip: 0 })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Semua</option>
+                    <option value="PAGI">Pagi</option>
+                    <option value="SORE">Sore</option>
+                    <option value="MALAM">Malam</option>
+                    <option value="ON_CALL">On Call</option>
+                    <option value="CUSTOM">Custom</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                   <select
                     value={filters.status}
-                    onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                    onChange={(e) => setFilters({ ...filters, status: e.target.value, skip: 0 })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Semua</option>
@@ -296,16 +341,17 @@ const AbsensiMonitor = () => {
                     <option value="CUTI">Cuti</option>
                   </select>
                 </div>
-
                 <div className="flex items-end">
                   <button
                     onClick={() => setFilters({
                       start_date: '',
                       end_date: '',
                       id_pegawai: '',
+                      id_unit: isKaUnit && kaUnitScopeId ? String(kaUnitScopeId) : '',
+                      shift: '',
                       status: '',
-                      limit: 100,
-                      skip: 0
+                      limit: 20,
+                      skip: 0,
                     })}
                     className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg transition-colors"
                   >
@@ -643,8 +689,8 @@ const AbsensiMonitor = () => {
 
       {/* Detail Modal */}
       {showDetailModal && selectedAbsensi && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 px-4 py-6">
+          <div className="mx-auto bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[calc(100vh-3rem)] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <div className="flex justify-between items-center">
                 <h3 className="text-xl font-semibold text-gray-900">Detail Absensi</h3>

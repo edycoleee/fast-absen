@@ -58,6 +58,17 @@ apiClient.interceptors.response.use(
           // Update access token in localStorage
           LocalStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.data.access_token);
 
+          const existingUser = LocalStorage.getItem(STORAGE_KEYS.USER) || {};
+          const refreshedUser = {
+            ...existingUser,
+            id: data.data.user_id ?? existingUser.id,
+            username: data.data.username ?? existingUser.username,
+            roles: data.data.roles ?? existingUser.roles ?? [],
+            permissions: data.data.permissions ?? existingUser.permissions ?? [],
+            menu_guard: data.data.menu_guard ?? existingUser.menu_guard ?? {},
+          };
+          LocalStorage.setItem(STORAGE_KEYS.USER, refreshedUser);
+
           // Retry original request with new token
           originalRequest.headers.Authorization = `Bearer ${data.data.access_token}`;
           return apiClient(originalRequest);

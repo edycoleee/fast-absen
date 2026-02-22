@@ -9,6 +9,8 @@ export function User(data = {}) {
     id_pegawai: data.id_pegawai || null,
     is_active: data.is_active ?? true,
     roles: data.roles || [],
+    permissions: data.permissions || [],
+    menu_guard: data.menu_guard || {},
     pegawai_nama: data.pegawai_nama || null,
     created_at: data.created_at || null,
   };
@@ -25,6 +27,8 @@ export function User(data = {}) {
     id_pegawai: entity.id_pegawai,
     is_active: entity.is_active,
     roles: entity.roles,
+    permissions: entity.permissions,
+    menu_guard: entity.menu_guard,
     pegawai_nama: entity.pegawai_nama,
     created_at: entity.created_at
   });

@@ -30,9 +30,11 @@ export const usePegawai = () => {
         const items = response?.data?.items || [];
         const pegawaiData = items.map((p) => Pegawai(p));
         setPegawai(pegawaiData);
+        const retLimit = response?.data?.limit ?? limit;
+        const retSkip = response?.data?.skip ?? (page - 1) * limit;
         setPagination({
-          page: response?.data?.page,
-          limit: response?.data?.limit,
+          page: Math.floor(retSkip / retLimit) + 1,
+          limit: retLimit,
           total: response?.data?.total || pegawaiData.length
         });
       } else {

@@ -6,7 +6,8 @@ import apiClient from '../api/client';
  */
 /** List employees with pagination and optional search. */
 const getAll = async (page = 1, limit = 10, search = '') => {
-  const params = new URLSearchParams({ page, limit });
+  const skip = (page - 1) * limit;
+  const params = new URLSearchParams({ skip, limit });
   if (search) params.append('search', search);
 
   const response = await apiClient.get(`/pegawai/?${params}`);
@@ -45,7 +46,9 @@ const remove = async (id) => {
 const getPhotoUrl = (filename) => {
   if (!filename) return null;
   if (filename.startsWith('http')) return filename;
-  return `${apiClient.defaults.baseURL}/static/uploads/${filename}`;
+  // Backend mounts uploads/ at origin root: GET {origin}/uploads/photos/{filename}
+  const origin = new URL(apiClient.defaults.baseURL).origin;
+  return `${origin}/uploads/photos/${filename}`;
 };
 
 const PegawaiRepository = {

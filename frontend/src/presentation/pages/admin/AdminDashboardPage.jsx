@@ -20,7 +20,7 @@ const Dashboard = () => {
   const [totalPegawai, setTotalPegawai] = useState('-');
   const [totalRoles, setTotalRoles] = useState('-');
   const [absensiToday, setAbsensiToday] = useState('-');
-  const [todayAbsensiList, setTodayAbsensiList] = useState([]);
+  const [kpiSummary, setKpiSummary] = useState(null);
   const [statusBreakdown, setStatusBreakdown] = useState({});
   const [loadingAbsensi, setLoadingAbsensi] = useState(false);
   const [error, setError] = useState(null);
@@ -30,13 +30,28 @@ const Dashboard = () => {
     const loadStats = async () => {
       try {
         setStatsError(null);
-        const response = await StatsRepository.getStats();
-        const data = response?.data || {};
+        const today = new Date().toISOString().split('T')[0];
+        const kpiEndpoint = user?.menu_guard?.menus?.kpi_unit_role?.endpoint || '/stats/kpi/unit-role';
+
+        const [statsResponse, kpiResponse] = await Promise.all([
+          StatsRepository.getStats(),
+          StatsRepository.getKpiUnitRole(
+            {
+              start_date: today,
+              end_date: today,
+            },
+            kpiEndpoint,
+          ),
+        ]);
+
+        const data = statsResponse?.data || {};
 
         setTotalUsers(data.users_total ?? '-');
         setTotalPegawai(data.pegawai_total ?? '-');
         setTotalRoles(data.roles_total ?? '-');
         setAbsensiToday(data.absensi_today ?? '-');
+
+        setKpiSummary(kpiResponse?.data?.summary || null);
       } catch (err) {
         const errorMessage = formatErrorMessage(err, 'Gagal memuat statistik dashboard', user);
         setStatsError(errorMessage);
@@ -52,28 +67,14 @@ const Dashboard = () => {
         const today = new Date();
         const todayStr = today.toISOString().split('T')[0];
 
-        // Fetch all absensi (will be filtered on server if endpoint supports it)
-        // For now, we'll get recent absensi and filter client-side
-        const response = await AbsensiRepository.getAll(1, 1000);
-        const items = response?.data?.items || [];
-
-        // Filter for today's absensi
-        const todayItems = items.filter(item => {
-          if (!item.tanggal) return false;
-          const itemDate = new Date(item.tanggal).toISOString().split('T')[0];
-          return itemDate === todayStr;
-        });
-
-        setTodayAbsensiList(todayItems);
-
-        // Calculate status breakdown
-        const breakdown = todayItems.reduce((acc, item) => {
-          const status = item.status || 'HADIR';
-          acc[status] = (acc[status] || 0) + 1;
-          return acc;
-        }, {});
-
+        const response = await AbsensiRepository.getStatistics(todayStr, todayStr);
+        const data = response?.data || {};
+        const breakdown = data.by_status || {};
         setStatusBreakdown(breakdown);
+
+        if (data.today_count !== undefined && data.today_count !== null) {
+          setAbsensiToday(data.today_count);
+        }
       } catch (err) {
         const errorMessage = formatErrorMessage(err, 'Gagal memuat data absensi hari ini', user);
         setError(errorMessage);
@@ -85,7 +86,7 @@ const Dashboard = () => {
 
     loadStats();
     loadTodayAbsensi();
-  }, []);
+  }, [user]);
 
   const stats = useMemo(() => ([
     { label: 'Total Users', value: totalUsers, icon: '👥', color: 'bg-blue-500' },
@@ -174,6 +175,21 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* KPI Shift (Latest API Contract) */}
+      {kpiSummary && (
+        <div className="mt-6 lg:mt-8">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">KPI Shift Hari Ini</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+            <div className="bg-white rounded-lg shadow-md p-4"><p className="text-xs text-gray-500">Terlambat</p><p className="text-2xl font-bold text-yellow-600">{kpiSummary.late ?? 0}</p></div>
+            <div className="bg-white rounded-lg shadow-md p-4"><p className="text-xs text-gray-500">Pulang Cepat</p><p className="text-2xl font-bold text-orange-600">{kpiSummary.early_leave ?? 0}</p></div>
+            <div className="bg-white rounded-lg shadow-md p-4"><p className="text-xs text-gray-500">Mangkir</p><p className="text-2xl font-bold text-red-600">{kpiSummary.mangkir ?? 0}</p></div>
+            <div className="bg-white rounded-lg shadow-md p-4"><p className="text-xs text-gray-500">Missing Checkout</p><p className="text-2xl font-bold text-rose-600">{kpiSummary.missing_checkout ?? 0}</p></div>
+            <div className="bg-white rounded-lg shadow-md p-4"><p className="text-xs text-gray-500">Terjadwal</p><p className="text-2xl font-bold text-blue-600">{kpiSummary.terjadwal_total ?? 0}</p></div>
+            <div className="bg-white rounded-lg shadow-md p-4"><p className="text-xs text-gray-500">Tidak Terjadwal</p><p className="text-2xl font-bold text-gray-700">{kpiSummary.tidak_terjadwal_total ?? 0}</p></div>
+          </div>
+        </div>
+      )}
 
       {/* Absensi Breakdown by Status */}
       <div className="mt-6 lg:mt-8">

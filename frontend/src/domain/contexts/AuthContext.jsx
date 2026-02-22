@@ -50,7 +50,15 @@ export const AuthProvider = ({ children }) => {
       const response = await AuthRepository.login(username, password);
       
       if (response.success) {
-        const { access_token, user_id, username: user_name, roles, session_id } = response.data;
+        const {
+          access_token,
+          user_id,
+          username: user_name,
+          roles,
+          permissions,
+          menu_guard,
+          session_id,
+        } = response.data;
         
         // Store token
         LocalStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, access_token);
@@ -64,7 +72,9 @@ export const AuthProvider = ({ children }) => {
         const userData = User({
           id: user_id,
           username: user_name,
-          roles: roles
+          roles: roles,
+          permissions: permissions || [],
+          menu_guard: menu_guard || {},
         });
         
         // Store user data

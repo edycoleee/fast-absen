@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { usePegawai } from '../../../domain/hooks';
 import { useAuth } from '../../../domain/hooks';
+import PegawaiRepository from '../../../data/repositories/PegawaiRepository';
+import UnitSearchInput from '../../components/common/UnitSearchInput';
 import { formatErrorMessage, formatErrorForAlert } from '../../../utils/errorHandler';
 
 const Pegawai = () => {
   const { user } = useAuth();
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://192.168.171.15:8000/api/v1';
-  const apiOrigin = new URL(apiBaseUrl).origin;
   const {
     pegawai,
     loading,
@@ -33,7 +33,8 @@ const Pegawai = () => {
     tempat_lahir: '',
     tanggal_lahir: '',
     alamat: '',
-    id_ruang: '',
+    id_unit: '',
+    kepala_id_unit: '',
     status: '',
     foto: null
   });
@@ -63,7 +64,8 @@ const Pegawai = () => {
       tempat_lahir: '',
       tanggal_lahir: '',
       alamat: '',
-      id_ruang: '',
+      id_unit: '',
+      kepala_id_unit: '',
       status: '',
       foto: null
     });
@@ -91,7 +93,8 @@ const Pegawai = () => {
       tempat_lahir: pegawaiItem.tempat_lahir || '',
       tanggal_lahir: normalizedDate,
       alamat: pegawaiItem.alamat || '',
-      id_ruang: pegawaiItem.id_ruang ? String(pegawaiItem.id_ruang) : '',
+      id_unit: pegawaiItem.id_unit ? String(pegawaiItem.id_unit) : '',
+      kepala_id_unit: pegawaiItem.kepala_id_unit ? String(pegawaiItem.kepala_id_unit) : '',
       status: pegawaiItem.status || '',
       foto: null
     });
@@ -107,11 +110,25 @@ const Pegawai = () => {
     setFormError('');
   };
 
+  useEffect(() => {
+    if (!isModalOpen) return;
+
+    const handleEsc = (event) => {
+      if (event.key === 'Escape') {
+        closeModal();
+      }
+    };
+
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isModalOpen]);
+
   const handleFormChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const buildFormPayload = (includeIdPegawai) => {
+    const isEditMode = !includeIdPegawai;
     const payload = new FormData();
     const entries = {
       ...(includeIdPegawai ? { id_pegawai: formData.id_pegawai } : {}),
@@ -121,7 +138,7 @@ const Pegawai = () => {
       tempat_lahir: formData.tempat_lahir,
       tanggal_lahir: formData.tanggal_lahir,
       alamat: formData.alamat,
-      id_ruang: formData.id_ruang,
+      id_unit: formData.id_unit,
       status: formData.status
     };
 
@@ -130,6 +147,14 @@ const Pegawai = () => {
         payload.append(key, value);
       }
     });
+
+    // kepala_id_unit: pada edit selalu dikirim agar bisa dikosongkan.
+    // 0 = sentinel "hapus / set NULL", nilai valid = ID unit.
+    if (isEditMode) {
+      payload.append('kepala_id_unit', formData.kepala_id_unit || '0');
+    } else if (formData.kepala_id_unit) {
+      payload.append('kepala_id_unit', formData.kepala_id_unit);
+    }
 
     if (formData.foto) {
       payload.append('foto', formData.foto);
@@ -219,10 +244,13 @@ const Pegawai = () => {
                       Foto
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Nama
+                      ID / Nama
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       NIP
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      ID Unit
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
@@ -244,10 +272,11 @@ const Pegawai = () => {
                       <tr key={p.id_pegawai} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           {p.foto ? (
-                            <img 
-                              src={`${apiOrigin}/uploads/photos/${p.foto}`}
+                            <img
+                              src={PegawaiRepository.getPhotoUrl(p.foto)}
                               alt={p.nama}
                               className="w-12 h-12 rounded-full object-cover"
+                              onError={(e) => { e.target.style.display = 'none'; }}
                             />
                           ) : (
                             <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
@@ -256,10 +285,25 @@ const Pegawai = () => {
                           )}
                         </td>
                         <td className="px-6 py-4">
-                          <div className="font-medium text-gray-900">{p.nama}</div>
+                          <div className="font-medium text-gray-900">{p.nama || '-'}</div>
+                          <div className="text-xs text-gray-500">{p.id_pegawai}</div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-700">{p.nip || '-'}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-700">
+                            {p.id_unit ? (
+                              <span className="inline-flex px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                                Unit {p.id_unit}
+                              </span>
+                            ) : '-'}
+                            {p.kepala_id_unit ? (
+                              <span className="ml-1 inline-flex px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">
+                                KA {p.kepala_id_unit}
+                              </span>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-700">{p.status || '-'}</div>
@@ -271,7 +315,7 @@ const Pegawai = () => {
                           >
                             Edit
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleDelete(p.id_pegawai)}
                             className="text-red-600 hover:text-red-900"
                           >
@@ -312,8 +356,8 @@ const Pegawai = () => {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 px-4 py-6">
+          <div className="mx-auto w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl max-h-[calc(100vh-3rem)] overflow-y-auto">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold text-gray-900">
                 {modalMode === 'create' ? 'Tambah Pegawai' : 'Edit Pegawai'}
@@ -412,24 +456,34 @@ const Pegawai = () => {
               </div>
 
               <div className="sm:col-span-2">
-                <label className="mb-1 block text-sm font-medium text-gray-700">Alamat</label>
-                <textarea
-                  rows="3"
-                  value={formData.alamat}
-                  onChange={(e) => handleFormChange('alamat', e.target.value)}
-                  className="input-field"
-                  placeholder="Alamat lengkap"
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Alamat</label>
+                  <textarea
+                    rows="3"
+                    value={formData.alamat}
+                    onChange={(e) => handleFormChange('alamat', e.target.value)}
+                    className="input-field"
+                    placeholder="Alamat lengkap"
+                  />
+                </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Unit Kerja</label>
+                <UnitSearchInput
+                  value={formData.id_unit}
+                  onChange={(val) => handleFormChange('id_unit', val)}
+                  placeholder="Cari nama unit..."
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">ID Ruang</label>
-                <input
-                  type="number"
-                  value={formData.id_ruang}
-                  onChange={(e) => handleFormChange('id_ruang', e.target.value)}
-                  className="input-field"
-                  placeholder="ID Ruang"
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Unit Kepala
+                  <span className="ml-1 text-xs text-gray-400">(routing approval)</span>
+                </label>
+                <UnitSearchInput
+                  value={formData.kepala_id_unit}
+                  onChange={(val) => handleFormChange('kepala_id_unit', val)}
+                  placeholder="Cari unit atasan..."
                 />
               </div>
 
@@ -438,9 +492,10 @@ const Pegawai = () => {
                 {modalMode === 'edit' && currentPhoto && (
                   <div className="mb-2 flex items-center gap-3 text-xs text-gray-600">
                     <img
-                      src={`${apiOrigin}/uploads/photos/${currentPhoto}`}
+                      src={PegawaiRepository.getPhotoUrl(currentPhoto)}
                       alt="Foto pegawai"
                       className="h-10 w-10 rounded-full object-cover"
+                      onError={(e) => { e.target.style.display = 'none'; }}
                     />
                     <span>Foto saat ini: {currentPhoto}</span>
                   </div>

@@ -1,58 +1,31 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '../../../domain/hooks';
-import PermissionRepository from '../../../data/repositories/PermissionRepository';
+import { useAuth, useUnits } from '../../../domain/hooks';
 import { formatErrorMessage, formatErrorForAlert } from '../../../utils/errorHandler';
 
-const Permissions = () => {
+const UnitsPage = () => {
   const { user } = useAuth();
-  const [permissions, setPermissions] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const { units, loading, error, pagination, fetchUnits, createUnit, updateUnit, deleteUnit } = useUnits();
   const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 10,
-    total: 0
-  });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create');
   const [editingId, setEditingId] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
   const [formData, setFormData] = useState({
-    name: '',
-    description: ''
+    id_unit: '',
+    nama_unit: '',
+    status: 'Aktif',
   });
 
   useEffect(() => {
-    fetchPermissions(page, 10);
-  }, [page]);
-
-  const fetchPermissions = async (pageNumber = 1, limit = 10) => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const response = await PermissionRepository.getAll(pageNumber, limit);
-      const list = response?.data?.permissions || response?.data?.items || [];
-      setPermissions(list);
-      setPagination({
-        page: response?.data?.page || pageNumber,
-        limit: response?.data?.limit || limit,
-        total: response?.data?.total || list.length
-      });
-    } catch (err) {
-      const errorMessage = formatErrorMessage(err, 'Gagal memuat data permissions', user);
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
+    fetchUnits(page, 10);
+  }, [page, fetchUnits]);
 
   const resetForm = () => {
     setFormData({
-      name: '',
-      description: ''
+      id_unit: '',
+      nama_unit: '',
+      status: 'Aktif',
     });
     setEditingId(null);
     setFormError('');
@@ -64,12 +37,13 @@ const Permissions = () => {
     setIsModalOpen(true);
   };
 
-  const openEditModal = (permission) => {
+  const openEditModal = (unit) => {
     setFormData({
-      name: permission.name || '',
-      description: permission.description || ''
+      id_unit: unit.id_unit,
+      nama_unit: unit.nama_unit || '',
+      status: unit.status || 'Aktif',
     });
-    setEditingId(permission.id);
+    setEditingId(unit.id_unit);
     setModalMode('edit');
     setIsModalOpen(true);
   };
@@ -103,35 +77,36 @@ const Permissions = () => {
     setFormLoading(true);
 
     try {
-      const payload = {
-        name: formData.name,
-        description: formData.description || null
-      };
-
       if (modalMode === 'create') {
-        await PermissionRepository.create(payload);
+        await createUnit({
+          id_unit: Number(formData.id_unit),
+          nama_unit: formData.nama_unit,
+          status: formData.status,
+        });
       } else if (modalMode === 'edit' && editingId) {
-        await PermissionRepository.update(editingId, payload);
+        await updateUnit(editingId, {
+          nama_unit: formData.nama_unit,
+          status: formData.status,
+        });
       }
 
       closeModal();
-      fetchPermissions(page, pagination.limit);
+      fetchUnits(page, 10);
     } catch (err) {
-      const errorMessage = formatErrorMessage(err, 'Gagal menyimpan permission', user);
-      setFormError(errorMessage);
+      setFormError(formatErrorMessage(err, 'Gagal menyimpan unit', user));
     } finally {
       setFormLoading(false);
     }
   };
 
-  const handleDelete = async (permissionId) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus permission ini?')) return;
+  const handleDelete = async (id) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus unit ini?')) return;
 
     try {
-      await PermissionRepository.delete(permissionId);
-      fetchPermissions(page, pagination.limit);
+      await deleteUnit(id);
+      fetchUnits(page, 10);
     } catch (err) {
-      const errorMessage = formatErrorMessage(err, 'Gagal menghapus permission', user);
+      const errorMessage = formatErrorMessage(err, 'Gagal menghapus unit', user);
       alert(formatErrorForAlert(errorMessage));
     }
   };
@@ -140,11 +115,11 @@ const Permissions = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Permissions</h1>
-          <p className="text-gray-600 mt-1">Kelola data permissions sistem</p>
+          <h1 className="text-3xl font-bold text-gray-900">Unit</h1>
+          <p className="text-gray-600 mt-1">Kelola data master unit</p>
         </div>
         <button className="btn-primary" onClick={openCreateModal}>
-          + Tambah Permission
+          + Tambah Unit
         </button>
       </div>
 
@@ -167,10 +142,13 @@ const Permissions = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Nama
+                      ID Unit
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Deskripsi
+                      Nama Unit
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
@@ -178,30 +156,41 @@ const Permissions = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {permissions.length === 0 ? (
+                  {units.length === 0 ? (
                     <tr>
-                      <td colSpan="3" className="px-6 py-8 text-center text-gray-500">
+                      <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
                         Tidak ada data
                       </td>
                     </tr>
                   ) : (
-                    permissions.map((permission) => (
-                      <tr key={permission.id} className="hover:bg-gray-50">
+                    units.map((unit) => (
+                      <tr key={unit.id_unit} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="font-medium text-gray-900">{permission.name}</div>
+                          <div className="font-medium text-gray-900">{unit.id_unit}</div>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-700">{permission.description || '-'}</div>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-700">{unit.nama_unit}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              unit.status === 'Aktif'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}
+                          >
+                            {unit.status}
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button
                             className="text-primary-600 hover:text-primary-900 mr-3"
-                            onClick={() => openEditModal(permission)}
+                            onClick={() => openEditModal(unit)}
                           >
                             Edit
                           </button>
                           <button
-                            onClick={() => handleDelete(permission.id)}
+                            onClick={() => handleDelete(unit.id_unit)}
                             className="text-red-600 hover:text-red-900"
                           >
                             Delete
@@ -214,7 +203,7 @@ const Permissions = () => {
               </table>
             </div>
 
-            {pagination.total > permissions.length && (
+            {pagination.total > units.length && (
               <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -228,7 +217,7 @@ const Permissions = () => {
                 </span>
                 <button
                   onClick={() => setPage((p) => p + 1)}
-                  disabled={permissions.length < pagination.limit}
+                  disabled={units.length < pagination.limit}
                   className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Next
@@ -244,7 +233,7 @@ const Permissions = () => {
           <div className="mx-auto w-full max-w-xl rounded-lg bg-white p-6 shadow-xl max-h-[calc(100vh-3rem)] overflow-y-auto">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold text-gray-900">
-                {modalMode === 'create' ? 'Tambah Permission' : 'Edit Permission'}
+                {modalMode === 'create' ? 'Tambah Unit' : 'Edit Unit'}
               </h2>
               <button className="text-gray-400 hover:text-gray-600" onClick={closeModal}>
                 ✕
@@ -259,36 +248,53 @@ const Permissions = () => {
 
             <form onSubmit={handleSubmitForm} className="grid grid-cols-1 gap-4">
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Nama Permission</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700">ID Unit</label>
                 <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => handleFormChange('name', e.target.value)}
-                  className="input-field"
-                  placeholder="Contoh: absensi.create"
+                  type="number"
+                  value={formData.id_unit}
+                  onChange={(e) => handleFormChange('id_unit', e.target.value)}
+                  disabled={modalMode === 'edit'}
                   required
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  placeholder="Masukkan ID Unit"
                 />
               </div>
+
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Deskripsi</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Nama Unit</label>
                 <input
                   type="text"
-                  value={formData.description}
-                  onChange={(e) => handleFormChange('description', e.target.value)}
-                  className="input-field"
-                  placeholder="Deskripsi permission"
+                  value={formData.nama_unit}
+                  onChange={(e) => handleFormChange('nama_unit', e.target.value)}
+                  required
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Masukkan nama unit"
                 />
               </div>
-              <div className="mt-2 flex justify-end gap-2">
-                <button type="button" className="btn-secondary" onClick={closeModal}>
-                  Batal
-                </button>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => handleFormChange('status', e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                >
+                  <option value="Aktif">Aktif</option>
+                  <option value="Tidak Aktif">Tidak Aktif</option>
+                </select>
+              </div>
+
+              <div className="mt-2 flex justify-end gap-3">
                 <button
-                  type="submit"
-                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="button"
+                  onClick={closeModal}
+                  className="btn-secondary"
                   disabled={formLoading}
                 >
-                  {formLoading ? 'Menyimpan...' : 'Simpan'}
+                  Batal
+                </button>
+                <button type="submit" className="btn-primary" disabled={formLoading}>
+                  {formLoading ? 'Menyimpan...' : modalMode === 'create' ? 'Simpan' : 'Update'}
                 </button>
               </div>
             </form>
@@ -299,4 +305,4 @@ const Permissions = () => {
   );
 };
 
-export default Permissions;
+export default UnitsPage;

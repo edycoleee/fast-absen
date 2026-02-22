@@ -12,6 +12,8 @@ const getAll = async (page = 1, limit = 10, filters = {}) => {
   if (filters.start_date) params.append('start_date', filters.start_date);
   if (filters.end_date) params.append('end_date', filters.end_date);
   if (filters.id_pegawai) params.append('id_pegawai', filters.id_pegawai);
+  if (filters.id_unit) params.append('id_unit', String(filters.id_unit));
+  if (filters.shift) params.append('shift', filters.shift);
   if (filters.status) params.append('status', filters.status);
 
   const response = await apiClient.get(`/absensi/?${params}`);

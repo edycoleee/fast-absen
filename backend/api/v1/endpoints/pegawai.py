@@ -198,7 +198,8 @@ async def update_pegawai(
     if id_unit is not None:
         update_dict["id_unit"] = id_unit
     if kepala_id_unit is not None:
-        update_dict["kepala_id_unit"] = kepala_id_unit
+        # 0 = sentinel dari frontend: "hapus kepala_id_unit (set NULL)"
+        update_dict["kepala_id_unit"] = kepala_id_unit if kepala_id_unit != 0 else None
     if status is not None:
         update_dict["status"] = status
     

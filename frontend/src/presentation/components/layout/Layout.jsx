@@ -2,6 +2,55 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../domain/hooks';
 
+/**
+ * Build sidebar menu dynamically from menu_guard.
+ * - Operational menus follow menu_guard.menus.*.visible.
+ * - Admin management menus shown only when menu_guard.is_admin === true.
+ * - Safe default: hide all if menu_guard is empty (except dashboard fallback).
+ */
+const buildMenuItems = (menuGuard = {}) => {
+  const menus = menuGuard?.menus ?? {};
+  const isAdmin = !!menuGuard?.is_admin;
+  const isEmpty = Object.keys(menus).length === 0;
+  const items = [];
+
+  // --- Operational menus (DOC section 3A) ---
+  // Dashboard: show if explicitly visible OR menu_guard is empty (safe fallback)
+  if (isEmpty || menus.dashboard?.visible) {
+    items.push({ path: '/dashboard', label: 'Dashboard', icon: '📊' });
+  }
+  if (menus.kpi_unit_role?.visible) {
+    items.push({ path: '/rekap-unit-role', label: 'Rekap Unit/Role', icon: '📈' });
+  }
+  if (menus.monitoring_absensi?.visible) {
+    items.push({ path: '/absensi', label: 'Monitoring Absensi', icon: '📝' });
+  }
+  if (menus.approval?.visible) {
+    items.push({ path: '/approval', label: 'Approval', icon: '✅' });
+  }
+  if (menus.user_sessions?.visible) {
+    items.push({ path: '/sessions-monitor', label: 'Monitor Sesi', icon: '📡' });
+  }
+
+  // --- Admin management menus (only for is_admin) ---
+  if (isAdmin) {
+    items.push(
+      { path: '/users',           label: 'Users',           icon: '👥',  divider: true },
+      { path: '/roles',           label: 'Roles',           icon: '🔐' },
+      { path: '/permissions',     label: 'Permissions',     icon: '🔑' },
+      { path: '/unit',            label: 'Unit',            icon: '🏢' },
+      { path: '/pegawai',         label: 'Pegawai',         icon: '👨‍💼' },
+      { path: '/shift-kelompok',  label: 'Shift Kelompok',  icon: '🔄' },
+      { path: '/shift-aturan',     label: 'Shift Aturan',     icon: '📋' },
+    );
+  }
+
+  // --- Always visible quick link ---
+  items.push({ path: '/login-absensi', label: 'Login Absensi', icon: '🔓', divider: true });
+
+  return items;
+};
+
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
@@ -13,16 +62,7 @@ const Layout = ({ children }) => {
     navigate('/login');
   };
 
-  const menuItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: '📊' },
-    { path: '/users', label: 'Users', icon: '👥' },
-    { path: '/roles', label: 'Roles', icon: '🔐' },
-    { path: '/permissions', label: 'Permissions', icon: '🔑' },
-    { path: '/pegawai', label: 'Pegawai', icon: '👨‍💼' },
-    { path: '/absensi', label: 'Absensi', icon: '📝' },
-    { path: '/sessions-monitor', label: 'Monitor Sesi', icon: '📡' },
-    { path: '/login-absensi', label: 'Login Absensi', icon: '🔓' },
-  ];
+  const menuItems = buildMenuItems(user?.menu_guard);
 
   const isActive = (path) => location.pathname === path;
 
@@ -76,9 +116,12 @@ const Layout = ({ children }) => {
         </div>
 
         <nav className="p-4">
-          <ul className="space-y-2">
+          <ul className="space-y-1">
             {menuItems.map((item) => (
               <li key={item.path}>
+                {item.divider && (
+                  <div className="border-t border-gray-200 my-2" />
+                )}
                 <Link
                   to={item.path}
                   onClick={() => setSidebarOpen(false)}
