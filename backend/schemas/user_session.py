@@ -1,6 +1,6 @@
 """
 User Session Schemas
-Login tracking schemas dengan validation
+Session tracking schemas dengan validation
 """
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import Optional
@@ -83,7 +83,7 @@ class ActiveSessionInfo(BaseModel):
 
 
 class LoginAttemptLog(BaseModel):
-    """Login attempt log (for failed logins)"""
+    """Authentication attempt log (for failed attempts)"""
     id_pegawai: str
     ip_address: str
     login_status: str

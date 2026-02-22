@@ -1,35 +1,17 @@
 # Panduan Administrator - Sistem Absensi RSUD Sulfat
 
-Panduan lengkap untuk administrator dalam mengelola sistem absensi menggunakan API.
+Panduan operasional admin + contoh payload yang mengikuti schema aktual endpoint.
 
-**API Documentation**: http://192.168.171.15:8000/docs
-
----
-
-## 📋 Daftar Isi
-
-1. [Login Sebagai Admin](#1-login-sebagai-admin)
-2. [Mengelola Users](#2-mengelola-users)
-3. [Mengelola Roles](#3-mengelola-roles)
-4. [Mengelola Permissions](#4-mengelola-permissions)
-5. [Mengelola Pegawai](#5-mengelola-pegawai)
-6. [Mengelola Absensi](#6-mengelola-absensi)
-7. [Monitoring Login Device](#7-monitoring-login-device)
+- Swagger: `http://192.168.171.15:8000/docs`
+- Base API: `/api/v1`
 
 ---
 
-## 1. Login Sebagai Admin
+## 1) Login Admin
 
-### Langkah 1: Buka Swagger Documentation
+Endpoint: `POST /api/v1/auth/login`
 
-Buka browser dan akses: **http://192.168.171.15:8000/docs**
-
-### Langkah 2: Login Admin
-
-1. Cari section **Authentication** di Swagger UI
-2. Klik endpoint **POST /api/v1/auth/login**
-3. Klik tombol **"Try it out"**
-4. Masukkan kredensial admin:
+Schema: `LoginRequest`
 
 ```json
 {
@@ -38,464 +20,248 @@ Buka browser dan akses: **http://192.168.171.15:8000/docs**
 }
 ```
 
-5. Klik **"Execute"**
-6. Copy **access_token** dari response
-
-### Langkah 3: Authorize Swagger UI
-
-1. Klik tombol **"Authorize"** (ikon gembok) di pojok kanan atas
-2. Paste token yang sudah di-copy
-3. Format: `Bearer <your_token_here>`
-4. Klik **"Authorize"**
-5. Klik **"Close"**
-
-**✅ Sekarang Anda sudah terautentikasi sebagai admin!**
+Setelah login:
+1. copy `access_token`
+2. authorize di Swagger: `Bearer <token>`
 
 ---
 
-## 2. Mengelola Users
+## 2) Endpoint Admin Utama
 
-### 2.1 Melihat Daftar Users
+## A. Users (`/users`)
+- `GET /users/`
+- `POST /users/`
+- `GET /users/{user_id}`
+- `PUT /users/{user_id}`
+- `DELETE /users/{user_id}`
 
-**Endpoint**: `GET /api/v1/users/`
+Permission: `users.read/create/update/delete`
 
-1. Buka section **Users**
-2. Klik **GET /api/v1/users/**
-3. Klik **"Try it out"**
-4. Set pagination (opsional):
-   - `page`: 1
-   - `limit`: 10
-5. Klik **"Execute"**
-
-**Response**: Daftar semua users dengan role dan pegawai info
-
-### 2.2 Membuat User Baru
-
-**Endpoint**: `POST /api/v1/users/`
-
-**Skenario A: Membuat User Admin Baru**
-
+### Contoh body `POST /users/` (schema `UserCreate`)
 ```json
 {
-  "username": "admin2",
-  "password": "password123",
-  "id_pegawai": null,
-  "is_active": true,
-  "role_ids": [1]
-}
-```
-
-**Skenario B: Membuat User Pegawai**
-
-```json
-{
-  "username": "johndoe",
-  "password": "pegawai123",
+  "username": "pegawai01",
   "id_pegawai": "P001",
   "is_active": true,
+  "password": "password123",
   "role_ids": [2]
 }
 ```
 
-**📌 Catatan:**
-- `role_ids: [1]` = Admin
-- `role_ids: [2]` = User/Pegawai
-- `id_pegawai` harus sudah ada di database pegawai
-- Password minimal 6 karakter
-
-### 2.3 Melihat Detail User
-
-**Endpoint**: `GET /api/v1/users/{id}`
-
-1. Masukkan ID user yang ingin dilihat
-2. Klik **"Execute"**
-
-### 2.4 Update User
-
-**Endpoint**: `PUT /api/v1/users/{id}`
-
-**Contoh:Nonaktifkan User**
-
+### Contoh body `PUT /users/{user_id}` (schema `UserUpdate`)
 ```json
 {
-  "is_active": false
-}
-```
-
-**Contoh: Update Password**
-
-```json
-{
-  "password": "newpassword123"
-}
-```
-
-**Contoh: Update Role**
-
-```json
-{
+  "username": "pegawai01.updated",
+  "password": "newpass123",
+  "id_pegawai": "P001",
+  "is_active": true,
   "role_ids": [1, 2]
 }
 ```
 
-### 2.5 Hapus User
+## B. Roles & Permissions *(super-admin)*
 
-**Endpoint**: `DELETE /api/v1/users/{id}`
+### Roles (`/roles`)
+- `GET /roles/`, `POST /roles/`, `GET /roles/{role_id}`, `PUT /roles/{role_id}`, `DELETE /roles/{role_id}`
 
-⚠️ **Perhatian**: User yang dihapus tidak bisa dikembalikan!
+### Permissions (`/permissions`)
+- `GET /permissions/`, `POST /permissions/`, `GET /permissions/{permission_id}`, `PUT /permissions/{permission_id}`, `DELETE /permissions/{permission_id}`
 
----
+## C. Pegawai (`/pegawai`)
+- `GET /pegawai/`
+- `POST /pegawai/`
+- `GET /pegawai/{pegawai_id}`
+- `PUT /pegawai/{pegawai_id}`
+- `DELETE /pegawai/{pegawai_id}`
 
-## 3. Mengelola Roles
+Catatan: endpoint create/update pegawai memakai `multipart/form-data` (bukan JSON body).
 
-### 3.1 Melihat Daftar Roles
+### Field form `POST /pegawai/` (schema dasar `PegawaiCreate` + form endpoint)
+- `id_pegawai` (required)
+- `nip`, `nama`, `jenis_kelamin(L/P)`, `tempat_lahir`, `tanggal_lahir(YYYY-MM-DD)`, `alamat`, `id_unit`, `kepala_id_unit`, `status`, `foto`
 
-**Endpoint**: `GET /api/v1/roles/`
+## D. Absensi (`/absensi`)
 
-Response akan menampilkan:
-- Role default: `admin` dan `user`
-- Role custom yang sudah dibuat
+### User-flow endpoint (untuk monitoring)
+- `GET /absensi/today`
+- `GET /absensi/history`
+- `GET /absensi/summary`
 
-### 3.2 Membuat Role Baru
+### Admin endpoint
+- `GET /absensi/statistics`
+- `GET /absensi/`
+- `GET /absensi/{absensi_id}`
+- `PUT /absensi/{absensi_id}`
+- `DELETE /absensi/{absensi_id}`
 
-**Endpoint**: `POST /api/v1/roles/`
-
-**Contoh: Membuat Role "Supervisor"**
-
+### Contoh body `PUT /absensi/{absensi_id}` (schema `AbsensiUpdate`)
 ```json
 {
-  "name": "supervisor",
-  "description": "Supervisor yang dapat melihat laporan absensi",
-  "is_system": false,
-  "permission_ids": [3, 4]
+  "status": "IZIN",
+  "keterangan": "Izin medis",
+  "jam_masuk": "2026-02-22T08:00:00+07:00",
+  "jam_keluar": "2026-02-22T16:00:00+07:00",
+  "dokumen_pendukung": "uploads/surat/surat-dokter.pdf"
 }
 ```
 
-**📌 Catatan:**
-- `is_system: false` - Role custom (bisa dihapus)
-- `is_system: true` - Role system (tidak bisa dihapus)
-- `permission_ids`: Array ID permission yang diberikan
+## E. User Sessions Monitoring (`/user-sessions`)
+- `GET /user-sessions/`
+- `GET /user-sessions/records/{session_record_id}`
+- `GET /user-sessions/active`
+- `GET /user-sessions/history`
+- `GET /user-sessions/statistics`
+- `GET /user-sessions/by-session/{session_id}`
+- `POST /user-sessions/{session_id}/force-logout`
+- `POST /user-sessions/cleanup-expired`
 
-### 3.3 Update Role
-
-**Endpoint**: `PUT /api/v1/roles/{id}`
-
-**Contoh: Tambah Permission ke Role**
-
+### Contoh body `POST /user-sessions/` (schema `UserSessionsCreate`)
 ```json
 {
-  "description": "Supervisor dengan akses update",
-  "permission_ids": [3, 4, 5]
+  "uid": "DEVICE123",
+  "player_id": "PLAYER456",
+  "model": "Samsung Galaxy A52"
 }
 ```
 
-⚠️ **Tidak bisa update**: Role system (`admin`, `user`)
+## F. Unit, Shift, Roster, Penilaian
 
-### 3.4 Hapus Role
+- Unit: `/unit`
+- Shift Kelompok: `/shift-kelompok`
+- Shift Kelompok Aturan: `/shift-kelompok-aturan`
+- Pegawai Shift Kelompok: `/pegawai-shift-kelompok`
+- Roster Upload Batch: `/roster-upload-batch`
+- Roster Shift: `/roster-shift`
+- Penilaian Shift Absensi: `/penilaian-shift-absensi`
 
-**Endpoint**: `DELETE /api/v1/roles/{id}`
+Semua modul di atas mengikuti pola CRUD standar.
 
-⚠️ **Tidak bisa hapus**: Role system (`admin`, `user`)
+### Endpoint penting untuk operasional roster bulanan
 
----
+- `GET /roster-upload-batch/template/download` (download template Excel resmi)
+- `POST /roster-upload-batch/import` (upload & import roster dari Excel)
+- `POST /penilaian-shift-absensi/evaluate` (evaluasi otomatis roster vs absensi)
 
-## 4. Mengelola Permissions
+## G. Approval Pengajuan Absensi
 
-### 4.1 Melihat Daftar Permissions
+- `GET /approval-pengajuan-absensi/logs`
+- `POST /approval-pengajuan-absensi/`
+- `GET /approval-pengajuan-absensi/mine`
+- `GET /approval-pengajuan-absensi/assigned`
+- `POST /approval-pengajuan-absensi/{pengajuan_id}/decision`
+- `GET /approval-pengajuan-absensi/{pengajuan_id}/logs`
 
-**Endpoint**: `GET /api/v1/permissions/`
+Audit log endpoint:
+- `GET /approval-pengajuan-absensi-log/`
+- `GET /approval-pengajuan-absensi-log/pengajuan/{pengajuan_id}`
 
-Default permissions:
-- `user.login` - Login aplikasi
-- `absensi.create` - Buat absensi
-- `absensi.read` - Lihat absensi
-- `absensi.update` - Update absensi
-- `absensi.delete` - Hapus absensi
+Kebijakan resolver approver saat ini (P0-3 tahap awal):
+- Sistem menggunakan **1 atasan langsung** saja (tanpa hirarki bertingkat).
+- Atasan langsung di-resolve dari mapping `kepala_id_unit` pada data pegawai pemohon.
+- Jika mapping belum lengkap/invalid, pengajuan ditolak dengan error validasi agar data organisasi diperbaiki dulu.
 
-### 4.2 Membuat Permission Baru
-
-**Endpoint**: `POST /api/v1/permissions/`
-
-**Contoh: Permission untuk Laporan**
-
+### Contoh body `POST /approval-pengajuan-absensi/` (schema `ApprovalPengajuanAbsensiCreate`)
 ```json
 {
-  "name": "report.view",
-  "description": "Melihat laporan absensi bulanan",
-  "is_system": false
+  "tipe_pengajuan": "MISSING_CHECKIN",
+  "target_tanggal": "2026-02-22",
+  "alasan": "Lupa check-in karena emergency di ruangan",
+  "roster_shift_id": 123
 }
 ```
 
-### 4.3 Update Permission
-
-**Endpoint**: `PUT /api/v1/permissions/{id}`
-
+### Contoh body `POST /approval-pengajuan-absensi/{pengajuan_id}/decision` (schema `ApprovalPengajuanAbsensiDecision`)
 ```json
 {
-  "description": "Melihat dan export laporan absensi"
+  "action": "APPROVED",
+  "catatan_approval": "Disetujui sesuai bukti"
 }
 ```
 
-⚠️ **Tidak bisa update**: Permission system
-
-### 4.4 Hapus Permission
-
-**Endpoint**: `DELETE /api/v1/permissions/{id}`
-
-⚠️ **Tidak bisa hapus**: Permission system
-
 ---
 
-## 5. Mengelola Pegawai
+## 3) SOP Roster Bulanan (Best Practice)
 
-### 5.1 Melihat Daftar Pegawai
+Pola lama (upload Excel di akhir bulan untuk bulan berikutnya) tetap dipakai, namun di sistem baru harus melalui pipeline resmi agar aman dan bisa diaudit.
 
-**Endpoint**: `GET /api/v1/pegawai/`
+### A. Timeline operasional yang disarankan
 
-**Dengan Pencarian:**
-- Parameter `search`: Cari berdasarkan nama atau NIP
-- Contoh: `search=john` atau `search=123456`
+1. **H-10 s.d H-7 akhir bulan**
+  - Download template resmi roster.
+  - Susun jadwal per unit/periode bulan berikutnya.
 
-### 5.2 Menambah Pegawai Baru
+2. **H-7 s.d H-3**
+  - Import roster per unit/periode.
+  - Perbaiki semua baris invalid sampai hasil validasi sesuai target kualitas data.
 
-**Endpoint**: `POST /api/v1/pegawai/`
+3. **H-2 s.d H-1**
+  - Finalisasi roster dan publish internal.
+  - Terapkan cutoff perubahan roster.
 
-**⚠️ Format: multipart/form-data**
+4. **Saat bulan berjalan**
+  - Jalankan evaluasi otomatis roster vs absensi secara berkala.
+  - Tindak lanjuti exception melalui approval (bukan edit diam-diam).
 
-1. Klik endpoint **POST /api/v1/pegawai/**
-2. Klik **"Try it out"**
-3. Isi form fields:
-   - `id_pegawai`: **P001** (unique, wajib)
-   - `nip`: **198501012010011001** (unique, wajib)
-   - `nama`: **John Doe** (wajib)
-   - `jabatan`: **Perawat**
-   - `foto`: *Click "Choose File"* untuk upload foto (opsional)
-     - Format: JPG/PNG
-     - Max size: ~10MB
-     - Otomatis disimpan di `/uploads/photos/`
+### B. Aturan kualitas data sebelum publish
 
-4. Klik **"Execute"**
+- Gunakan format waktu yang konsisten.
+- Pastikan tidak ada shift overlap per pegawai pada rentang waktu yang sama.
+- Pastikan semua pegawai aktif punya roster yang sesuai unitnya.
+- Pisahkan import per unit/periode agar tracing batch dan rollback lebih mudah.
 
-**📌 Tips:**
-- NIP harus unique (18 digit)
-- ID Pegawai harus unique
-- Foto akan otomatis di-resize jika terlalu besar
+### C. Aturan governance (wajib)
 
-### 5.3 Melihat Detail Pegawai
+- **Sumber kebenaran** adalah data yang sudah masuk database, bukan file Excel lokal.
+- Setelah cutoff, perubahan roster harus melalui approval dan tercatat.
+- Gunakan `manual override` hanya untuk kasus valid, selalu isi alasan.
+- Rekap KPI/payroll mengambil data dari hasil evaluasi, bukan dari file mentah.
 
-**Endpoint**: `GET /api/v1/pegawai/{id_pegawai}`
+### D. Contoh payload evaluasi otomatis
 
-Response termasuk:
-- Data pegawai lengkap
-- Path foto (jika ada)
-- URL akses foto
-
-### 5.4 Update Pegawai
-
-**Endpoint**: `PUT /api/v1/pegawai/{id_pegawai}`
-
-**Contoh: Update Jabatan**
-
-```
-jabatan: Kepala Ruangan
-```
-
-**Contoh: Ganti Foto**
-
-```
-foto: [upload file baru]
-```
-
-**📌 Catatan:**
-- Foto lama akan otomatis dihapus saat upload foto baru
-- Bisa update sebagian field saja
-
-### 5.5 Hapus Pegawai
-
-**Endpoint**: `DELETE /api/v1/pegawai/{id_pegawai}`
-
-⚠️ **Perhatian:**
-- Pegawai yang dihapus akan menghapus:
-  - Data pegawai
-  - Foto pegawai (jika ada)
-  - ⚠️ Users terkait mungkin bermasalah (set id_pegawai = null dulu)
-
-**Best Practice:**
-1. Hapus/update user terkait dulu
-2. Baru hapus pegawai
-
----
-
-## 6. Mengelola Absensi
-
-### 6.1 Melihat Semua Absensi (Admin)
-
-**Endpoint**: `GET /api/v1/absensi/`
-
-Response termasuk:
-- Semua data absensi dari semua pegawai
-- Informasi pegawai (nama, NIP)
-- IP address perangkat
-- Tanggal dan waktu absensi
-
-**Pagination:**
-- `skip`: 0 (default)
-- `limit`: 100 (default)
-
-### 6.2 Melihat Detail Absensi
-
-**Endpoint**: `GET /api/v1/absensi/{id}`
-
-Melihat detail absensi spesifik berdasarkan ID.
-
-### 6.3 Update Absensi
-
-**Endpoint**: `PUT /api/v1/absensi/{id}`
-
-**Contoh: Koreksi Keterangan**
+Endpoint: `POST /api/v1/penilaian-shift-absensi/evaluate`
 
 ```json
 {
-  "keterangan": "Hadir dengan izin terlambat - macet 30 menit"
+  "start_date": "2026-03-01",
+  "end_date": "2026-03-31",
+  "id_unit": 10,
+  "id_pegawai": null,
+  "force_recalculate": false
 }
 ```
 
-**Contoh: Update Lokasi**
-
-```json
-{
-  "id_lokasi": "LOK002",
-  "keterangan": "Dipindahkan ke Ruang IGD"
-}
-```
-
-**Contoh: Koreksi Tanggal**
-
-```json
-{
-  "tanggal": "2026-02-12T08:00:00"
-}
-```
-
-**📌 Field yang bisa diupdate:**
-- `id_lokasi`
-- `uid`
-- `tanggal`
-- `keterangan`
-- `id_pegawai` (jika ada kesalahan input)
-
-### 6.4 Hapus Absensi
-
-**Endpoint**: `DELETE /api/v1/absensi/{id}`
-
-Menghapus data absensi (misalnya data duplikat).
+Field ringkasan hasil yang perlu dipantau:
+- `created_count`
+- `updated_count`
+- `skipped_manual_override`
+- `skipped_existing`
+- `failed_count`
 
 ---
 
-## 7. Monitoring Login Device
+## 4) Operasional Harian Disarankan
 
-### 7.1 Melihat Semua Login Device
-
-**Endpoint**: `GET /api/v1/login-absensi/`
-
-Response menampilkan:
-- Device UID
-- Player ID (untuk push notification)
-- Model device (merek HP)
-- Nama pegawai yang login
-- Waktu login
-
-**Kegunaan:**
-- Monitoring device yang digunakan pegawai
-- Deteksi login mencurigakan
-- Tracking untuk push notification
-
-### 7.2 Melihat Detail Login Device
-
-**Endpoint**: `GET /api/v1/login-absensi/{id}`
-
-Detail device login spesifik.
+1. `GET /stats/`
+2. `GET /absensi/statistics`
+3. `GET /user-sessions/active`
+4. `GET /approval-pengajuan-absensi/assigned`
+5. `POST /approval-pengajuan-absensi/{pengajuan_id}/decision`
 
 ---
 
-## 📊 Tips & Best Practices
+## 5) Troubleshooting Singkat
 
-### 1. Manajemen User
-- ✅ Buat pegawai dulu, baru buat user
-- ✅ Gunakan username yang mudah diingat (contoh: NIP atau nama)
-- ✅ Password minimal 6 karakter, disarankan 8-12 karakter
-- ✅ Nonaktifkan user, jangan langsung hapus (untuk histori)
-
-### 2. Manajemen Role & Permission
-- ✅ Jangan edit role system (`admin`, `user`)
-- ✅ Buat role custom untuk kebutuhan khusus (supervisor, manager, dll)
-- ✅ Berikan permission sesuai kebutuhan (principle of least privilege)
-
-### 3. Manajemen Pegawai
-- ✅ Pastikan NIP dan ID unik
-- ✅ Upload foto untuk identifikasi
-- ✅ Update data pegawai jika ada perubahan jabatan
-
-### 4. Monitoring Absensi
-- ✅ Cek IP address untuk deteksi anomali
-- ✅ Review absensi yang mencurigakan
-- ✅ Backup data secara berkala
-
-### 5. Keamanan
-- ✅ Ganti password admin default setelah instalasi
-- ✅ Logout setelah selesai menggunakan sistem
-- ✅ Jangan share access token
-- ✅ Token expire setelah 30 menit (auto logout)
+- `401`: token invalid/expired
+- `403`: permission tidak cukup
+- `404`: resource tidak ditemukan
+- `400`: payload tidak sesuai schema atau validasi bisnis gagal
 
 ---
 
-## 🔧 Troubleshooting
+## 6) Referensi
 
-### Token Expired (401 Unauthorized)
+- [API_ENDPOINTS.md](API_ENDPOINTS.md)
+- [QUICK_START.md](QUICK_START.md)
+- [USER_GUIDE.md](USER_GUIDE.md)
 
-**Masalah**: Response "Invalid authentication credentials"
-
-**Solusi**:
-1. Login ulang di endpoint `/api/v1/auth/login`
-2. Copy token baru
-3. Authorize ulang di Swagger UI
-
-### Forbidden (403)
-
-**Masalah**: "Not enough permissions"
-
-**Solusi**:
-- Pastikan Anda login sebagai admin
-- Cek role user di endpoint `/api/v1/users/{id}`
-
-### Duplicate Error
-
-**Masalah**: Username/NIP/ID sudah ada
-
-**Solusi**:
-- Gunakan username/NIP/ID yang berbeda
-- Cek daftar users/pegawai yang sudah ada
-
-### File Upload Error
-
-**Masalah**: Gagal upload foto
-
-**Solusi**:
-- Pastikan format JPG atau PNG
-- Reduce ukuran file (max ~10MB)
-- Pastikan koneksi internet stabil
-
----
-
-## 📞 Support
-
-Jika mengalami kendala:
-1. Cek log server di terminal
-2. Cek dokumentasi API di http://192.168.171.15:8000/docs
-3. Hubungi tim teknis
-
----
-
-**Version**: 2.0.0  
-**Last Updated**: 12 Februari 2026  
-**Environment**: Production - RSUD Sulfat
+Last updated: 22 Februari 2026

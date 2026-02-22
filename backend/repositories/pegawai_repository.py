@@ -65,3 +65,18 @@ class PegawaiRepository(BaseRepository[Pegawai]):
             .limit(limit)
             .all()
         )
+
+    def count_all(self) -> int:
+        """Count all pegawai"""
+        return self.db.query(Pegawai).count()
+
+    def count_search(self, query: str) -> int:
+        """Count pegawai by search query on name or NIP"""
+        return (
+            self.db.query(Pegawai)
+            .filter(or_(
+                Pegawai.nama.ilike(f"%{query}%"),
+                Pegawai.nip.ilike(f"%{query}%")
+            ))
+            .count()
+        )

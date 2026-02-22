@@ -1,7 +1,7 @@
 """
 Halo Schemas - Request dan Response models
 """
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class HaloRequest(BaseModel):
@@ -15,7 +15,8 @@ class HaloRequest(BaseModel):
     nama: str = Field(..., min_length=1, description="Nama user")
     handphone: str = Field(..., min_length=10, description="Nomor handphone")
     
-    @validator('handphone')
+    @field_validator('handphone')
+    @classmethod
     def validate_handphone(cls, v):
         """Validasi format handphone"""
         # Hapus karakter non-digit
@@ -26,13 +27,14 @@ class HaloRequest(BaseModel):
         
         return v
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "nama": "Sultan",
                 "handphone": "081234567890"
             }
         }
+    )
 
 
 class HaloResponse(BaseModel):
@@ -48,11 +50,12 @@ class HaloResponse(BaseModel):
     nama: str
     handphone: str
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "message": "Halo Sultan!",
                 "nama": "Sultan",
                 "handphone": "081234567890"
             }
         }
+    )

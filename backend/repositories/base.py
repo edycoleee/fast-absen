@@ -143,17 +143,25 @@ class BaseRepository(Generic[ModelType]):
         
         return query.count()
     
-    def create(self, obj_in: dict) -> ModelType:
+    def create(self, obj_in: Any) -> ModelType:
         """
         Create new record
         
         Args:
-            obj_in: Dictionary with field values
+            obj_in: Dictionary, Pydantic model, atau instance model
         
         Returns:
             Created model instance
         """
-        db_obj = self.model(**obj_in)
+        if isinstance(obj_in, self.model):
+            db_obj = obj_in
+        elif isinstance(obj_in, dict):
+            db_obj = self.model(**obj_in)
+        elif hasattr(obj_in, "model_dump"):
+            db_obj = self.model(**obj_in.model_dump())
+        else:
+            raise TypeError(f"Unsupported create payload type: {type(obj_in).__name__}")
+
         self.db.add(db_obj)
         self.db.commit()
         self.db.refresh(db_obj)

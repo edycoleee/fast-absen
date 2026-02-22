@@ -3,8 +3,17 @@ Unit tests for pegawai endpoints
 """
 import pytest
 import io
+from PIL import Image
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+
+
+def _make_test_jpeg() -> io.BytesIO:
+    buffer = io.BytesIO()
+    image = Image.new("RGB", (10, 10), color=(255, 0, 0))
+    image.save(buffer, format="JPEG")
+    buffer.seek(0)
+    return buffer
 
 
 @pytest.mark.pegawai
@@ -24,8 +33,9 @@ class TestGetPegawai:
         data = response.json()
         
         assert data["success"] is True
-        assert "pegawai" in data["data"]
-        assert data["data"]["page"] == 1
+        assert "items" in data["data"]
+        assert "total" in data["data"]
+        assert data["data"]["skip"] == 0
     
     def test_get_pegawai_with_pagination(
         self,
@@ -35,13 +45,13 @@ class TestGetPegawai:
     ):
         """Test getting pegawai with pagination parameters"""
         response = client.get(
-            "/api/v1/pegawai/?page=1&limit=5",
+            "/api/v1/pegawai/?skip=0&limit=5",
             headers=auth_headers_admin
         )
         
         assert response.status_code == 200
         data = response.json()
-        assert data["data"]["page"] == 1
+        assert data["data"]["skip"] == 0
         assert data["data"]["limit"] == 5
     
     def test_get_pegawai_as_user_forbidden(
@@ -105,8 +115,7 @@ class TestCreatePegawai:
         auth_headers_admin: dict
     ):
         """Test creating pegawai with photo upload"""
-        # Create fake image file
-        fake_image = io.BytesIO(b"fake image content")
+        fake_image = _make_test_jpeg()
         
         new_pegawai = {
             "id_pegawai": "P002",
@@ -159,7 +168,8 @@ class TestCreatePegawai:
         )
         
         assert response.status_code == 400
-        assert "already exists" in response.json()["detail"].lower()
+        error_text = (response.json().get("detail") or response.json().get("message") or "").lower()
+        assert "already exists" in error_text
     
     def test_create_pegawai_duplicate_nip(
         self,
@@ -190,7 +200,8 @@ class TestCreatePegawai:
         )
         
         assert response.status_code == 400
-        assert "nip" in response.json()["detail"].lower()
+        error_text = (response.json().get("detail") or response.json().get("message") or "").lower()
+        assert "nip" in error_text
     
     def test_create_pegawai_as_user_forbidden(
         self,
@@ -329,7 +340,7 @@ class TestUpdatePegawai:
         pegawai_id = create_response.json()["data"]["id_pegawai"]
         
         # Update with photo
-        fake_image = io.BytesIO(b"new fake image")
+        fake_image = _make_test_jpeg()
         update_data = {
             "nama": "Updated Name"
         }
@@ -478,7 +489,7 @@ class TestSearchPegawai:
         data = response.json()
         
         assert data["success"] is True
-        assert len(data["data"]["pegawai"]) >= 1
+        assert len(data["data"]["items"]) >= 1
         assert data["data"]["search"] == "Ahmad"
     
     def test_search_pegawai_by_nip(
@@ -506,4 +517,4 @@ class TestSearchPegawai:
         data = response.json()
         
         assert data["success"] is True
-        assert len(data["data"]["pegawai"]) >= 1
+        assert len(data["data"]["items"]) >= 1

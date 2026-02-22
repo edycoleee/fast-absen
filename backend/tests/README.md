@@ -55,6 +55,33 @@ pytest tests/test_auth_utils.py -v
 
 # Test repositories
 pytest tests/test_user_repository.py -v
+
+# Test evaluate engine (service)
+pytest tests/test_penilaian_shift_absensi_service.py -v
+
+# Test evaluate endpoint (auth + permission path)
+pytest tests/test_penilaian_shift_absensi_endpoints.py -v
+```
+
+### Fast Path (Recommended for Daily Development)
+
+Gunakan jalur cepat ini agar iterasi lebih singkat saat perubahan terkait auth/permission/evaluate:
+
+```bash
+# 1) Kompatibilitas auth + repository
+pytest tests/test_auth_utils.py tests/test_user_repository.py -q
+
+# 2) Evaluate engine rules (mangkir/telat/pulang cepat/lembur/override/recalculate)
+pytest tests/test_penilaian_shift_absensi_service.py -q
+
+# 3) Evaluate endpoint auth+permission (no token/user/admin)
+pytest tests/test_penilaian_shift_absensi_endpoints.py -q
+```
+
+Jika ketiga command di atas hijau, baru lanjutkan full suite:
+
+```bash
+pytest -q
 ```
 
 ### Run Specific Test Class
@@ -116,6 +143,8 @@ Tests diorganisir dengan markers untuk filtering:
 - `@pytest.mark.integration` - Integration tests
 - `@pytest.mark.slow` - Slow running tests
 
+Catatan: test evaluate endpoint memakai marker `integration`.
+
 ### Run Tests Excluding Markers
 
 ```bash
@@ -136,7 +165,9 @@ tests/
 ├── test_auth_utils.py          # Auth utility functions tests
 ├── test_auth_endpoints.py      # Auth API endpoints tests
 ├── test_user_endpoints.py      # User API endpoints tests
-└── test_user_repository.py     # User repository tests
+├── test_user_repository.py     # User repository tests
+├── test_penilaian_shift_absensi_service.py   # Evaluate engine rules (service-level)
+└── test_penilaian_shift_absensi_endpoints.py # Evaluate endpoint auth+permission
 ```
 
 ### Available Fixtures
@@ -265,11 +296,30 @@ pytest -l  # Show local variables in tracebacks
 
 | Module | Tests | Status |
 |--------|-------|--------|
-| Auth Utils | 7 tests | ✅ Ready |
+| Auth Utils | 9 tests | ✅ Ready |
 | Auth Endpoints | 9 tests | ✅ Ready |
-| User Endpoints | 16 tests | ✅ Ready |
-| User Repository | 8 tests | ✅ Ready |
-| **Total** | **40 tests** | ✅ Ready |
+| User Endpoints | 18 tests | ✅ Ready |
+| User Repository | 10 tests | ✅ Ready |
+| Penilaian Shift Absensi Service | 6 tests | ✅ Ready |
+| Penilaian Shift Absensi Endpoints | 3 tests | ✅ Ready |
+| **Total Suite (current)** | **144 tests** | ✅ Passing |
+
+### Evaluate Endpoint Rules (Single Source of Truth)
+
+Untuk `POST /api/v1/penilaian-shift-absensi/evaluate`, minimal assertion yang wajib dijaga:
+
+1. **Tanpa token** → HTTP `403`
+2. **Token user biasa** (tanpa permission create) → HTTP `403`
+3. **Token admin** → HTTP `200` + payload `success=true`
+4. **Ringkasan evaluate lengkap** harus berisi field:
+  - `created_count`
+  - `updated_count`
+  - `skipped_manual_override`
+  - `skipped_existing`
+  - `failed_count`
+
+Aturan ini diimplementasikan pada file:
+- `tests/test_penilaian_shift_absensi_endpoints.py`
 
 ---
 

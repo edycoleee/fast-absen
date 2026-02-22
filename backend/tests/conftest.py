@@ -21,6 +21,7 @@ from models.base import Base
 from models import Role, Permission, User, Pegawai
 from config.database import get_db
 from utils.auth import get_password_hash
+from utils.permission_registry import PERMISSIONS
 
 # Test database URL (SQLite in-memory untuk testing)
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -82,30 +83,44 @@ def db_with_data(db: Session) -> Session:
     # Create roles
     admin_role = Role(id=1, name="admin", description="Administrator role")
     user_role = Role(id=2, name="user", description="Regular user role")
+    super_admin_role = Role(id=3, name="super-admin", description="Super Administrator role")
     db.add(admin_role)
     db.add(user_role)
+    db.add(super_admin_role)
     
     # Create permissions
     permissions = [
-        Permission(id=1, name="user.login", description="Login to application"),
-        Permission(id=2, name="absensi.create", description="Create attendance"),
-        Permission(id=3, name="absensi.read", description="Read attendance"),
-        Permission(id=4, name="absensi.update", description="Update attendance"),
-        Permission(id=5, name="absensi.delete", description="Delete attendance"),
+        Permission(id=index, name=name, description=description)
+        for index, (name, description) in enumerate(PERMISSIONS.items(), start=1)
     ]
     for perm in permissions:
         db.add(perm)
     
     db.commit()
     
-    # Assign all permissions to admin
+    # Assign all permissions to admin and super-admin
     db.execute(
         text("INSERT INTO role_permissions (role_id, permission_id) SELECT 1, id FROM permissions")
+    )
+    db.execute(
+        text("INSERT INTO role_permissions (role_id, permission_id) SELECT 3, id FROM permissions")
     )
     
     # Assign user permissions needed for check-in/check-out flow
     db.execute(
-        text("INSERT INTO role_permissions (role_id, permission_id) VALUES (2, 1), (2, 2), (2, 3), (2, 4)")
+        text(
+            """
+            INSERT INTO role_permissions (role_id, permission_id)
+            SELECT 2, id FROM permissions
+            WHERE name IN (
+                'user.login',
+                'absensi.create',
+                'absensi.read',
+                'absensi.update',
+                'user_sessions.create'
+            )
+            """
+        )
     )
     
     db.commit()
@@ -136,8 +151,9 @@ def db_with_data(db: Session) -> Session:
     db.add(admin_user)
     db.commit()
     
-    # Assign admin role
+    # Assign admin + super-admin role
     db.execute(text("INSERT INTO user_roles (user_id, role_id) VALUES (1, 1)"))
+    db.execute(text("INSERT INTO user_roles (user_id, role_id) VALUES (1, 3)"))
     db.commit()
     
     # Create regular user

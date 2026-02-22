@@ -47,13 +47,14 @@ class PaginationParams(BaseSchema):
         """Calculate offset from page and limit"""
         return (self.page - 1) * self.limit
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "page": 1,
                 "limit": 10
             }
         }
+    )
 
 
 class SearchParams(BaseSchema):

@@ -6,6 +6,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 
+def _error_text(response) -> str:
+    body = response.json()
+    return (body.get("detail") or body.get("message") or "").lower()
+
+
 @pytest.mark.permission
 class TestGetPermissions:
     """Test GET /permissions/ endpoint"""
@@ -23,9 +28,10 @@ class TestGetPermissions:
         data = response.json()
         
         assert data["success"] is True
-        assert "permissions" in data["data"]
-        assert len(data["data"]["permissions"]) >= 5  # At least 5 default permissions
-        assert data["data"]["page"] == 1
+        assert "items" in data["data"]
+        assert len(data["data"]["items"]) >= 5
+        assert data["data"]["total"] >= 5
+        assert data["data"]["skip"] == 0
     
     def test_get_permissions_with_pagination(
         self,
@@ -35,13 +41,13 @@ class TestGetPermissions:
     ):
         """Test getting permissions with pagination parameters"""
         response = client.get(
-            "/api/v1/permissions/?page=1&limit=3",
+            "/api/v1/permissions/?skip=0&limit=3",
             headers=auth_headers_admin
         )
         
         assert response.status_code == 200
         data = response.json()
-        assert data["data"]["page"] == 1
+        assert data["data"]["skip"] == 0
         assert data["data"]["limit"] == 3
     
     def test_get_permissions_as_user_forbidden(
@@ -74,8 +80,8 @@ class TestCreatePermission:
     ):
         """Test creating a new permission as admin"""
         new_permission = {
-            "name": "pegawai.create",
-            "description": "Create employee"
+            "name": "custom.permission.create",
+            "description": "Create custom permission"
         }
         
         response = client.post(
@@ -88,8 +94,8 @@ class TestCreatePermission:
         data = response.json()
         
         assert data["success"] is True
-        assert data["data"]["name"] == "pegawai.create"
-        assert data["data"]["description"] == "Create employee"
+        assert data["data"]["name"] == "custom.permission.create"
+        assert data["data"]["description"] == "Create custom permission"
         assert "id" in data["data"]
     
     def test_create_permission_duplicate_name(
@@ -111,7 +117,7 @@ class TestCreatePermission:
         )
         
         assert response.status_code == 400
-        assert "already exists" in response.json()["detail"].lower()
+        assert "already exists" in _error_text(response)
     
     def test_create_permission_as_user_forbidden(
         self,
@@ -162,7 +168,7 @@ class TestGetPermissionById:
         """Test getting permission by ID as admin"""
         # Get permission list first to get valid ID
         list_response = client.get("/api/v1/permissions/", headers=auth_headers_admin)
-        permissions = list_response.json()["data"]["permissions"]
+        permissions = list_response.json()["data"]["items"]
         permission_id = permissions[0]["id"]
         
         # Get specific permission
@@ -296,7 +302,7 @@ class TestUpdatePermission:
         )
         
         assert response.status_code == 400
-        assert "already exists" in response.json()["detail"].lower()
+        assert "already exists" in _error_text(response)
     
     def test_update_permission_not_found(
         self,
@@ -378,8 +384,8 @@ class TestDeletePermission:
     ):
         """Test deleting system permission 'user.login' (should fail)"""
         # Get user.login permission ID
-        list_response = client.get("/api/v1/permissions/", headers=auth_headers_admin)
-        permissions = list_response.json()["data"]["permissions"]
+        list_response = client.get("/api/v1/permissions/?skip=0&limit=200", headers=auth_headers_admin)
+        permissions = list_response.json()["data"]["items"]
         login_perm = next(p for p in permissions if p["name"] == "user.login")
         
         # Try to delete system permission
@@ -389,7 +395,7 @@ class TestDeletePermission:
         )
         
         assert response.status_code == 400
-        assert "system permission" in response.json()["detail"].lower()
+        assert "system permission" in _error_text(response)
     
     def test_delete_system_permission_absensi(
         self,
@@ -399,8 +405,8 @@ class TestDeletePermission:
     ):
         """Test deleting system permission 'absensi.create' (should fail)"""
         # Get absensi.create permission ID
-        list_response = client.get("/api/v1/permissions/", headers=auth_headers_admin)
-        permissions = list_response.json()["data"]["permissions"]
+        list_response = client.get("/api/v1/permissions/?skip=0&limit=200", headers=auth_headers_admin)
+        permissions = list_response.json()["data"]["items"]
         absensi_perm = next(p for p in permissions if p["name"] == "absensi.create")
         
         # Try to delete system permission
@@ -410,7 +416,7 @@ class TestDeletePermission:
         )
         
         assert response.status_code == 400
-        assert "system permission" in response.json()["detail"].lower()
+        assert "system permission" in _error_text(response)
     
     def test_delete_permission_not_found(
         self,

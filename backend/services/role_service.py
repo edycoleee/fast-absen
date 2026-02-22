@@ -35,6 +35,10 @@ class RoleService:
             result.append(RoleResponse(**role_dict))
         
         return result
+
+    def count_all(self) -> int:
+        """Count all roles"""
+        return self.role_repo.count_all()
     
     def get_by_id(self, role_id: int) -> RoleResponse:
         """Get role by ID"""

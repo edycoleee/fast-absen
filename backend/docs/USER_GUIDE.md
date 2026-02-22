@@ -1,33 +1,17 @@
 # Panduan User/Pegawai - Sistem Absensi RSUD Sulfat
 
-Panduan lengkap untuk pegawai dalam menggunakan sistem absensi.
+Panduan endpoint user/pegawai yang sinkron dengan schema backend saat ini.
 
-**API Documentation**: http://192.168.171.15:8000/docs
-
----
-
-## 📋 Daftar Isi
-
-1. [Login User](#1-login-user)
-2. [Melakukan Absensi](#2-melakukan-absensi)
-3. [Melihat Riwayat Absensi](#3-melihat-riwayat-absensi)
-4. [Login Device (Mobile App)](#4-login-device-mobile-app)
-5. [FAQ](#5-faq)
+- Swagger: `http://192.168.171.15:8000/docs`
+- Base API: `/api/v1`
 
 ---
 
-## 1. Login User
+## 1) Login
 
-### Langkah 1: Akses API Documentation
+Endpoint: `POST /api/v1/auth/login`
 
-Buka browser dan akses: **http://192.168.171.15:8000/docs**
-
-### Langkah 2: Login dengan Akun Pegawai
-
-1. Scroll ke section **Authentication**
-2. Klik endpoint **POST /api/v1/auth/login**
-3. Klik tombol **"Try it out"**
-4. Masukkan kredensial Anda:
+Schema: `LoginRequest`
 
 ```json
 {
@@ -36,447 +20,166 @@ Buka browser dan akses: **http://192.168.171.15:8000/docs**
 }
 ```
 
-**Contoh:**
-```json
-{
-  "username": "johndoe",
-  "password": "pegawai123"
-}
-```
+Ketentuan schema:
+- `username`: min 3 karakter
+- `password`: min 6 karakter
 
-5. Klik **"Execute"**
-6. **Copy** `access_token` dari response
+Setelah login:
+- simpan `access_token`
+- authorize dengan `Bearer <token>`
 
-**Response berhasil:**
-```json
-{
-  "success": true,
-  "message": "Login successful",
-  "data": {
-    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "token_type": "bearer",
-    "user_id": 2,
-    "username": "johndoe",
-    "roles": ["user"]
-  }
-}
-```
-
-### Langkah 3: Authorize Swagger UI
-
-1. Klik tombol **"Authorize"** (ikon gembok 🔒) di pojok kanan atas
-2. Di kolom "Value", paste token yang sudah di-copy
-3. Klik **"Authorize"**
-4. Klik **"Close"**
-
-**✅ Anda sekarang sudah login!**
-
-**📌 Catatan:**
-- Token berlaku selama **30 menit**
-- Setelah 30 menit, harus login ulang
-- Jangan share token Anda ke orang lain
+Endpoint terkait:
+- `POST /api/v1/auth/refresh` (pakai cookie refresh token)
+- `POST /api/v1/auth/logout`
 
 ---
 
-## 2. Melakukan Absensi
+## 2) Absensi Harian (User)
 
-### 2.1 Absensi Harian
+## A. Check-in
+Endpoint: `POST /api/v1/absensi/check-in`
 
-**Endpoint**: `POST /api/v1/absensi/create`
+Schema: `AbsensiCreate`
 
-1. Scroll ke section **Absensi**
-2. Klik **POST /api/v1/absensi/create**
-3. Klik **"Try it out"**
-4. Isi data absensi:
-
+### Contoh body minimal
 ```json
 {
-  "id_lokasi": "LOK001",
-  "uid": "DEVICE123",
-  "keterangan": "Hadir tepat waktu"
+  "status": "HADIR"
 }
 ```
 
-**Penjelasan Field:**
-- `id_lokasi`: Kode lokasi kerja (contoh: "LOK001" untuk Ruang IGD)
-- `uid`: ID device/kartu RFID Anda
-- `keterangan`: Keterangan tambahan (opsional)
-
-5. Klik **"Execute"**
-
-**Response Berhasil:**
+### Contoh body lengkap
 ```json
 {
-  "success": true,
-  "message": "Absensi created successfully",
-  "data": {
-    "id": 1,
-    "id_pegawai": "P001",
-    "id_lokasi": "LOK001",
-    "uid": "DEVICE123",
-    "tanggal": "2026-02-12T08:30:00",
-    "keterangan": "Hadir tepat waktu",
-    "ip_address": "192.168.1.100"
-  }
+  "status": "TERLAMBAT",
+  "keterangan": "Terlambat 15 menit karena macet",
+  "dokumen_pendukung": "uploads/surat/terlambat-2026-02-22.pdf"
 }
 ```
 
-**📌 Otomatis Tercatat:**
-- ✅ ID Pegawai Anda (dari token login)
-- ✅ Tanggal & waktu absensi (waktu server)
-- ✅ IP Address device Anda (untuk keamanan)
+Ketentuan schema:
+- `status` salah satu: `HADIR|IZIN|SAKIT|ALPHA|TERLAMBAT|CUTI`
+- `keterangan` wajib jika `status` = `IZIN|SAKIT|TERLAMBAT|CUTI`
 
-### 2.2 Contoh Keterangan Absensi
+Sistem otomatis mencatat:
+- `id_pegawai` dari token
+- `jam_masuk`
+- `ip_address`
 
-**Hadir Normal:**
-```json
-{
-  "id_lokasi": "LOK001",
-  "uid": "DEVICE123",
-  "keterangan": "Hadir tepat waktu"
-}
-```
+## B. Check-out
+Endpoint: `POST /api/v1/absensi/check-out`
 
-**Izin Terlambat:**
-```json
-{
-  "id_lokasi": "LOK001",
-  "uid": "DEVICE123",
-  "keterangan": "Terlambat 15 menit - macet di jalan"
-}
-```
+Tidak pakai request body.
 
-**Shift Malam:**
-```json
-{
-  "id_lokasi": "LOK002",
-  "uid": "DEVICE123",
-  "keterangan": "Shift malam - Ruang ICU"
-}
-```
+## C. Status hari ini
+Endpoint: `GET /api/v1/absensi/today`
+
+## D. Histori pribadi
+Endpoint: `GET /api/v1/absensi/history?skip=0&limit=30`
+
+## E. Ringkasan pribadi
+Endpoint: `GET /api/v1/absensi/summary`
+
+Opsional query:
+- `start_date=YYYY-MM-DD`
+- `end_date=YYYY-MM-DD`
 
 ---
 
-## 3. Melihat Riwayat Absensi
+## 3) Praktik Terbaik Roster Bulanan (Info untuk Pegawai)
 
-### 3.1 Lihat Semua Absensi Saya
+Sistem sekarang tetap mendukung pola lama (upload roster Excel di akhir bulan untuk bulan berikutnya), tetapi prosesnya dibuat lebih terkontrol:
 
-**Endpoint**: `GET /api/v1/absensi/me`
+1. Admin unit menyiapkan roster bulan depan dari template resmi sistem.
+2. File diimport ke sistem sebagai batch (bukan dipakai langsung sebagai sumber final).
+3. Sistem memvalidasi data roster, lalu menyimpan shift valid ke database.
+4. Saat bulan berjalan, sistem melakukan evaluasi otomatis roster vs absensi (mangkir, terlambat, pulang cepat, lembur).
 
-1. Scroll ke section **Absensi**
-2. Klik **GET /api/v1/absensi/me**
-3. Klik **"Try it out"**
-4. Set pagination (opsional):
-   - `skip`: 0 (mulai dari record pertama)
-   - `limit`: 100 (maksimal 100 record)
-5. Klik **"Execute"**
+### Dampak ke pegawai
 
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Your absensi retrieved successfully",
-  "data": [
-    {
-      "id": 1,
-      "id_pegawai": "P001",
-      "id_lokasi": "LOK001",
-      "uid": "DEVICE123",
-      "tanggal": "2026-02-12T08:30:00",
-      "keterangan": "Hadir tepat waktu",
-      "ip_address": "192.168.1.100"
-    },
-    {
-      "id": 2,
-      "id_pegawai": "P001",
-      "id_lokasi": "LOK001",
-      "uid": "DEVICE123",
-      "tanggal": "2026-02-11T08:25:00",
-      "keterangan": "Hadir",
-      "ip_address": "192.168.1.100"
-    }
-  ]
-}
-```
+- Pegawai wajib disiplin check-in dan check-out sesuai shift yang sudah diinput.
+- Jika ada ketidaksesuaian data, gunakan alur pengajuan/approval, bukan mengubah data sendiri.
+- Rekap performa kehadiran diambil dari hasil evaluasi sistem, bukan dari file Excel mentah.
 
-**📌 Catatan:**
-- Anda hanya bisa melihat absensi **ANDA SENDIRI**
-- Data diurutkan dari yang terbaru
-- Gunakan `skip` dan `limit` untuk pagination
+### Kapan data dianggap final
 
-### 3.2 Lihat Detail Absensi Tertentu
-
-**Endpoint**: `GET /api/v1/absensi/me/{id}`
-
-1. Klik **GET /api/v1/absensi/me/{id}**
-2. Klik **"Try it out"**
-3. Masukkan **ID absensi** yang ingin dilihat
-4. Klik **"Execute"**
-
-**Contoh dengan ID = 1:**
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Your absensi retrieved successfully",
-  "data": {
-    "id": 1,
-    "id_pegawai": "P001",
-    "id_lokasi": "LOK001",
-    "uid": "DEVICE123",
-    "tanggal": "2026-02-12T08:30:00",
-    "keterangan": "Hadir tepat waktu",
-    "ip_address": "192.168.1.100"
-  }
-}
-```
-
-**❌ Error jika akses absensi orang lain:**
-```json
-{
-  "success": false,
-  "message": "Absensi with id 999 not found for your account"
-}
-```
+- Setelah roster melewati cutoff operasional unit (ditetapkan admin), perubahan shift dibatasi.
+- Koreksi setelah cutoff harus lewat approval agar jejak audit tetap lengkap.
 
 ---
 
-## 4. Login Device (Mobile App)
+## 3) User Sessions
 
-### 4.1 Catat Device Login
+## A. Catat sesi perangkat
+Endpoint: `POST /api/v1/user-sessions/`
 
-**Endpoint**: `POST /api/v1/login-absensi/`
+Schema: `UserSessionsCreate`
 
-Endpoint ini digunakan untuk mencatat device yang Anda gunakan (untuk mobile app).
+### Contoh body minimal (valid)
+```json
+{}
+```
 
-1. Scroll ke section **Login Absensi**
-2. Klik **POST /api/v1/login-absensi/**
-3. Klik **"Try it out"**
-4. Isi data device:
-
+### Contoh body lengkap
 ```json
 {
-  "uid": "DEVICE123ABC",
-  "player_id": "PLAYER456XYZ",
+  "uid": "DEVICE123",
+  "player_id": "PLAYER456",
   "model": "Samsung Galaxy A52"
 }
 ```
 
-**Penjelasan Field:**
-- `uid`: Unique ID device Anda
-- `player_id`: Player ID untuk push notification (dari OneSignal/FCM)
-- `model`: Model/merek HP Anda
+Ketentuan schema:
+- semua field opsional
+- `model` max 250 karakter
 
-5. Klik **"Execute"**
+## B. Heartbeat aktivitas sesi
+Endpoint: `POST /api/v1/user-sessions/heartbeat?session_id=<session_id>`
 
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Login absensi created successfully",
-  "data": {
-    "id": 1,
-    "id_pegawai": "P001",
-    "uid": "DEVICE123ABC",
-    "player_id": "PLAYER456XYZ",
-    "model": "Samsung Galaxy A52",
-    "created_at": "2026-02-12T08:00:00"
-  }
-}
-```
-
-**📌 Catatan:**
-- Device login tercatat otomatis dengan ID pegawai Anda
-- Bisa login dari multiple device (HP pribadi, tablet, dll)
-- Admin dapat melihat device apa saja yang Anda gunakan
+Tidak pakai JSON body (pakai query param `session_id`).
 
 ---
 
-## 5. FAQ
+## 4) Error Umum
 
-### ❓ Bagaimana cara mendapatkan username dan password?
-
-**Jawab**: Username dan password diberikan oleh **Admin/HRD**. Hubungi admin untuk membuat akun Anda.
-
----
-
-### ❓ Token expired, apa yang harus dilakukan?
-
-**Jawab**: 
-1. Login ulang di endpoint `/api/v1/auth/login`
-2. Copy token baru
-3. Klik "Authorize" dan paste token baru
-
-Token berlaku **30 menit**. Setelah itu harus login ulang.
+- `401 Unauthorized`: token tidak valid/expired
+- `403 Forbidden`: permission tidak cukup
+- `404 Not Found`: resource tidak ditemukan
+- `400 Bad Request`: payload tidak sesuai schema/rule
 
 ---
 
-### ❓ Lupa password, bagaimana reset?
+## 5) FAQ Singkat
 
-**Jawab**: Hubungi **Admin/HRD** untuk reset password. Admin akan memberikan password baru.
+### Bisa pakai endpoint `/absensi/me` atau `/absensi/create`?
+Tidak. Endpoint user absensi sekarang:
+- `/absensi/check-in`
+- `/absensi/check-out`
+- `/absensi/today`
+- `/absensi/history`
+- `/absensi/summary`
 
----
+### Bisa edit absensi sendiri?
+Tidak. Koreksi dilakukan admin melalui endpoint admin absensi.
 
-### ❓ Bisa absensi lebih dari 1x per hari?
+### Kenapa heartbeat ditolak?
+Pastikan `session_id` milik user yang sedang login.
 
-**Jawab**: **Bisa**. Sistem tidak membatasi jumlah absensi per hari. Contoh use case:
-- Shift pagi: Absen masuk jam 08:00
-- Shift siang: Absen masuk jam 14:00
-- Lembur: Absen masuk jam 20:00
+### Roster saya berubah setelah bulan berjalan, kenapa?
+Perubahan roster setelah publish biasanya dibatasi oleh cutoff unit. Jika ada kebutuhan khusus (misalnya dinas/penugasan darurat), perubahan dilakukan via admin + approval.
 
----
+### Status mangkir/terlambat saya salah, apa yang harus dilakukan?
+Ajukan koreksi melalui alur pengajuan absensi agar bisa direview atasan/admin, jangan meminta edit manual langsung tanpa jejak.
 
-### ❓ Apakah bisa edit absensi sendiri?
-
-**Jawab**: **Tidak bisa**. User hanya bisa:
-- ✅ Buat absensi baru
-- ✅ Lihat riwayat absensi sendiri
-
-Untuk **koreksi/edit**, hubungi **Admin**.
-
----
-
-### ❓ Kenapa muncul error 403 Forbidden?
-
-**Jawab**: Error 403 berarti Anda tidak punya akses. Kemungkinan:
-1. Anda mencoba akses endpoint admin (hanya untuk admin)
-2. Anda mencoba lihat absensi orang lain
-3. Token Anda tidak valid
-
-**Solusi**: Pastikan mengakses endpoint yang sesuai role Anda (user).
+### Siapa yang menyetujui pengajuan saya?
+Untuk tahap saat ini, sistem memakai **1 atasan langsung** (berdasarkan mapping organisasi) sebagai approver utama.
 
 ---
 
-### ❓ Apakah absensi bisa dilakukan dari mana saja?
+## 6) Referensi
 
-**Jawab**: **Tergantung kebijakan**. Sistem mencatat:
-- ✅ IP Address device
-- ✅ Lokasi (id_lokasi)
-- ✅ Waktu absensi
+- [QUICK_START.md](QUICK_START.md)
+- [API_ENDPOINTS.md](API_ENDPOINTS.md)
+- [ADMIN_GUIDE.md](ADMIN_GUIDE.md)
 
-Admin dapat memonitor apakah absensi dilakukan dari lokasi yang sesuai berdasarkan IP address.
-
----
-
-### ❓ Bagaimana cara lihat absensi bulan lalu?
-
-**Jawab**: Gunakan pagination di endpoint `GET /api/v1/absensi/me`:
-- Set `limit`: 1000 (untuk mendapatkan banyak data)
-- Data diurutkan dari terbaru ke terlama
-
-Atau minta **Admin** untuk export laporan bulanan.
-
----
-
-### ❓ Apa itu id_lokasi dan uid?
-
-**Jawab**:
-- **id_lokasi**: Kode lokasi kerja Anda (contoh: "LOK001" = Ruang IGD, "LOK002" = Ruang ICU)
-- **uid**: Unique ID dari device/kartu RFID Anda
-
-Tanyakan ke **Admin** untuk daftar kode lokasi yang berlaku.
-
----
-
-### ❓ Bagaimana jika salah input saat absensi?
-
-**Jawab**: 
-1. Segera hubungi **Admin**
-2. Admin dapat:
-   - Edit data absensi yang salah
-   - Hapus absensi duplikat
-   - Koreksi tanggal/lokasi
-
-**Jangan** input absensi ulang tanpa konfirmasi admin.
-
----
-
-## 📊 Tips Penggunaan
-
-### ✅ DOs (Lakukan)
-
-1. **Login setiap hari** untuk absensi
-2. **Isi keterangan** dengan jelas (terutama jika ada kondisi khusus)
-3. **Cek riwayat absensi** secara berkala untuk memastikan data benar
-4. **Logout** setelah selesai (tutup browser)
-5. **Simpan password** dengan aman
-6. **Catat id_lokasi** dan **uid** Anda untuk memudahkan input
-
-### ❌ DON'Ts (Jangan)
-
-1. **Jangan share** username dan password ke orang lain
-2. **Jangan share** token akses
-3. **Jangan absensi** untuk orang lain
-4. **Jangan input** data yang tidak sesuai fakta
-5. **Jangan akses** endpoint admin (akan error 403)
-
----
-
-## 🔐 Keamanan
-
-### Proteksi Akun Anda
-
-1. **Password yang kuat**:
-   - Minimal 8 karakter
-   - Kombinasi huruf dan angka
-   - Jangan gunakan tanggal lahir atau nama
-
-2. **Jangan simpan password** di:
-   - Note HP yang tidak terproteksi
-   - Sticky note di meja kerja
-   - Email atau chat
-
-3. **Logout setelah selesai**:
-   - Tutup browser
-   - Clear cache jika menggunakan komputer publik
-
-4. **Laporkan ke Admin** jika:
-   - Akun Anda diakses orang lain
-   - Melihat absensi yang tidak Anda buat
-   - Lupa password
-
----
-
-## 📱 Menggunakan di Mobile
-
-### Cara Akses dari HP
-
-1. Buka browser di HP (Chrome/Firefox)
-2. Akses: http://192.168.171.15:8000/docs
-3. Login seperti biasa
-4. Authorize dengan token
-5. Lakukan absensi
-
-**📌 Tips Mobile:**
-- Gunakan landscape mode untuk tampilan lebih baik
-- Bookmark URL untuk akses cepat
-- Pastikan terhubung ke WiFi kantor/VPN
-
----
-
-## 📞 Bantuan
-
-### Hubungi Admin jika:
-
-- ✉️ Belum punya akun
-- 🔑 Lupa password
-- ❌ Error saat absensi
-- 📝 Perlu koreksi data absensi
-- ❓ Pertanyaan lainnya
-
-### Self-Service:
-
-- 📖 Baca dokumentasi ini
-- 🔍 Cek FAQ di atas
-- 💡 Coba troubleshooting sendiri dulu
-
----
-
-**Version**: 2.0.0  
-**Last Updated**: 12 Februari 2026  
-**Environment**: Production - RSUD Sulfat  
-
----
-
-**Selamat menggunakan Sistem Absensi RSUD Sulfat!** 🎉
+Last updated: 22 Februari 2026

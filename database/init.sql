@@ -9,6 +9,18 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================================
+-- TABLE: unit (Master Unit/Instalasi)
+-- ============================================================
+CREATE TABLE unit (
+    id_unit INTEGER PRIMARY KEY,
+    nama_unit VARCHAR(150) UNIQUE NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'Aktif'
+        CHECK (status IN ('Aktif', 'Tidak Aktif')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
 -- TABLE: roles
 -- ============================================================
 CREATE TABLE roles (
@@ -42,19 +54,19 @@ CREATE TABLE pegawai (
     id_pegawai VARCHAR(20) PRIMARY KEY,
     nip VARCHAR(50),
     nama VARCHAR(255),
-    kepala_id_pegawai VARCHAR(20) REFERENCES pegawai(id_pegawai) ON DELETE SET NULL,
+    id_unit INTEGER REFERENCES unit(id_unit),
+    kepala_id_unit INTEGER REFERENCES unit(id_unit) ON DELETE SET NULL,
     jenis_kelamin VARCHAR(10),
     tempat_lahir VARCHAR(100),
     tanggal_lahir DATE,
     alamat TEXT,
-    id_ruang INTEGER,
     status VARCHAR(20),
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    foto VARCHAR(255),
-    CHECK (kepala_id_pegawai IS NULL OR kepala_id_pegawai <> id_pegawai)
+    foto VARCHAR(255)
 );
 
-CREATE INDEX idx_pegawai_kepala ON pegawai(kepala_id_pegawai);
+CREATE INDEX idx_pegawai_unit ON pegawai(id_unit);
+CREATE INDEX idx_pegawai_kepala_unit ON pegawai(kepala_id_unit);
 
 -- ============================================================
 -- TABLE: users
@@ -97,7 +109,7 @@ CREATE TABLE shift_kelompok (
 CREATE TABLE shift_kelompok_aturan (
     id SERIAL PRIMARY KEY,
     shift_kelompok_id INTEGER NOT NULL REFERENCES shift_kelompok(id) ON DELETE CASCADE,
-    id_ruang INTEGER,
+    id_unit INTEGER REFERENCES unit(id_unit),
     grace_telat_menit INTEGER NOT NULL DEFAULT 10 CHECK (grace_telat_menit >= 0),
     toleransi_pulang_cepat_menit INTEGER NOT NULL DEFAULT 0 CHECK (toleransi_pulang_cepat_menit >= 0),
     batas_lembur_menit INTEGER NOT NULL DEFAULT 0 CHECK (batas_lembur_menit >= 0),
@@ -145,8 +157,8 @@ CREATE UNIQUE INDEX uq_pegawai_shift_kelompok_aktif
     WHERE effective_end_date IS NULL;
 
 -- ============================================================
--- APPROVAL MODEL (Sederhana): 1 pegawai → 1 kepala langsung
--- Kepala disimpan pada kolom pegawai.kepala_id_pegawai
+-- APPROVAL MODEL (Sederhana): 1 pegawai → 1 unit
+-- Unit approval rujukan disimpan pada kolom pegawai.kepala_id_unit
 -- Super-admin dapat override via workflow approval
 -- ============================================================
 
@@ -181,7 +193,7 @@ CREATE TABLE roster_shift (
     upload_batch_id UUID REFERENCES roster_upload_batch(id) ON DELETE SET NULL,
     id_pegawai VARCHAR(20) NOT NULL REFERENCES pegawai(id_pegawai) ON DELETE CASCADE,
     shift_kelompok_id INTEGER REFERENCES shift_kelompok(id),
-    id_ruang INTEGER,
+    id_unit INTEGER REFERENCES unit(id_unit),
     tanggal_shift DATE NOT NULL,
     jam_mulai TIMESTAMPTZ NOT NULL,
     jam_selesai TIMESTAMPTZ NOT NULL,
@@ -259,16 +271,18 @@ CREATE TABLE approval_pengajuan_absensi_log (
     id BIGSERIAL PRIMARY KEY,
     pengajuan_id BIGINT NOT NULL REFERENCES approval_pengajuan_absensi(id) ON DELETE CASCADE,
     action_by_pegawai VARCHAR(20) REFERENCES pegawai(id_pegawai) ON DELETE SET NULL,
-    action_type VARCHAR(20) NOT NULL
+    action_type VARCHAR(30) NOT NULL
         CHECK (action_type IN ('CREATED', 'SUBMITTED', 'APPROVED', 'REJECTED', 'CANCELLED', 'COMMENTED', 'SUPER_ADMIN_OVERRIDDEN')),
     catatan TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_approval_pengajuan_absensi_log_pengajuan ON approval_pengajuan_absensi_log(pengajuan_id);
+CREATE INDEX idx_approval_pengajuan_absensi_log_action_type ON approval_pengajuan_absensi_log(action_type);
+CREATE INDEX idx_approval_pengajuan_absensi_log_created_at ON approval_pengajuan_absensi_log(created_at DESC);
 
 -- ============================================================
--- TABLE: user_sessions (Login Tracking untuk Web & Mobile)
+-- TABLE: user_sessions (Session Tracking untuk Web & Mobile)
 -- ============================================================
 CREATE TABLE user_sessions (
     id SERIAL PRIMARY KEY,
@@ -301,7 +315,7 @@ CREATE TABLE user_sessions (
     -- Security
     login_status VARCHAR(20) DEFAULT 'success' 
         CHECK (login_status IN ('success', 'failed', 'blocked')),
-    failed_reason TEXT,  -- Jika login gagal
+    failed_reason TEXT,  -- Jika autentikasi gagal
     
     -- Metadata
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -387,6 +401,54 @@ CREATE INDEX idx_penilaian_shift_absensi_evaluated ON penilaian_shift_absensi(ev
 -- DEFAULT RBAC SEEDER
 -- ============================================================
 
+-- Master unit
+INSERT INTO unit (id_unit, nama_unit, status) VALUES
+(1, 'Struktural', 'Aktif'),
+(2, 'Kepala Ruang / Kepala Instalasi', 'Aktif'),
+(3, 'Bidang Umum dan Kepegawaian', 'Aktif'),
+(4, 'Keuangan', 'Aktif'),
+(5, 'Instalasi SIMRS', 'Aktif'),
+(6, 'Adenium', 'Aktif'),
+(7, 'Poliklinik', 'Aktif'),
+(8, 'Tulip', 'Aktif'),
+(9, 'Anyelir', 'Aktif'),
+(10, 'Lavender', 'Aktif'),
+(11, 'Begonia', 'Aktif'),
+(12, 'Edelweiss', 'Aktif'),
+(13, 'Jasmine', 'Aktif'),
+(14, 'Azalea', 'Aktif'),
+(15, 'Instalasi Gawat Darurat', 'Aktif'),
+(16, 'Instalasi Pemulasaran Jenazah', 'Aktif'),
+(17, 'IPSRS', 'Aktif'),
+(18, 'Instalasi Gizi', 'Aktif'),
+(19, 'Loundry dan CSSD', 'Aktif'),
+(20, 'Laboratorium', 'Aktif'),
+(21, 'Farmasi', 'Aktif'),
+(22, 'Rekam Medis', 'Aktif'),
+(23, 'Radiologi', 'Aktif'),
+(24, 'Bidang Keperawatan', 'Aktif'),
+(25, 'Bidang Pelayanan', 'Aktif'),
+(26, 'Bidang Pengembangan RS, Humas, dan Rekam Medis', 'Aktif'),
+(27, 'MPP', 'Aktif'),
+(28, 'Bagian Program', 'Aktif'),
+(29, 'Tata Usaha', 'Aktif'),
+(30, 'Komite Keperawatan', 'Aktif'),
+(31, 'SIPP dan Informasi', 'Aktif'),
+(32, 'Kasir', 'Aktif'),
+(33, 'Pendaftaran TPPGD/TPPRI', 'Aktif'),
+(34, 'Rehabilitasi Medik', 'Aktif'),
+(35, 'Driver Ambulance', 'Aktif'),
+(36, 'Instalasi Bedah Sentral', 'Aktif'),
+(37, 'ICU', 'Aktif'),
+(38, 'Security', 'Aktif'),
+(39, 'Komite PPI', 'Aktif'),
+(40, 'Dokter Umum', 'Aktif'),
+(41, 'Pendaftaran TPPRJ', 'Aktif'),
+(42, 'Holding Bed', 'Aktif'),
+(43, 'Dokter Spesialis', 'Aktif'),
+(99, 'Z-Sudah Tidak Aktif', 'Aktif')
+ON CONFLICT (id_unit) DO NOTHING;
+
 -- Master kelompok shift default (sesuai kebutuhan RS)
 INSERT INTO shift_kelompok (kode, nama, deskripsi, is_shift_based)
 VALUES
@@ -433,6 +495,57 @@ INSERT INTO permissions (name, description) VALUES
 ('pegawai.update', 'Mengubah data pegawai'),
 ('pegawai.delete', 'Menghapus data pegawai'),
 
+-- Unit Management
+('unit.read', 'Melihat data unit'),
+('unit.create', 'Membuat data unit baru'),
+('unit.update', 'Mengubah data unit'),
+('unit.delete', 'Menghapus data unit'),
+
+-- Shift Kelompok Management
+('shift_kelompok.read', 'Melihat data shift kelompok'),
+('shift_kelompok.create', 'Membuat data shift kelompok baru'),
+('shift_kelompok.update', 'Mengubah data shift kelompok'),
+('shift_kelompok.delete', 'Menghapus data shift kelompok'),
+
+-- Shift Kelompok Aturan Management
+('shift_kelompok_aturan.read', 'Melihat data aturan shift kelompok'),
+('shift_kelompok_aturan.create', 'Membuat data aturan shift kelompok baru'),
+('shift_kelompok_aturan.update', 'Mengubah data aturan shift kelompok'),
+('shift_kelompok_aturan.delete', 'Menghapus data aturan shift kelompok'),
+
+-- Pegawai Shift Kelompok Management
+('pegawai_shift_kelompok.read', 'Melihat data assignment pegawai ke kelompok shift'),
+('pegawai_shift_kelompok.create', 'Membuat assignment pegawai ke kelompok shift'),
+('pegawai_shift_kelompok.update', 'Mengubah assignment pegawai ke kelompok shift'),
+('pegawai_shift_kelompok.delete', 'Menghapus assignment pegawai ke kelompok shift'),
+
+-- Roster Upload Batch Management
+('roster_upload_batch.read', 'Melihat data batch upload roster'),
+('roster_upload_batch.create', 'Membuat data batch upload roster'),
+('roster_upload_batch.update', 'Mengubah data batch upload roster'),
+('roster_upload_batch.delete', 'Menghapus data batch upload roster'),
+
+-- Roster Shift Management
+('roster_shift.read', 'Melihat data roster shift'),
+('roster_shift.create', 'Membuat data roster shift'),
+('roster_shift.update', 'Mengubah data roster shift'),
+('roster_shift.delete', 'Menghapus data roster shift'),
+
+-- Penilaian Shift Absensi Management
+('penilaian_shift_absensi.read', 'Melihat data penilaian shift absensi'),
+('penilaian_shift_absensi.create', 'Membuat data penilaian shift absensi'),
+('penilaian_shift_absensi.update', 'Mengubah data penilaian shift absensi'),
+('penilaian_shift_absensi.delete', 'Menghapus data penilaian shift absensi'),
+
+-- Approval Pengajuan Absensi
+('approval_pengajuan_absensi.read', 'Melihat data pengajuan approval absensi'),
+('approval_pengajuan_absensi.create', 'Membuat pengajuan approval absensi'),
+('approval_pengajuan_absensi.update', 'Memutuskan/mengubah status pengajuan approval absensi'),
+('approval_pengajuan_absensi.delete', 'Membatalkan/menghapus pengajuan approval absensi'),
+
+-- Approval Pengajuan Absensi Log
+('approval_pengajuan_absensi_log.read', 'Melihat audit log pengajuan approval absensi'),
+
 -- Absensi Management
 ('absensi.read', 'Melihat data absensi (history, summary, today)'),
 ('absensi.create', 'Membuat absensi (check-in)'),
@@ -440,14 +553,14 @@ INSERT INTO permissions (name, description) VALUES
 ('absensi.delete', 'Menghapus absensi (admin only)'),
 
 -- User Sessions Management
-('user_sessions.read', 'Melihat data session login'),
-('user_sessions.create', 'Membuat session login baru'),
+('user_sessions.read', 'Melihat data sesi pengguna'),
+('user_sessions.create', 'Membuat sesi pengguna baru'),
 ('user_sessions.update', 'Mengubah status session'),
 ('user_sessions.delete', 'Menghapus session'),
 
--- Deprecated (backward compatibility)
-('login_absensi.read', '[DEPRECATED] Melihat data login absensi'),
-('login_absensi.create', '[DEPRECATED] Membuat login absensi');
+-- Legacy Session Absensi Management (compatibility)
+('login_absensi.read', 'Melihat data sesi absensi (legacy)'),
+('login_absensi.create', 'Membuat data sesi absensi (legacy)');
 
 -- ============================================================
 -- ROLE-PERMISSION ASSIGNMENTS
@@ -463,8 +576,17 @@ SELECT 1, p.id FROM permissions p WHERE p.name IN (
     'user.login',
     'users.read', 'users.create', 'users.update', 'users.delete',
     'pegawai.read', 'pegawai.create', 'pegawai.update', 'pegawai.delete',
+    'unit.read', 'unit.create', 'unit.update', 'unit.delete',
+    'shift_kelompok.read', 'shift_kelompok.create', 'shift_kelompok.update', 'shift_kelompok.delete',
+    'shift_kelompok_aturan.read', 'shift_kelompok_aturan.create', 'shift_kelompok_aturan.update', 'shift_kelompok_aturan.delete',
+    'pegawai_shift_kelompok.read', 'pegawai_shift_kelompok.create', 'pegawai_shift_kelompok.update', 'pegawai_shift_kelompok.delete',
+    'roster_upload_batch.read', 'roster_upload_batch.create', 'roster_upload_batch.update', 'roster_upload_batch.delete',
+    'roster_shift.read', 'roster_shift.create', 'roster_shift.update', 'roster_shift.delete',
+    'penilaian_shift_absensi.read', 'penilaian_shift_absensi.create', 'penilaian_shift_absensi.update', 'penilaian_shift_absensi.delete',
     'absensi.read', 'absensi.create', 'absensi.update', 'absensi.delete',
-    'user_sessions.read'
+    'approval_pengajuan_absensi.read', 'approval_pengajuan_absensi.create', 'approval_pengajuan_absensi.update',
+    'approval_pengajuan_absensi_log.read',
+    'user_sessions.read', 'user_sessions.update'
 );
 
 -- User/Pegawai: Gets permissions for daily attendance
@@ -473,5 +595,8 @@ SELECT 2, p.id FROM permissions p WHERE p.name IN (
     'user.login',           -- Login
     'absensi.read',         -- View own attendance (today, history, summary)
     'absensi.create',       -- Check-in
-    'absensi.update'        -- Check-out (IMPORTANT!)
+    'absensi.update',       -- Check-out (IMPORTANT!)
+    'approval_pengajuan_absensi.read',
+    'approval_pengajuan_absensi.create',
+    'approval_pengajuan_absensi.update'
 );

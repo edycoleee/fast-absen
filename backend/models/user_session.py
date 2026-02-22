@@ -1,6 +1,6 @@
 """
 User Session Model
-Login tracking untuk Web & Mobile
+Session tracking untuk Web & Mobile
 """
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, CheckConstraint
 from sqlalchemy.dialects.postgresql import INET

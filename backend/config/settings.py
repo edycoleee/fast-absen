@@ -64,6 +64,8 @@ class Settings(BaseSettings):
     ADMIN_TANGGAL_LAHIR: str | None = None
     ADMIN_ALAMAT: str | None = None
     ADMIN_STATUS: str | None = None
+    ADMIN_ID_UNIT: int | None = None
+    ADMIN_KEPALA_ID_UNIT: int | None = None
     ADMIN_FORCE_UPDATE: bool = False
     
     @field_validator("CORS_ORIGINS", mode="before")

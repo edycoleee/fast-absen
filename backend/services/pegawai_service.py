@@ -29,11 +29,19 @@ class PegawaiService:
         """Get all pegawai"""
         pegawai_list = self.pegawai_repo.get_all(skip=skip, limit=limit)
         return [PegawaiResponse.model_validate(p) for p in pegawai_list]
+
+    def count_all(self) -> int:
+        """Count all pegawai"""
+        return self.pegawai_repo.count_all()
     
     def search(self, query: str, skip: int = 0, limit: int = 100) -> List[PegawaiResponse]:
         """Search pegawai by name or NIP"""
         pegawai_list = self.pegawai_repo.search(query, skip=skip, limit=limit)
         return [PegawaiResponse.model_validate(p) for p in pegawai_list]
+
+    def count_search(self, query: str) -> int:
+        """Count pegawai by search query"""
+        return self.pegawai_repo.count_search(query)
     
     def get_by_id(self, pegawai_id: str) -> PegawaiResponse:
         """Get pegawai by ID"""

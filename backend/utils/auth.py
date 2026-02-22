@@ -117,6 +117,13 @@ def decode_access_token(token: str) -> Optional[dict]:
             audience=settings.JWT_AUDIENCE,
             issuer=settings.JWT_ISSUER
         )
+
+        if "user_id" not in payload and payload.get("sub") is not None:
+            try:
+                payload["user_id"] = int(payload["sub"])
+            except (TypeError, ValueError):
+                payload["user_id"] = payload["sub"]
+
         return payload
     except JWTError:
         return None

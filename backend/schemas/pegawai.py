@@ -14,7 +14,8 @@ class PegawaiBase(BaseModel):
     tempat_lahir: Optional[str] = None
     tanggal_lahir: Optional[date] = None
     alamat: Optional[str] = None
-    id_ruang: Optional[int] = None
+    id_unit: Optional[int] = None
+    kepala_id_unit: Optional[int] = None
     status: Optional[str] = None
     foto: Optional[str] = None
 

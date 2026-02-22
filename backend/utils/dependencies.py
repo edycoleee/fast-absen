@@ -190,7 +190,7 @@ class CommonQueryParams:
         limit: int = Query(10, ge=1, le=100, description="Items per page"),
         search: Optional[str] = Query(None, description="Search query"),
         sort_by: Optional[str] = Query(None, description="Sort by field"),
-        sort_order: str = Query("asc", regex="^(asc|desc)$", description="Sort order")
+        sort_order: str = Query("asc", pattern="^(asc|desc)$", description="Sort order")
     ):
         self.page = page
         self.limit = limit

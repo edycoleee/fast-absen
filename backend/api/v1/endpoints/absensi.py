@@ -121,10 +121,11 @@ def get_my_history(
     id_pegawai = current_user.id_pegawai
     
     absensi_list = service.get_user_history(id_pegawai, skip=skip, limit=limit)
+    total = service.count_user_history(id_pegawai)
     
     return success_response(
         message="Your absensi history retrieved successfully",
-        data={"items": [a.model_dump() for a in absensi_list]}
+        data={"items": [a.model_dump() for a in absensi_list], "total": total, "skip": skip, "limit": limit}
     )
 
 
@@ -306,7 +307,7 @@ def get_all_absensi(
     
     return success_response(
         message=f"Found {total} absensi records",
-        data={"items": result, "total": total}
+        data={"items": result, "total": total, "skip": skip, "limit": limit}
     )
 
 

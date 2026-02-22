@@ -1,6 +1,6 @@
 """
 User Sessions Endpoints
-Admin monitoring untuk login sessions & aktivitas user
+Admin monitoring untuk user sessions & aktivitas user
 """
 from typing import Optional
 from datetime import datetime
@@ -8,6 +8,8 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from config.database import get_db
 from repositories.user_session_repository import UserSessionRepository
+from schemas.user_sessions_schema import UserSessionsCreate
+from services.user_sessions_service import UserSessionsService
 from utils.dependencies import require_permission, get_current_user
 from utils.permission_registry import PermissionKeys
 from utils.response import success_response
@@ -15,6 +17,62 @@ from models.user import User
 
 
 router = APIRouter(prefix="/user-sessions", tags=["User Sessions"])
+
+
+@router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED)
+async def create_user_session(
+    session_data: UserSessionsCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission(PermissionKeys.USER_SESSIONS_CREATE))
+):
+    """Create user session record for current user"""
+    service = UserSessionsService(db)
+    id_pegawai = current_user.id_pegawai
+    created_session = service.create_user_session(id_pegawai, session_data)
+
+    return success_response(
+        message="User session created successfully",
+        data=created_session.model_dump()
+    )
+
+
+@router.get("/", response_model=dict)
+async def get_all_user_sessions(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission(PermissionKeys.USER_SESSIONS_READ))
+):
+    """Get all user sessions (admin only)"""
+    service = UserSessionsService(db)
+    session_records = service.get_all_sessions_admin(skip=skip, limit=limit)
+    total = service.count_all_admin()
+
+    return success_response(
+        message="User sessions retrieved successfully",
+        data={
+            "items": [session_record.model_dump() for session_record in session_records],
+            "total": total,
+            "skip": skip,
+            "limit": limit
+        }
+    )
+
+
+@router.get("/records/{session_record_id}", response_model=dict)
+async def get_user_session_by_id(
+    session_record_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission(PermissionKeys.USER_SESSIONS_READ))
+):
+    """Get user session record by numeric ID (admin only)"""
+    service = UserSessionsService(db)
+    session_record = service.get_session_by_id_admin(session_record_id)
+
+    return success_response(
+        message="User session retrieved successfully",
+        data=session_record.model_dump()
+    )
 
 
 @router.get("/active", response_model=dict)
@@ -37,10 +95,11 @@ def get_all_active_sessions(
     Query params:
     - inactivity_minutes: Only show sessions active within X minutes (default: 30)
     
-    Shows: username, device info, IP, login time, last activity
+    Shows: username, device info, IP, session start time, last activity
     """
     repo = UserSessionRepository(db)
     sessions = repo.get_all_active_sessions(skip=skip, limit=limit, inactivity_minutes=inactivity_minutes)
+    total = repo.count_all_active_sessions(inactivity_minutes=inactivity_minutes)
     
     # Enrich with pegawai/user info
     result = []
@@ -63,7 +122,7 @@ def get_all_active_sessions(
     
     return success_response(
         message=f"Found {len(result)} active sessions",
-        data={"items": result, "total": len(result)}
+        data={"items": result, "total": total, "skip": skip, "limit": limit}
     )
 
 
@@ -98,6 +157,8 @@ def get_all_sessions_history(
     
     if login_status:
         query = query.filter(repo.model.login_status == login_status)
+
+    total = query.count()
     
     sessions = query.order_by(repo.model.login_at.desc()).offset(skip).limit(limit).all()
     
@@ -124,7 +185,7 @@ def get_all_sessions_history(
     
     return success_response(
         message=f"Found {len(result)} sessions",
-        data={"items": result, "total": len(result)}
+        data={"items": result, "total": total, "skip": skip, "limit": limit}
     )
 
 
@@ -180,7 +241,7 @@ def get_sessions_statistics(
     )
 
 
-@router.get("/{session_id}", response_model=dict)
+@router.get("/by-session/{session_id}", response_model=dict)
 def get_session_detail(
     session_id: str,
     db: Session = Depends(get_db),

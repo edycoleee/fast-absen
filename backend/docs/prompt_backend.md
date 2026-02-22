@@ -228,8 +228,8 @@ PERMISSIONS = {
     "absensi.create": "Membuat absensi",
     "absensi.update": "Mengubah absensi",
     "absensi.delete": "Menghapus absensi",
-    "login_absensi.read": "Melihat data login absensi",
-    "login_absensi.create": "Membuat login absensi"
+    "user_sessions.read": "Melihat data session login",
+    "user_sessions.create": "Membuat session login"
 }
 
 class PermissionKeys:
@@ -253,8 +253,8 @@ class PermissionKeys:
     ABSENSI_CREATE = "absensi.create"
     ABSENSI_UPDATE = "absensi.update"
     ABSENSI_DELETE = "absensi.delete"
-    LOGIN_ABSENSI_READ = "login_absensi.read"
-    LOGIN_ABSENSI_CREATE = "login_absensi.create"
+    USER_SESSIONS_READ = "user_sessions.read"
+    USER_SESSIONS_CREATE = "user_sessions.create"
 ```
 
 #### C. Configuration

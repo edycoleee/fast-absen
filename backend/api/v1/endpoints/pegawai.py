@@ -19,32 +19,33 @@ router = APIRouter(prefix="/pegawai", tags=["Pegawai"])
 
 @router.get("/", response_model=dict, dependencies=[Depends(require_permission(PermissionKeys.PEGAWAI_READ))])
 async def get_pegawai(
-    page: int = 1,
+    skip: int = 0,
     limit: int = 10,
     search: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     """
     Get all pegawai or search by name/NIP (Admin only)
-    
-    - **page**: Page number (default: 1)
+    - **skip**: Number of items to skip (default: 0)
     - **limit**: Items per page (default: 10)
     - **search**: Search query for name or NIP (optional)
     """
     service = PegawaiService(db)
-    
-    skip = (page - 1) * limit
+
     
     if search:
+        total = service.count_search(search)
         pegawai_list = service.search(search, skip=skip, limit=limit)
     else:
+        total = service.count_all()
         pegawai_list = service.get_all(skip=skip, limit=limit)
     
     return success_response(
         message="Pegawai retrieved successfully",
         data={
             "items": [p.model_dump() for p in pegawai_list],
-            "page": page,
+            "total": total,
+            "skip": skip,
             "limit": limit,
             "search": search
         }
@@ -60,7 +61,8 @@ async def create_pegawai(
     tempat_lahir: Optional[str] = Form(None),
     tanggal_lahir: Optional[str] = Form(None),
     alamat: Optional[str] = Form(None),
-    id_ruang: Optional[int] = Form(None),
+    id_unit: Optional[int] = Form(None),
+    kepala_id_unit: Optional[int] = Form(None),
     status: Optional[str] = Form(None),
     foto: UploadFile = File(None),
     db: Session = Depends(get_db)
@@ -75,7 +77,8 @@ async def create_pegawai(
     - **tempat_lahir**: Place of birth (optional)
     - **tanggal_lahir**: Date of birth (YYYY-MM-DD) (optional)
     - **alamat**: Address (optional)
-    - **id_ruang**: Room ID (optional)
+    - **id_unit**: Unit ID (optional)
+    - **kepala_id_unit**: Head Unit ID for approval routing (optional)
     - **status**: Status (optional)
     - **foto**: Photo file (JPG/PNG) (optional)
     """
@@ -102,7 +105,8 @@ async def create_pegawai(
         tempat_lahir=tempat_lahir,
         tanggal_lahir=tgl_lahir,
         alamat=alamat,
-        id_ruang=id_ruang,
+        id_unit=id_unit,
+        kepala_id_unit=kepala_id_unit,
         status=status
     )
     
@@ -142,7 +146,8 @@ async def update_pegawai(
     tempat_lahir: Optional[str] = Form(None),
     tanggal_lahir: Optional[str] = Form(None),
     alamat: Optional[str] = Form(None),
-    id_ruang: Optional[int] = Form(None),
+    id_unit: Optional[int] = Form(None),
+    kepala_id_unit: Optional[int] = Form(None),
     status: Optional[str] = Form(None),
     foto: UploadFile = File(None),
     db: Session = Depends(get_db)
@@ -157,7 +162,8 @@ async def update_pegawai(
     - **tempat_lahir**: Place of birth (optional)
     - **tanggal_lahir**: Date of birth (YYYY-MM-DD) (optional)
     - **alamat**: Address (optional)
-    - **id_ruang**: Room ID (optional)
+    - **id_unit**: Unit ID (optional)
+    - **kepala_id_unit**: Head Unit ID for approval routing (optional)
     - **status**: Status (optional)
     - **foto**: Photo file (JPG/PNG) (optional)
     """
@@ -189,8 +195,10 @@ async def update_pegawai(
         update_dict["tanggal_lahir"] = tgl_lahir
     if alamat is not None:
         update_dict["alamat"] = alamat
-    if id_ruang is not None:
-        update_dict["id_ruang"] = id_ruang
+    if id_unit is not None:
+        update_dict["id_unit"] = id_unit
+    if kepala_id_unit is not None:
+        update_dict["kepala_id_unit"] = kepala_id_unit
     if status is not None:
         update_dict["status"] = status
     

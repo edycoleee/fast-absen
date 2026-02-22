@@ -17,26 +17,27 @@ router = APIRouter(prefix="/roles", tags=["Roles"])
 
 @router.get("/", response_model=dict, dependencies=[Depends(require_super_admin)])
 async def get_roles(
-    page: int = 1,
+    skip: int = 0,
     limit: int = 10,
     db: Session = Depends(get_db)
 ):
     """
     Get all roles (Admin only)
     
-    - **page**: Page number (default: 1)
+    - **skip**: Number of items to skip (default: 0)
     - **limit**: Items per page (default: 10)
     """
     service = RoleService(db)
-    
-    skip = (page - 1) * limit
+
     roles = service.get_all(skip=skip, limit=limit)
+    total = service.count_all()
     
     return success_response(
         message="Roles retrieved successfully",
         data={
             "items": [role.model_dump() for role in roles],
-            "page": page,
+            "total": total,
+            "skip": skip,
             "limit": limit
         }
     )

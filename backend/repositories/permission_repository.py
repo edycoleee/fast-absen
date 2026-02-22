@@ -21,3 +21,7 @@ class PermissionRepository(BaseRepository[Permission]):
     def get_by_name(self, name: str) -> Optional[Permission]:
         """Get permission by name"""
         return self.db.query(Permission).filter(Permission.name == name).first()
+
+    def count_all(self) -> int:
+        """Count all permissions"""
+        return self.db.query(Permission).count()

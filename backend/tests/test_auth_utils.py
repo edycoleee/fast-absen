@@ -71,6 +71,17 @@ class TestJWTToken:
         assert decoded["user_id"] == 1
         assert decoded["username"] == "test"
         assert decoded["roles"] == ["admin"]
+
+    def test_decode_access_token_user_id_fallback_non_numeric_sub(self):
+        """Test backward compatibility: user_id fallback from non-numeric sub"""
+        data = {"user_id": "legacy-user", "username": "legacy", "roles": ["admin"]}
+        token = create_access_token(data)
+
+        decoded = decode_access_token(token)
+
+        assert decoded is not None
+        assert decoded["sub"] == "legacy-user"
+        assert decoded["user_id"] == "legacy-user"
     
     def test_decode_access_token_invalid(self):
         """Test decoding invalid JWT token"""

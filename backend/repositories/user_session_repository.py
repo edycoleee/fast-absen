@@ -11,7 +11,7 @@ from repositories.base import BaseRepository
 
 
 class UserSessionRepository(BaseRepository[UserSession]):
-    """User session repository for login tracking"""
+    """User session repository for session tracking"""
     
     def __init__(self, db: Session):
         super().__init__(UserSession, db)
@@ -61,6 +61,18 @@ class UserSessionRepository(BaseRepository[UserSession]):
         return self.db.query(UserSession).filter(
             and_(*filters)
         ).order_by(UserSession.last_activity.desc()).offset(skip).limit(limit).all()
+
+    def count_all_active_sessions(self, inactivity_minutes: Optional[int] = None) -> int:
+        filters = [
+            UserSession.logout_at.is_(None),
+            UserSession.login_status == 'success'
+        ]
+
+        if inactivity_minutes:
+            cutoff_time = datetime.now() - timedelta(minutes=inactivity_minutes)
+            filters.append(UserSession.last_activity >= cutoff_time)
+
+        return self.db.query(UserSession).filter(and_(*filters)).count()
     
     def get_session_history(
         self, 
@@ -120,7 +132,7 @@ class UserSessionRepository(BaseRepository[UserSession]):
         ip_address: Optional[str] = None,
         hours: int = 24
     ) -> List[UserSession]:
-        """Get failed login attempts within time window"""
+        """Get failed authentication attempts within time window"""
         since = datetime.now() - timedelta(hours=hours)
         
         filters = [

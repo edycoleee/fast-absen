@@ -17,26 +17,27 @@ router = APIRouter(prefix="/permissions", tags=["Permissions"])
 
 @router.get("/", response_model=dict, dependencies=[Depends(require_super_admin)])
 async def get_permissions(
-    page: int = 1,
+    skip: int = 0,
     limit: int = 10,
     db: Session = Depends(get_db)
 ):
     """
     Get all permissions (Admin only)
     
-    - **page**: Page number (default: 1)
+    - **skip**: Number of items to skip (default: 0)
     - **limit**: Items per page (default: 10)
     """
     service = PermissionService(db)
-    
-    skip = (page - 1) * limit
+
     permissions = service.get_all(skip=skip, limit=limit)
+    total = service.count_all()
     
     return success_response(
         message="Permissions retrieved successfully",
         data={
             "items": [perm.model_dump() for perm in permissions],
-            "page": page,
+            "total": total,
+            "skip": skip,
             "limit": limit
         }
     )

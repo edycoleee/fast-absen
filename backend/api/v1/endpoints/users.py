@@ -26,9 +26,10 @@ def get_users(
     """
     user_service = UserService(db)
     users = user_service.get_all(skip=commons.offset, limit=commons.limit)
+    total = user_service.count_all()
     
     return success_response(
-        data={"items": [user.model_dump() for user in users], "page": commons.page, "limit": commons.limit},
+        data={"items": [user.model_dump() for user in users], "total": total, "skip": commons.offset, "limit": commons.limit},
         message="Users retrieved successfully"
     )
 

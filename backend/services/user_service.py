@@ -47,6 +47,9 @@ class UserService:
 
         return result
 
+    def count_all(self) -> int:
+        return self.user_repo.count()
+
     def get_by_id(self, user_id: int) -> UserDetail:
         """Get user by ID"""
         user = self.user_repo.get_with_roles(user_id)

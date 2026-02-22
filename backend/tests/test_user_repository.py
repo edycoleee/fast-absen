@@ -65,6 +65,22 @@ class TestUserRepository:
         assert created.id is not None
         assert created.username == "testuser"
         assert created.is_active is True
+
+    def test_create_user_from_dict(self, db_with_data: Session):
+        """Test creating a new user from dict payload"""
+        repo = UserRepository(db_with_data)
+
+        payload = {
+            "username": "dictuser",
+            "password_hash": get_password_hash("test123"),
+            "is_active": True,
+        }
+
+        created = repo.create(payload)
+
+        assert created.id is not None
+        assert created.username == "dictuser"
+        assert created.is_active is True
     
     def test_update_user(self, db_with_data: Session):
         """Test updating user"""

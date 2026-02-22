@@ -26,4 +26,6 @@ python-multipart==0.0.6
 # Other utilities
 # ============================================================
 email-validator==2.1.0
-Pillow==10.2.0  # Image processing and optimizationAPScheduler==3.10.4  # Background task scheduler for session cleanup
+Pillow==10.2.0  # Image processing and optimization
+APScheduler==3.10.4  # Background task scheduler for session cleanup
+openpyxl==3.1.5

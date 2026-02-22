@@ -6,6 +6,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 
+def _error_text(response) -> str:
+    body = response.json()
+    return (body.get("detail") or body.get("message") or "").lower()
+
+
 @pytest.mark.role
 class TestGetRoles:
     """Test GET /roles/ endpoint"""
@@ -23,9 +28,10 @@ class TestGetRoles:
         data = response.json()
         
         assert data["success"] is True
-        assert "roles" in data["data"]
-        assert len(data["data"]["roles"]) >= 2  # admin + user
-        assert data["data"]["page"] == 1
+        assert "items" in data["data"]
+        assert len(data["data"]["items"]) >= 2
+        assert data["data"]["total"] >= 2
+        assert data["data"]["skip"] == 0
     
     def test_get_roles_with_pagination(
         self,
@@ -35,13 +41,13 @@ class TestGetRoles:
     ):
         """Test getting roles with pagination parameters"""
         response = client.get(
-            "/api/v1/roles/?page=1&limit=5",
+            "/api/v1/roles/?skip=0&limit=5",
             headers=auth_headers_admin
         )
         
         assert response.status_code == 200
         data = response.json()
-        assert data["data"]["page"] == 1
+        assert data["data"]["skip"] == 0
         assert data["data"]["limit"] == 5
     
     def test_get_roles_as_user_forbidden(
@@ -112,7 +118,7 @@ class TestCreateRole:
         )
         
         assert response.status_code == 400
-        assert "already exists" in response.json()["detail"].lower()
+        assert "already exists" in _error_text(response)
     
     def test_create_role_invalid_permission(
         self,
@@ -134,7 +140,7 @@ class TestCreateRole:
         )
         
         assert response.status_code == 404
-        assert "permission" in response.json()["detail"].lower()
+        assert "permission" in _error_text(response)
     
     def test_create_role_as_user_forbidden(
         self,
@@ -185,7 +191,7 @@ class TestGetRoleById:
         """Test getting role by ID as admin"""
         # Get role list first to get valid ID
         list_response = client.get("/api/v1/roles/", headers=auth_headers_admin)
-        roles = list_response.json()["data"]["roles"]
+        roles = list_response.json()["data"]["items"]
         role_id = roles[0]["id"]
         
         # Get specific role
@@ -319,7 +325,7 @@ class TestUpdateRole:
         )
         
         assert response.status_code == 400
-        assert "already exists" in response.json()["detail"].lower()
+        assert "already exists" in _error_text(response)
     
     def test_update_role_not_found(
         self,
@@ -402,7 +408,7 @@ class TestDeleteRole:
         """Test deleting system role 'admin' (should fail)"""
         # Get admin role ID
         list_response = client.get("/api/v1/roles/", headers=auth_headers_admin)
-        roles = list_response.json()["data"]["roles"]
+        roles = list_response.json()["data"]["items"]
         admin_role = next(r for r in roles if r["name"] == "admin")
         
         # Try to delete admin role
@@ -412,7 +418,7 @@ class TestDeleteRole:
         )
         
         assert response.status_code == 400
-        assert "system role" in response.json()["detail"].lower()
+        assert "system role" in _error_text(response)
     
     def test_delete_system_role_user(
         self,
@@ -423,7 +429,7 @@ class TestDeleteRole:
         """Test deleting system role 'user' (should fail)"""
         # Get user role ID
         list_response = client.get("/api/v1/roles/", headers=auth_headers_admin)
-        roles = list_response.json()["data"]["roles"]
+        roles = list_response.json()["data"]["items"]
         user_role = next(r for r in roles if r["name"] == "user")
         
         # Try to delete user role
@@ -433,7 +439,7 @@ class TestDeleteRole:
         )
         
         assert response.status_code == 400
-        assert "system role" in response.json()["detail"].lower()
+        assert "system role" in _error_text(response)
     
     def test_delete_role_not_found(
         self,

@@ -62,3 +62,4 @@ class Absensi(Base):
 
     # Relationships
     pegawai = relationship("Pegawai", back_populates="absensi")
+    penilaian_shift_absensi = relationship("PenilaianShiftAbsensi", back_populates="matched_absensi")

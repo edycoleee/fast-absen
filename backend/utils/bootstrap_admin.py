@@ -89,6 +89,8 @@ def bootstrap_super_admin() -> None:
                     id_pegawai=pegawai_id,
                     nip=settings.ADMIN_NIP,
                     nama=settings.ADMIN_NAMA,
+                    id_unit=settings.ADMIN_ID_UNIT,
+                    kepala_id_unit=settings.ADMIN_KEPALA_ID_UNIT,
                     jenis_kelamin=settings.ADMIN_JENIS_KELAMIN,
                     tempat_lahir=settings.ADMIN_TEMPAT_LAHIR,
                     tanggal_lahir=_parse_date(settings.ADMIN_TANGGAL_LAHIR),
@@ -102,6 +104,10 @@ def bootstrap_super_admin() -> None:
                     pegawai.nip = settings.ADMIN_NIP
                 if settings.ADMIN_NAMA:
                     pegawai.nama = settings.ADMIN_NAMA
+                if settings.ADMIN_ID_UNIT is not None:
+                    pegawai.id_unit = settings.ADMIN_ID_UNIT
+                if settings.ADMIN_KEPALA_ID_UNIT is not None:
+                    pegawai.kepala_id_unit = settings.ADMIN_KEPALA_ID_UNIT
                 if settings.ADMIN_JENIS_KELAMIN:
                     pegawai.jenis_kelamin = settings.ADMIN_JENIS_KELAMIN
                 if settings.ADMIN_TEMPAT_LAHIR:

@@ -21,6 +21,10 @@ class PermissionService:
         """Get all permissions"""
         permissions = self.permission_repo.get_all(skip=skip, limit=limit)
         return [PermissionResponse.model_validate(perm) for perm in permissions]
+
+    def count_all(self) -> int:
+        """Count all permissions"""
+        return self.permission_repo.count_all()
     
     def get_by_id(self, permission_id: int) -> PermissionResponse:
         """Get permission by ID"""

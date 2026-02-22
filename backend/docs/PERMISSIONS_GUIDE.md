@@ -70,10 +70,6 @@ Sistem permission menggunakan role-based access control (RBAC) dengan granular p
 - `user_sessions.delete` - Menghapus session
   - **Required for**: Admin untuk monitoring login sessions
 
-### Deprecated Permissions
-- `login_absensi.read` - [DEPRECATED] Gunakan `user_sessions.read`
-- `login_absensi.create` - [DEPRECATED] Gunakan `user_sessions.create`
-
 ## Recommended Role Configurations
 
 ### 1. Role: "user" atau "pegawai" (Regular Employee)

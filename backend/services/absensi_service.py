@@ -202,6 +202,9 @@ class AbsensiService:
         """Get absensi history for current user"""
         absensi_list = self.absensi_repo.get_by_pegawai(id_pegawai, skip=skip, limit=limit)
         return [AbsensiResponse.model_validate(a) for a in absensi_list]
+
+    def count_user_history(self, id_pegawai: str) -> int:
+        return self.absensi_repo.count_by_pegawai(id_pegawai)
     
     def get_user_summary(
         self,

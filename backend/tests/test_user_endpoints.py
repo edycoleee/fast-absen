@@ -23,9 +23,10 @@ class TestGetUsers:
         data = response.json()
         
         assert data["success"] is True
-        assert "users" in data["data"]
-        assert len(data["data"]["users"]) >= 2  # admin + user1
-        assert data["data"]["page"] == 1
+        assert "items" in data["data"]
+        assert len(data["data"]["items"]) >= 2
+        assert data["data"]["total"] >= 2
+        assert data["data"]["skip"] == 0
     
     def test_get_users_with_pagination(
         self,
@@ -41,7 +42,7 @@ class TestGetUsers:
         
         assert response.status_code == 200
         data = response.json()
-        assert data["data"]["page"] == 1
+        assert data["data"]["skip"] == 0
         assert data["data"]["limit"] == 5
     
     def test_get_users_as_user_forbidden(
@@ -76,6 +77,7 @@ class TestCreateUser:
         new_user = {
             "username": "newuser",
             "password": "newpass123",
+            "id_pegawai": "PGW002",
             "is_active": True,
             "role_ids": [2]  # user role
         }
@@ -105,6 +107,7 @@ class TestCreateUser:
         duplicate_user = {
             "username": "admin",  # Already exists
             "password": "password123",
+            "id_pegawai": "PGW002",
             "is_active": True,
             "role_ids": [2]
         }
@@ -127,6 +130,7 @@ class TestCreateUser:
         new_user = {
             "username": "testuser",
             "password": "password123",
+            "id_pegawai": "PGW002",
             "is_active": True,
             "role_ids": [2]
         }
@@ -256,8 +260,7 @@ class TestUpdateUser:
             "/api/v1/auth/login",
             json={"username": "user1", "password": "newpassword123"}
         )
-        # Note: username masih user1 karena tidak di-update
-        assert login_response.status_code == 401  # username sudah berubah jadi updateduser di test sebelumnya
+        assert login_response.status_code == 200
     
     def test_update_user_not_found(
         self,
@@ -309,6 +312,7 @@ class TestDeleteUser:
         new_user = {
             "username": "todelete",
             "password": "password123",
+            "id_pegawai": "PGW002",
             "is_active": True,
             "role_ids": [2]
         }

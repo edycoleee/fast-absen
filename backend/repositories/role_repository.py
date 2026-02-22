@@ -18,6 +18,10 @@ class RoleRepository(BaseRepository[Role]):
     def get_by_name(self, name: str) -> Optional[Role]:
         """Get role by name"""
         return self.db.query(Role).filter(Role.name == name).first()
+
+    def get(self, role_id: int) -> Optional[Role]:
+        """Get role by ID"""
+        return self.get_by_id(role_id)
     
     def get_with_permissions(self, role_id: int) -> Optional[Role]:
         """Get role with permissions eager loaded"""
@@ -37,6 +41,10 @@ class RoleRepository(BaseRepository[Role]):
             .limit(limit)
             .all()
         )
+
+    def count_all(self) -> int:
+        """Count all roles"""
+        return self.db.query(Role).count()
     
     def add_permission(self, role: Role, permission: Permission) -> Role:
         """Add permission to role"""
