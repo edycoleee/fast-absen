@@ -102,8 +102,11 @@ Test Gate W1: unit service engine + integration endpoint baru + regresi endpoint
 Minggu 2 — P1 (Stabilisasi + Siap Frontend)
 
 P1-1 KPI backend: endpoint rekap unit/role (late, early leave, mangkir, missing checkout) untuk dashboard.
+
 P1-2 Query/filter produksi: filter tanggal/unit/shift/status + pagination konsisten (items,total,skip,limit) di endpoint monitoring.
+
 P1-3 Auditability: lengkapi jejak proses (batch import, evaluasi run, approval decision) dan error reason yang bisa ditindak.
+
 P1-4 API freeze & docs freeze: finalisasi kontrak endpoint + update docs operasional.
 Test Gate W2: e2e scenario (import→evaluate→approval), negative tests (overlap/invalid file), dan full regression hijau.
 Definition of Done
@@ -222,4 +225,6 @@ Permission gate: action sesuai role.
 Action gate: mutate API (edit/delete/decision/logout) punya success/error handling.
 Kalau kamu mau, next step saya pecah lagi jadi format board siap tempel (To Do / In Progress / Done) lengkap owner per task (FE-1/FE-2/FE-3).
 
+
+notes into one clean implementation checklist (route guard, menu rendering via menu_guard, and per-page API mapping) so FE can execute directly
 

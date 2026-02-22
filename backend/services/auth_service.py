@@ -22,6 +22,72 @@ class AuthService:
         self.db = db
         self.user_repo = UserRepository(db)
         self.session_repo = UserSessionRepository(db)
+
+    @staticmethod
+    def get_user_permissions(user: User) -> list[str]:
+        permissions = {
+            perm.name
+            for role in user.roles
+            for perm in role.permissions
+        }
+        return sorted(permissions)
+
+    @staticmethod
+    def _is_admin_roles(role_names: list[str]) -> bool:
+        role_set = {role.lower() for role in role_names}
+        return "admin" in role_set or "super-admin" in role_set
+
+    def build_menu_guard(self, user: User, role_names: list[str], permissions: list[str]) -> dict:
+        permission_set = set(permissions)
+        is_admin = self._is_admin_roles(role_names)
+        kepala_unit_scope_id = None
+        if user.pegawai and user.pegawai.kepala_id_unit is not None:
+            kepala_unit_scope_id = user.pegawai.kepala_id_unit
+
+        can_view_kpi = "penilaian_shift_absensi.read" in permission_set and (
+            is_admin or kepala_unit_scope_id is not None
+        )
+
+        kpi_endpoint = None
+        if can_view_kpi:
+            kpi_endpoint = "/api/v1/stats/kpi/unit-role" if is_admin else "/api/v1/stats/kpi/unit-role/my-unit"
+
+        return {
+            "is_admin": is_admin,
+            "is_kepala_unit": kepala_unit_scope_id is not None,
+            "kepala_unit_scope_id": kepala_unit_scope_id,
+            "menus": {
+                "dashboard": {
+                    "visible": can_view_kpi or "absensi.read" in permission_set,
+                },
+                "kpi_unit_role": {
+                    "visible": can_view_kpi,
+                    "endpoint": kpi_endpoint,
+                    "force_my_unit_scope": can_view_kpi and not is_admin,
+                    "allow_optional_unit_filter": can_view_kpi and is_admin,
+                },
+                "monitoring_absensi": {
+                    "visible": "absensi.read" in permission_set,
+                },
+                "approval": {
+                    "visible": "approval_pengajuan_absensi.read" in permission_set,
+                    "can_decide": "approval_pengajuan_absensi.update" in permission_set,
+                },
+                "user_sessions": {
+                    "visible": "user_sessions.read" in permission_set,
+                },
+            },
+        }
+
+    def build_auth_context(self, user: User) -> dict:
+        role_names = [role.name for role in user.roles]
+        permissions = self.get_user_permissions(user)
+        menu_guard = self.build_menu_guard(user=user, role_names=role_names, permissions=permissions)
+        return {
+            "roles": role_names,
+            "permissions": permissions,
+            "menu_guard": menu_guard,
+        }
     
     def authenticate_user(self, username: str, password: str) -> Optional[User]:
         """
@@ -123,9 +189,7 @@ class AuthService:
         
         # Get user with roles
         user_with_roles = self.user_repo.get_with_roles(user.id)
-        
-        # Extract role names
-        role_names = [role.name for role in user_with_roles.roles]
+        auth_context = self.build_auth_context(user_with_roles)
         
         # Create session
         session_id = self.create_session(user, request, login_status='success')
@@ -135,7 +199,7 @@ class AuthService:
             data={
                 "user_id": user.id,
                 "username": user.username,
-                "roles": role_names,
+                "roles": auth_context["roles"],
                 "id_pegawai": user.id_pegawai,
                 "session_id": session_id  # Include session ID in token
             }
@@ -149,7 +213,9 @@ class AuthService:
             token_type="bearer",
             user_id=user.id,
             username=user.username,
-            roles=role_names,
+            roles=auth_context["roles"],
+            permissions=auth_context["permissions"],
+            menu_guard=auth_context["menu_guard"],
             session_id=session_id,  # Include session ID in response
             refresh_token=refresh_token
         )

@@ -122,6 +122,15 @@ Refresh token dikirim via HTTP-only cookie (`refresh_token`) untuk endpoint `/au
 | PUT | `/roster-upload-batch/{batch_id}` | ✅ | `roster_upload_batch.update` |
 | DELETE | `/roster-upload-batch/{batch_id}` | ✅ | `roster_upload_batch.delete` |
 
+Catatan kontrak `POST /roster-upload-batch/import` (freeze):
+- Validasi header wajib mengikuti template Excel resmi.
+- Validasi file format wajib `.xlsx`/`.xlsm`.
+- Deteksi konflik roster:
+  - overlap shift pegawai yang sama dalam file upload,
+  - overlap shift terhadap data roster existing,
+  - duplikasi baris exact match.
+- Jika semua baris invalid, endpoint tetap `201` dengan ringkasan `result.valid_rows=0`, `result.invalid_rows>0`, dan detail error per baris.
+
 ## 11) Roster Shift (`/roster-shift`)
 
 | Method | Endpoint | Auth | Permission |
@@ -154,6 +163,12 @@ Refresh token dikirim via HTTP-only cookie (`refresh_token`) untuk endpoint `/au
 | POST | `/approval-pengajuan-absensi/{pengajuan_id}/decision` | ✅ | `approval_pengajuan_absensi.update` |
 | GET | `/approval-pengajuan-absensi/{pengajuan_id}/logs` | ✅ | `approval_pengajuan_absensi.read` |
 
+Kontrak alur W2 (freeze):
+- Roster import: `POST /roster-upload-batch/import`
+- Evaluate: `POST /penilaian-shift-absensi/evaluate`
+- Approval create: `POST /approval-pengajuan-absensi/`
+- Approval decision: `POST /approval-pengajuan-absensi/{pengajuan_id}/decision`
+
 ## 14) Approval Pengajuan Absensi Log (`/approval-pengajuan-absensi-log`)
 
 | Method | Endpoint | Auth | Permission |
@@ -183,6 +198,13 @@ Refresh token dikirim via HTTP-only cookie (`refresh_token`) untuk endpoint `/au
 | PUT | `/absensi/{absensi_id}` | ✅ | `absensi.update` |
 | DELETE | `/absensi/{absensi_id}` | ✅ | `absensi.delete` |
 
+Query filter produksi untuk `GET /absensi/`:
+- `start_date`, `end_date`
+- `id_pegawai`, `id_unit`
+- `shift` (jenis shift roster: `PAGI|SORE|MALAM|ON_CALL|CUSTOM`)
+- `status`
+- pagination konsisten: `skip`, `limit` → response `items`, `total`, `skip`, `limit`
+
 ## 16) User Sessions (`/user-sessions`)
 
 | Method | Endpoint | Auth | Permission |
@@ -203,6 +225,35 @@ Refresh token dikirim via HTTP-only cookie (`refresh_token`) untuk endpoint `/au
 | Method | Endpoint | Auth | Guard |
 |---|---|---|---|
 | GET | `/stats/` | ✅ | punya salah satu: `users.read` / `pegawai.read` / `roles.read` / `absensi.read` |
+| GET | `/stats/kpi/unit-role` | ✅ | `penilaian_shift_absensi.read` |
+| GET | `/stats/kpi/unit-role/my-unit` | ✅ | `penilaian_shift_absensi.read` + user adalah `kepala unit` |
+
+Kontrak utama `GET /stats/kpi/unit-role`:
+
+- `data.summary`
+  - `total_karyawan_unit`
+  - `terjadwal_total`
+  - `tidak_terjadwal_total`
+  - `late`, `early_leave`, `mangkir`, `missing_checkout`
+  - `scheduled_unassessed_total`
+  - `pelanggaran_total`, `non_pelanggaran_terjadwal_total`
+- `data.detail_karyawan`
+  - daftar detail per kategori: `late`, `early_leave`, `mangkir`, `missing_checkout`, `tidak_terjadwal`, `scheduled_unassessed`
+  - setiap item berisi: `id_pegawai`, `nama_pegawai`, `id_unit`, `nama_unit`, `roles`, `latest_status`, `last_evaluated_at`, `is_manual_override`, `override_reason`, `approved_by_pegawai`, `approved_by_nama`, `approved_at`
+- `data.by_unit_employee`
+  - rekap per unit berbasis jumlah karyawan (bukan jumlah shift)
+- `data.shift_summary`
+  - rekap agregat berbasis record evaluasi shift (backward compatibility)
+- `data.watermark`
+  - `as_of`, `last_evaluated_at`, `data_freshness_minutes`
+- `data.audit`
+  - `manual_override_total`, `approved_total`, `manual_override_details`, `approved_details`
+
+Aturan scope akses:
+
+- Admin/super-admin boleh akses lintas unit via `id_unit` atau semua unit.
+- Non-admin (kepala unit) otomatis terscope ke `kepala_id_unit` miliknya.
+- Endpoint `/stats/kpi/unit-role/my-unit` selalu memaksa scope unit milik user login (frontend tidak perlu kirim `id_unit`).
 
 ## 18) Halo (`/halo`) *(legacy/example)*
 
@@ -219,12 +270,20 @@ Refresh token dikirim via HTTP-only cookie (`refresh_token`) untuk endpoint `/au
 
 ### `POST /auth/login`
 - Body: `username`, `password`
-- Return: `access_token`, `token_type`, `user_id`, `username`, `roles`, `session_id`
+- Return: `access_token`, `token_type`, `user_id`, `username`, `roles`, `permissions`, `menu_guard`, `session_id`
 - Set cookie: `refresh_token` (HTTP-only)
+
+`menu_guard` (kontrak frontend):
+- `is_admin`, `is_kepala_unit`, `kepala_unit_scope_id`
+- `menus.dashboard.visible`
+- `menus.kpi_unit_role` → `visible`, `endpoint`, `force_my_unit_scope`, `allow_optional_unit_filter`
+- `menus.monitoring_absensi.visible`
+- `menus.approval.visible`, `menus.approval.can_decide`
+- `menus.user_sessions.visible`
 
 ### `POST /auth/refresh`
 - Tanpa body, wajib cookie `refresh_token`
-- Return access token baru
+- Return access token baru + `roles`, `permissions`, `menu_guard`
 
 ### `POST /auth/logout`
 - Hapus cookie `refresh_token`

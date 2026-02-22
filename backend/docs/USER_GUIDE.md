@@ -28,9 +28,19 @@ Setelah login:
 - simpan `access_token`
 - authorize dengan `Bearer <token>`
 
+Response login juga membawa:
+- `permissions`
+- `menu_guard`
+
+Field `menu_guard` dipakai frontend untuk menentukan menu yang tampil dan endpoint KPI yang benar sesuai role.
+
 Endpoint terkait:
 - `POST /api/v1/auth/refresh` (pakai cookie refresh token)
 - `POST /api/v1/auth/logout`
+
+Contoh rule frontend dari `menu_guard`:
+- jika `menu_guard.menus.kpi_unit_role.endpoint = /api/v1/stats/kpi/unit-role/my-unit`, user harus memakai endpoint tersebut (scope unit otomatis)
+- jika endpoint adalah `/api/v1/stats/kpi/unit-role`, user boleh pakai filter unit opsional
 
 ---
 
@@ -171,6 +181,9 @@ Perubahan roster setelah publish biasanya dibatasi oleh cutoff unit. Jika ada ke
 ### Status mangkir/terlambat saya salah, apa yang harus dilakukan?
 Ajukan koreksi melalui alur pengajuan absensi agar bisa direview atasan/admin, jangan meminta edit manual langsung tanpa jejak.
 
+### Saya kepala unit, endpoint KPI mana yang dipakai?
+Gunakan endpoint yang diberikan oleh `menu_guard.menus.kpi_unit_role.endpoint` (umumnya `/stats/kpi/unit-role/my-unit`). Jangan hardcode endpoint manual di frontend.
+
 ### Siapa yang menyetujui pengajuan saya?
 Untuk tahap saat ini, sistem memakai **1 atasan langsung** (berdasarkan mapping organisasi) sebagai approver utama.
 
@@ -181,5 +194,7 @@ Untuk tahap saat ini, sistem memakai **1 atasan langsung** (berdasarkan mapping 
 - [QUICK_START.md](QUICK_START.md)
 - [API_ENDPOINTS.md](API_ENDPOINTS.md)
 - [ADMIN_GUIDE.md](ADMIN_GUIDE.md)
+- [KAUNIT_GUIDE.md](KAUNIT_GUIDE.md)
+- [DOC_MAPPING_FRONTEND.md](DOC_MAPPING_FRONTEND.md)
 
 Last updated: 22 Februari 2026

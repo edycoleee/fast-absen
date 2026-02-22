@@ -84,6 +84,8 @@ def login(
             "user_id": token_data.user_id,
             "username": token_data.username,
             "roles": token_data.roles,
+            "permissions": token_data.permissions,
+            "menu_guard": token_data.menu_guard,
             "session_id": token_data.session_id  # Include for heartbeat tracking
         },
         message="Login successful"
@@ -138,15 +140,15 @@ def refresh_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Extract role names
-    role_names = [role.name for role in user_with_roles.roles]
+    auth_service = AuthService(db)
+    auth_context = auth_service.build_auth_context(user_with_roles)
     
     # Create new access token
     new_access_token = create_access_token(
         data={
             "user_id": user_with_roles.id,
             "username": user_with_roles.username,
-            "roles": role_names,
+            "roles": auth_context["roles"],
             "id_pegawai": user_with_roles.id_pegawai
         }
     )
@@ -158,7 +160,9 @@ def refresh_access_token(
             "token_type": "bearer",
             "user_id": user_with_roles.id,
             "username": user_with_roles.username,
-            "roles": role_names
+            "roles": auth_context["roles"],
+            "permissions": auth_context["permissions"],
+            "menu_guard": auth_context["menu_guard"],
         },
         message="Access token refreshed successfully"
     )

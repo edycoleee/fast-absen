@@ -464,7 +464,8 @@ ON CONFLICT (kode) DO NOTHING;
 INSERT INTO roles (name, description) VALUES
 ('admin', 'Administrator dengan akses penuh ke CRUD'),
 ('user', 'Pegawai yang melakukan absensi harian'),
-('super-admin', 'Super Administrator dengan akses penuh sistem');
+('super-admin', 'Super Administrator dengan akses penuh sistem'),
+('ka-unit', 'Kepala Unit dengan akses monitoring dan approval unit sendiri');
 
 -- Permissions (lengkap sesuai permission_registry.py)
 INSERT INTO permissions (name, description) VALUES
@@ -568,11 +569,16 @@ INSERT INTO permissions (name, description) VALUES
 
 -- Super-Admin: Gets ALL permissions
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT 3, id FROM permissions;  -- role_id 3 = super-admin
+SELECT r.id, p.id
+FROM roles r
+JOIN permissions p ON 1=1
+WHERE r.name = 'super-admin';
 
 -- Admin: Gets most permissions (manage users, pegawai, absensi)
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT 1, p.id FROM permissions p WHERE p.name IN (
+SELECT r.id, p.id
+FROM roles r
+JOIN permissions p ON p.name IN (
     'user.login',
     'users.read', 'users.create', 'users.update', 'users.delete',
     'pegawai.read', 'pegawai.create', 'pegawai.update', 'pegawai.delete',
@@ -587,11 +593,31 @@ SELECT 1, p.id FROM permissions p WHERE p.name IN (
     'approval_pengajuan_absensi.read', 'approval_pengajuan_absensi.create', 'approval_pengajuan_absensi.update',
     'approval_pengajuan_absensi_log.read',
     'user_sessions.read', 'user_sessions.update'
-);
+)
+WHERE r.name = 'admin';
+
+-- Kepala Unit: Monitoring KPI unit sendiri + approval
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+JOIN permissions p ON p.name IN (
+    'user.login',
+    'pegawai.read',
+    'unit.read',
+    'roster_shift.read',
+    'penilaian_shift_absensi.read',
+    'absensi.read',
+    'approval_pengajuan_absensi.read',
+    'approval_pengajuan_absensi.update',
+    'approval_pengajuan_absensi_log.read'
+)
+WHERE r.name = 'ka-unit';
 
 -- User/Pegawai: Gets permissions for daily attendance
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT 2, p.id FROM permissions p WHERE p.name IN (
+SELECT r.id, p.id
+FROM roles r
+JOIN permissions p ON p.name IN (
     'user.login',           -- Login
     'absensi.read',         -- View own attendance (today, history, summary)
     'absensi.create',       -- Check-in
@@ -599,4 +625,5 @@ SELECT 2, p.id FROM permissions p WHERE p.name IN (
     'approval_pengajuan_absensi.read',
     'approval_pengajuan_absensi.create',
     'approval_pengajuan_absensi.update'
-);
+)
+WHERE r.name = 'user';

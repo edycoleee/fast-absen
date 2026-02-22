@@ -19,6 +19,8 @@ class TokenResponse(BaseModel):
     user_id: int
     username: str
     roles: list[str]
+    permissions: list[str] = Field(default_factory=list)
+    menu_guard: dict = Field(default_factory=dict)
     session_id: Optional[str] = None  # Session UUID for tracking
     refresh_token: Optional[str] = None  # Only used internally, not sent in response
 

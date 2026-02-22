@@ -2,7 +2,15 @@
 Test Absensi Endpoints
 Updated for check-in/check-out flow + multi-shift same day
 """
+from datetime import date, datetime
+
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+
+from models.unit import Unit
+from models.pegawai import Pegawai
+from models.roster_shift import RosterShift
+from models.penilaian_shift_absensi import PenilaianShiftAbsensi
 
 
 API_PREFIX = "/api/v1/absensi"
@@ -140,6 +148,135 @@ class TestAbsensiAdminFlow:
         assert payload["success"] is True
         assert "items" in payload["data"]
         assert payload["data"]["total"] >= 1
+
+    def test_admin_get_all_absensi_with_production_filters_and_pagination(
+        self,
+        client: TestClient,
+        db_with_data: Session,
+        auth_headers_admin: dict,
+        auth_headers_user: dict,
+    ):
+        db_with_data.add_all([
+            Unit(id_unit=10, nama_unit="Rawat Inap"),
+            Unit(id_unit=20, nama_unit="IGD"),
+        ])
+        pgw1 = db_with_data.query(Pegawai).filter(Pegawai.id_pegawai == "PGW001").first()
+        pgw2 = db_with_data.query(Pegawai).filter(Pegawai.id_pegawai == "PGW002").first()
+        pgw1.id_unit = 10
+        pgw2.id_unit = 20
+        db_with_data.commit()
+
+        admin_checkin = client.post(
+            f"{API_PREFIX}/check-in",
+            json={"status": "HADIR"},
+            headers=auth_headers_admin,
+        )
+        user_checkin = client.post(
+            f"{API_PREFIX}/check-in",
+            json={"status": "TERLAMBAT", "keterangan": "Terlambat jaga"},
+            headers=auth_headers_user,
+        )
+
+        assert admin_checkin.status_code == 201
+        assert user_checkin.status_code == 201
+
+        absensi_admin_id = admin_checkin.json()["data"]["id"]
+        absensi_user_id = user_checkin.json()["data"]["id"]
+        today = date.today()
+
+        db_with_data.add_all([
+            RosterShift(
+                id=9101,
+                id_pegawai="PGW001",
+                id_unit=10,
+                tanggal_shift=today,
+                jam_mulai=datetime(today.year, today.month, today.day, 7, 0, 0),
+                jam_selesai=datetime(today.year, today.month, today.day, 14, 0, 0),
+                jenis_shift="PAGI",
+                nomor_sesi=1,
+                status_roster="AKTIF",
+            ),
+            RosterShift(
+                id=9102,
+                id_pegawai="PGW002",
+                id_unit=20,
+                tanggal_shift=today,
+                jam_mulai=datetime(today.year, today.month, today.day, 19, 0, 0),
+                jam_selesai=datetime(today.year, today.month, today.day, 23, 0, 0),
+                jenis_shift="MALAM",
+                nomor_sesi=1,
+                status_roster="AKTIF",
+            ),
+        ])
+        db_with_data.add_all([
+            PenilaianShiftAbsensi(
+                id=9201,
+                roster_shift_id=9101,
+                id_pegawai="PGW001",
+                matched_absensi_id=absensi_admin_id,
+                status_final="TEPAT_WAKTU",
+                menit_telat=0,
+                menit_pulang_cepat=0,
+                menit_lembur=0,
+            ),
+            PenilaianShiftAbsensi(
+                id=9202,
+                roster_shift_id=9102,
+                id_pegawai="PGW002",
+                matched_absensi_id=absensi_user_id,
+                status_final="TERLAMBAT",
+                menit_telat=10,
+                menit_pulang_cepat=0,
+                menit_lembur=0,
+            ),
+        ])
+        db_with_data.commit()
+
+        response = client.get(
+            f"{API_PREFIX}/?start_date={today.isoformat()}&end_date={today.isoformat()}&id_unit=10&shift=PAGI&status=HADIR&skip=0&limit=1",
+            headers=auth_headers_admin,
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["success"] is True
+        assert payload["data"]["skip"] == 0
+        assert payload["data"]["limit"] == 1
+        assert payload["data"]["total"] == 1
+        assert len(payload["data"]["items"]) == 1
+
+        item = payload["data"]["items"][0]
+        assert item["id_pegawai"] == "PGW001"
+        assert item["id_unit"] == 10
+        assert item["nama_unit"] == "Rawat Inap"
+        assert item["jenis_shift"] == "PAGI"
+        assert item["status"] == "HADIR"
+
+    def test_admin_get_all_absensi_shift_filter_with_no_match_returns_empty_items(
+        self,
+        client: TestClient,
+        auth_headers_admin: dict,
+        auth_headers_user: dict,
+    ):
+        checkin = client.post(
+            f"{API_PREFIX}/check-in",
+            json={"status": "HADIR"},
+            headers=auth_headers_user,
+        )
+        assert checkin.status_code == 201
+
+        response = client.get(
+            f"{API_PREFIX}/?shift=MALAM&skip=0&limit=10",
+            headers=auth_headers_admin,
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["success"] is True
+        assert payload["data"]["items"] == []
+        assert payload["data"]["total"] == 0
+        assert payload["data"]["skip"] == 0
+        assert payload["data"]["limit"] == 10
 
     def test_admin_get_absensi_by_id(self, client: TestClient, auth_headers_admin: dict, auth_headers_user: dict):
         create = client.post(

@@ -24,9 +24,29 @@ Setelah login:
 1. copy `access_token`
 2. authorize di Swagger: `Bearer <token>`
 
+Payload login sekarang juga membawa kontrak guard frontend:
+- `roles`
+- `permissions`
+- `menu_guard` (penentu visibilitas menu + endpoint KPI yang harus dipakai)
+
 ---
 
 ## 2) Endpoint Admin Utama
+
+## A0. Auth Contract untuk Frontend Guard
+
+Endpoint: `POST /api/v1/auth/login` dan `POST /api/v1/auth/refresh`
+
+Field tambahan penting pada response:
+- `permissions`: daftar permission efektif user
+- `menu_guard.is_admin`
+- `menu_guard.is_kepala_unit`
+- `menu_guard.kepala_unit_scope_id`
+- `menu_guard.menus.kpi_unit_role.endpoint`
+  - admin/super-admin: `/api/v1/stats/kpi/unit-role`
+  - ka-unit: `/api/v1/stats/kpi/unit-role/my-unit`
+- `menu_guard.menus.kpi_unit_role.force_my_unit_scope`
+- `menu_guard.menus.kpi_unit_role.allow_optional_unit_filter`
 
 ## A. Users (`/users`)
 - `GET /users/`
@@ -178,6 +198,28 @@ Kebijakan resolver approver saat ini (P0-3 tahap awal):
 }
 ```
 
+## H. KPI Unit/Role + Scope Kepala Unit
+
+Endpoint:
+- `GET /stats/kpi/unit-role` (admin/super-admin, lintas unit)
+- `GET /stats/kpi/unit-role/my-unit` (kepala unit, otomatis scope unit sendiri)
+
+Aturan akses:
+- Admin/super-admin boleh pakai query `id_unit` opsional.
+- Non-admin kepala unit otomatis terscope ke `kepala_id_unit` miliknya.
+- Jika kepala unit memaksa `id_unit` unit lain di endpoint umum, sistem akan `403`.
+
+Role baru untuk governance:
+- `ka-unit` (Kepala Unit) dengan permission monitoring/approval unit.
+
+Permission minimum `ka-unit`:
+- `user.login`
+- `pegawai.read`, `unit.read`, `roster_shift.read`
+- `penilaian_shift_absensi.read`
+- `absensi.read`
+- `approval_pengajuan_absensi.read`, `approval_pengajuan_absensi.update`
+- `approval_pengajuan_absensi_log.read`
+
 ---
 
 ## 3) SOP Roster Bulanan (Best Practice)
@@ -242,10 +284,11 @@ Field ringkasan hasil yang perlu dipantau:
 ## 4) Operasional Harian Disarankan
 
 1. `GET /stats/`
-2. `GET /absensi/statistics`
-3. `GET /user-sessions/active`
-4. `GET /approval-pengajuan-absensi/assigned`
-5. `POST /approval-pengajuan-absensi/{pengajuan_id}/decision`
+2. `GET /stats/kpi/unit-role` (admin) / `GET /stats/kpi/unit-role/my-unit` (ka-unit)
+3. `GET /absensi/statistics`
+4. `GET /user-sessions/active`
+5. `GET /approval-pengajuan-absensi/assigned`
+6. `POST /approval-pengajuan-absensi/{pengajuan_id}/decision`
 
 ---
 
@@ -263,5 +306,7 @@ Field ringkasan hasil yang perlu dipantau:
 - [API_ENDPOINTS.md](API_ENDPOINTS.md)
 - [QUICK_START.md](QUICK_START.md)
 - [USER_GUIDE.md](USER_GUIDE.md)
+- [KAUNIT_GUIDE.md](KAUNIT_GUIDE.md)
+- [DOC_MAPPING_FRONTEND.md](DOC_MAPPING_FRONTEND.md)
 
 Last updated: 22 Februari 2026

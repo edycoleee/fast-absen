@@ -23,7 +23,10 @@ class UserRepository(BaseRepository[User]):
         """Get user with roles eager loaded"""
         return (
             self.db.query(User)
-            .options(joinedload(User.roles))
+            .options(
+                joinedload(User.roles).joinedload(Role.permissions),
+                joinedload(User.pegawai),
+            )
             .filter(User.id == user_id)
             .first()
         )

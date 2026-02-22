@@ -26,6 +26,10 @@ Modern attendance system backend built with FastAPI using Clean Architecture pri
 - ✅ **Clean Architecture** - Separation of concerns (Controller → Service → Repository → Model)
 - ✅ **RBAC (Role-Based Access Control)** - Comprehensive role & permission system
 - ✅ **Attendance Management** - Check-in/out with GPS validation
+- ✅ **Roster Import Pipeline** - Excel import with validation, idempotency, and conflict detection
+- ✅ **Shift Evaluation Engine** - Evaluate roster vs absensi for late/early/mangkir/missing-checkout
+- ✅ **Approval Workflow** - Pengajuan koreksi dengan assigned approver + audit log
+- ✅ **KPI Unit/Role** - Rekap unit-role with scope-aware access (`all-unit` / `my-unit`)
 - ✅ **Soft Delete** - Safe data deletion with restore capability
 - ✅ **Pagination & Search** - Efficient data retrieval
 - ✅ **Request Tracking** - Unique request ID for distributed tracing
@@ -35,10 +39,24 @@ Modern attendance system backend built with FastAPI using Clean Architecture pri
 - 📊 **Health Checks** - Database connectivity monitoring
 - 📝 **Rotating Logs** - Prevent disk space issues (10MB max, 5 backups)
 - 🔍 **Request Logging** - Automatic HTTP request/response logging
+- 📌 **Auth Guard Contract** - Login/refresh returns `roles`, `permissions`, and `menu_guard`
+- 🧭 **Scope Guarding** - `admin/super-admin` cross-unit, `ka-unit` own-unit scope
 - 🛡️ **Error Handling** - Production-safe error messages
 - ⚡ **Database Pooling** - Connection pool optimization
 - 🌐 **CORS Configuration** - Environment-based origin whitelist
 - 📖 **Auto API Docs** - OpenAPI (Swagger) documentation
+
+---
+
+## 📌 Current Delivery Status (Feb 2026)
+
+- ✅ **P0 complete**: import roster end-to-end, evaluate engine, approval resolver, idempotent re-run safety
+- ✅ **P1-1 complete**: KPI endpoint `/stats/kpi/unit-role` + `/stats/kpi/unit-role/my-unit`
+- ✅ **P1-2 complete**: monitoring filters production-ready (`start_date,end_date,id_pegawai,id_unit,shift,status`)
+- ✅ **P1-3 complete**: stronger auditability (`watermark`, approval/audit details, override metadata)
+- ✅ **P1-4 complete (API freeze & docs freeze)**: contract stabilized for frontend
+- ✅ **W2 test gate pass**: endpoint E2E import → evaluate → approval + negative tests (invalid header/overlap)
+- ✅ **Endpoint regression**: `133 passed`
 
 ---
 
@@ -248,6 +266,24 @@ Lihat [Clean Architecture Guide](docs/CLEAN_ARCHITECTURE_GUIDE.md) untuk tutoria
 
 ## 📖 API Documentation
 
+### Key Contracts (Frozen)
+
+- **Auth contract**
+  - `POST /api/v1/auth/login`
+  - `POST /api/v1/auth/refresh`
+  - response includes: `access_token`, `roles`, `permissions`, `menu_guard`
+- **KPI contract**
+  - `GET /api/v1/stats/kpi/unit-role`
+  - `GET /api/v1/stats/kpi/unit-role/my-unit`
+  - includes: `summary`, `detail_karyawan`, `by_unit_employee`, `watermark`, `audit`
+- **Monitoring contract**
+  - `GET /api/v1/absensi/` with filters and pagination envelope
+  - response pagination: `items`, `total`, `skip`, `limit`
+- **Roster import contract**
+  - `POST /api/v1/roster-upload-batch/import`
+  - validation: invalid header/file + duplicate/overlap detection
+  - import summary in `data.result` (`valid_rows`, `invalid_rows`, `errors`)
+
 ### Health Check Endpoints
 
 ```bash
@@ -432,12 +468,9 @@ All API responses follow consistent format:
   "message": "Success",
   "data": {
     "items": [...],
-    "pagination": {
-      "page": 1,
-      "limit": 10,
-      "total_items": 100,
-      "total_pages": 10
-    }
+    "total": 100,
+    "skip": 0,
+    "limit": 10
   }
 }
 ```
@@ -484,7 +517,12 @@ pytest tests/test_halo.py
 ## 📚 Documentation
 
 - [Clean Architecture Guide](docs/CLEAN_ARCHITECTURE_GUIDE.md) - Implementation tutorial
-- [Response Format](docs/RESPONSE_FORMAT.md) - API response standards  
+- [API Endpoints](docs/API_ENDPOINTS.md) - Full endpoint contract and scope notes
+- [Admin Guide](docs/ADMIN_GUIDE.md) - Admin operational playbook
+- [User Guide](docs/USER_GUIDE.md) - User/pegawai operational guide
+- [KA-UNIT Guide](docs/KAUNIT_GUIDE.md) - Kepala unit flow and scope rules
+- [Frontend Mapping](docs/DOC_MAPPING_FRONTEND.md) - Route/menu/API mapping contract for FE
+- [Response Format](docs/RESPONSE_FORMAT.md) - API response standards
 - [Improvements](docs/IMPROVEMENTS.md) - Architecture decisions
 
 ---

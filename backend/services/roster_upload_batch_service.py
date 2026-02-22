@@ -270,6 +270,29 @@ class RosterUploadBatchService:
                 if existing:
                     raise ValueError("Data roster sudah ada di database")
 
+                overlap_in_file = next(
+                    (
+                        existing_payload
+                        for existing_payload in valid_payloads
+                        if existing_payload["id_pegawai"] == payload["id_pegawai"]
+                        and existing_payload["jam_mulai"] < payload["jam_selesai"]
+                        and existing_payload["jam_selesai"] > payload["jam_mulai"]
+                    ),
+                    None,
+                )
+                if overlap_in_file:
+                    raise ValueError("Overlap shift pada file untuk pegawai yang sama")
+
+                overlap_existing = self.db.query(RosterShift.id).filter(
+                    and_(
+                        RosterShift.id_pegawai == payload["id_pegawai"],
+                        RosterShift.jam_mulai < payload["jam_selesai"],
+                        RosterShift.jam_selesai > payload["jam_mulai"],
+                    )
+                ).first()
+                if overlap_existing:
+                    raise ValueError("Overlap shift dengan data roster existing")
+
                 valid_payloads.append(payload)
 
                 if period_start is None or payload["tanggal_shift"] < period_start:
