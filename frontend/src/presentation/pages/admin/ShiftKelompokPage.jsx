@@ -315,11 +315,13 @@ const ShiftKelompokPage = () => {
 
               {/* Toggles */}
               <div className="sm:col-span-2 flex flex-col gap-3">
-                <label className="flex items-center gap-3 cursor-pointer select-none">
+                <div
+                  className="flex items-center gap-3 cursor-pointer select-none"
+                  onClick={() => handleChange('is_shift_based', !formData.is_shift_based)}
+                >
                   <div
                     role="checkbox"
                     aria-checked={formData.is_shift_based}
-                    onClick={() => handleChange('is_shift_based', !formData.is_shift_based)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
                       formData.is_shift_based ? 'bg-blue-600' : 'bg-gray-300'
                     }`}
@@ -338,13 +340,15 @@ const ShiftKelompokPage = () => {
                         : 'Kelompok ini tidak shift-based (cth. admin umum jam tetap)'}
                     </p>
                   </div>
-                </label>
+                </div>
 
-                <label className="flex items-center gap-3 cursor-pointer select-none">
+                <div
+                  className="flex items-center gap-3 cursor-pointer select-none"
+                  onClick={() => handleChange('is_active', !formData.is_active)}
+                >
                   <div
                     role="checkbox"
                     aria-checked={formData.is_active}
-                    onClick={() => handleChange('is_active', !formData.is_active)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
                       formData.is_active ? 'bg-green-600' : 'bg-gray-300'
                     }`}
@@ -361,7 +365,7 @@ const ShiftKelompokPage = () => {
                       {formData.is_active ? 'Kelompok ini digunakan aktif' : 'Kelompok ini dinonaktifkan'}
                     </p>
                   </div>
-                </label>
+                </div>
               </div>
 
               {/* Actions */}

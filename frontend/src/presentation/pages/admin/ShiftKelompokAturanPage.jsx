@@ -490,24 +490,24 @@ const ShiftKelompokAturanPage = () => {
               <div>
                 <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Konfigurasi</h3>
                 <div className="flex flex-wrap gap-6">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <div
-                      onClick={() => handleChange('is_lintas_tanggal', !formData.is_lintas_tanggal)}
-                      className={`w-12 h-6 rounded-full transition-colors cursor-pointer ${formData.is_lintas_tanggal ? 'bg-purple-500' : 'bg-gray-300'}`}
-                    >
+                  <div
+                    className="flex items-center gap-3 cursor-pointer"
+                    onClick={() => handleChange('is_lintas_tanggal', !formData.is_lintas_tanggal)}
+                  >
+                    <div className={`w-12 h-6 rounded-full transition-colors ${formData.is_lintas_tanggal ? 'bg-purple-500' : 'bg-gray-300'}`}>
                       <div className={`w-5 h-5 bg-white rounded-full shadow mt-0.5 transition-transform ${formData.is_lintas_tanggal ? 'translate-x-6' : 'translate-x-0.5'}`} />
                     </div>
                     <span className="text-sm font-medium text-gray-700">Lintas Tanggal</span>
-                  </label>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <div
-                      onClick={() => handleChange('is_active', !formData.is_active)}
-                      className={`w-12 h-6 rounded-full transition-colors cursor-pointer ${formData.is_active ? 'bg-green-500' : 'bg-gray-300'}`}
-                    >
+                  </div>
+                  <div
+                    className="flex items-center gap-3 cursor-pointer"
+                    onClick={() => handleChange('is_active', !formData.is_active)}
+                  >
+                    <div className={`w-12 h-6 rounded-full transition-colors ${formData.is_active ? 'bg-green-500' : 'bg-gray-300'}`}>
                       <div className={`w-5 h-5 bg-white rounded-full shadow mt-0.5 transition-transform ${formData.is_active ? 'translate-x-6' : 'translate-x-0.5'}`} />
                     </div>
                     <span className="text-sm font-medium text-gray-700">Aktif</span>
-                  </label>
+                  </div>
                 </div>
               </div>
 

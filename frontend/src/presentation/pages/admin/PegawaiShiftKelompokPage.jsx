@@ -522,15 +522,15 @@ const PegawaiShiftKelompokPage = () => {
 
               {/* Toggle is_default */}
               <div>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <div
-                    onClick={() => handleChange('is_default', !formData.is_default)}
-                    className={`w-12 h-6 rounded-full transition-colors cursor-pointer ${formData.is_default ? 'bg-blue-500' : 'bg-gray-300'}`}
-                  >
+                <div
+                  className="flex items-center gap-3 cursor-pointer"
+                  onClick={() => handleChange('is_default', !formData.is_default)}
+                >
+                  <div className={`w-12 h-6 rounded-full transition-colors ${formData.is_default ? 'bg-blue-500' : 'bg-gray-300'}`}>
                     <div className={`w-5 h-5 bg-white rounded-full shadow mt-0.5 transition-transform ${formData.is_default ? 'translate-x-6' : 'translate-x-0.5'}`} />
                   </div>
                   <span className="text-sm font-medium text-gray-700">Jadikan Default</span>
-                </label>
+                </div>
                 <p className="text-xs text-gray-400 mt-1 ml-15">
                   Hanya satu assignment aktif per pegawai yang bisa default.
                 </p>
