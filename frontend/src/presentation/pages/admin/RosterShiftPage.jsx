@@ -330,7 +330,7 @@ const RosterShiftPage = () => {
                   >
                     <option value="">— Tidak ada —</option>
                     {shiftKelompokList.map(sk => (
-                      <option key={sk.id} value={sk.id}>{sk.nama_kelompok}</option>
+                      <option key={sk.id} value={sk.id}>{sk.kode} – {sk.nama}</option>
                     ))}
                   </select>
                 </div>
