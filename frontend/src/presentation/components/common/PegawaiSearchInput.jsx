@@ -6,12 +6,12 @@ import PegawaiRepository from '../../../data/repositories/PegawaiRepository';
  * value: id_pegawai string
  * onChange(id_pegawai: string, nama: string | null)
  */
-const PegawaiSearchInput = ({ value, onChange, placeholder = 'Cari nama atau ID pegawai...' }) => {
+const PegawaiSearchInput = ({ value, displayValue, onChange, placeholder = 'Cari nama atau ID pegawai...' }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
-  const [selectedLabel, setSelectedLabel] = useState('');
+  const [selectedLabel, setSelectedLabel] = useState(displayValue || '');
   const containerRef = useRef(null);
   const debounceRef = useRef(null);
 
@@ -22,6 +22,11 @@ const PegawaiSearchInput = ({ value, onChange, placeholder = 'Cari nama atau ID 
       setQuery('');
     }
   }, [value]);
+
+  /* Sync displayValue when parent changes it (edit modal open / filter reset) */
+  useEffect(() => {
+    setSelectedLabel(displayValue ?? '');
+  }, [displayValue]);
 
   /* Close dropdown when clicking outside */
   useEffect(() => {
@@ -57,7 +62,7 @@ const PegawaiSearchInput = ({ value, onChange, placeholder = 'Cari nama atau ID 
     setOpen(true);
     /* If cleared, propagate empty */
     if (!q) {
-      onChange('', null);
+      onChange('', null, null);
       setSelectedLabel('');
     }
     clearTimeout(debounceRef.current);
@@ -70,7 +75,7 @@ const PegawaiSearchInput = ({ value, onChange, placeholder = 'Cari nama atau ID 
     setQuery('');
     setOpen(false);
     setResults([]);
-    onChange(item.id_pegawai, item.nama ?? null);
+    onChange(item.id_pegawai, item.nama ?? null, item.id_unit ?? null);
   };
 
   const handleClear = () => {
@@ -78,7 +83,7 @@ const PegawaiSearchInput = ({ value, onChange, placeholder = 'Cari nama atau ID 
     setQuery('');
     setOpen(false);
     setResults([]);
-    onChange('', null);
+    onChange('', null, null);
   };
 
   const displayQuery = selectedLabel || query;

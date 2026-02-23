@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../../domain/hooks';
 import AbsensiRepository from '../../../data/repositories/AbsensiRepository';
 import UnitRepository from '../../../data/repositories/UnitRepository';
+import PegawaiSearchInput from '../../components/common/PegawaiSearchInput';
 import { formatErrorMessage, formatErrorForAlert } from '../../../utils/errorHandler';
 
 // Status configuration

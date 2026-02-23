@@ -24,6 +24,7 @@ import {
   RosterUploadBatchPage,
   RosterShiftPage,
   PenilaianShiftAbsensiPage,
+  RosterAdapterPage,
 } from './presentation/pages'
 import { useAuth, useSessionHeartbeat } from './domain/hooks'
 
@@ -82,6 +83,7 @@ function App() {
             <Route path="shift-pegawai" element={<PegawaiShiftKelompokPage />} />
             <Route path="roster-upload" element={<RosterUploadBatchPage />} />
             <Route path="roster-shift" element={<RosterShiftPage />} />
+            <Route path="roster-adapter" element={<RosterAdapterPage />} />
             <Route path="penilaian-shift" element={<PenilaianShiftAbsensiPage />} />
             <Route path="absensi" element={<AttendanceMonitorPage />} />
             <Route path="sessions-monitor" element={<SessionMonitorPage />} />

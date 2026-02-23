@@ -452,12 +452,9 @@ ON CONFLICT (id_unit) DO NOTHING;
 -- Master kelompok shift default (sesuai kebutuhan RS)
 INSERT INTO shift_kelompok (kode, nama, deskripsi, is_shift_based)
 VALUES
-('DOKTER_SHIFT', 'Dokter Shift', 'Kelompok shift dokter jaga', TRUE),
-('PERAWAT_SHIFT', 'Perawat Shift', 'Kelompok shift perawat rawat inap/IGD', TRUE),
-('PERAWAT_POLI', 'Perawat Poliklinik', 'Kelompok perawat poliklinik (cenderung non-lintas tanggal)', TRUE),
-('TENAGA_GIZI', 'Tenaga Gizi', 'Kelompok petugas gizi', TRUE),
-('ADMIN_UMUM', 'Admin Umum', 'Kelompok karyawan administratif umum', FALSE),
-('APOTEKER', 'Apoteker', 'Kelompok petugas farmasi/apotek', TRUE)
+('JK_SHIFT', 'Jam Kerja Shift', 'Kelompok Jam Kerja Shift Lintas Tanggal', TRUE),
+('JK_REGULER', 'Jam Kerja Reguler', 'Kelompok Jam Kerja Reguler 1x', TRUE),
+('JK_TERTENTU', 'Jam Kerja Tertentu', 'Kelompok Jam Kerja Tertentu', TRUE),
 ON CONFLICT (kode) DO NOTHING;
 
 -- Roles

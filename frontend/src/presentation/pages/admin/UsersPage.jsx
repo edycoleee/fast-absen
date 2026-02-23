@@ -243,7 +243,7 @@ const Users = () => {
       closeModal();
       fetchUsers(page, 10, search);
     } catch (err) {
-      setFormError(err.response?.data?.message || err.message || 'Gagal menyimpan data user');
+      setFormError(formatErrorMessage(err, 'Gagal menyimpan data user', user));
     } finally {
       setFormLoading(false);
     }
@@ -285,7 +285,7 @@ const Users = () => {
                 a.click();
                 URL.revokeObjectURL(url);
               } catch (err) {
-                alert('Gagal mengunduh template');
+                alert(formatErrorForAlert(formatErrorMessage(err, 'Gagal mengunduh template', user)));
               }
             }}
           >

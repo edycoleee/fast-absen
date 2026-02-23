@@ -156,7 +156,7 @@ const PegawaiShiftKelompokPage = () => {
       closeModal();
       fetchAssignments(page, 10);
     } catch (err) {
-      setFormError(formatErrorForAlert(err, user));
+      setFormError(formatErrorMessage(err, 'Gagal menyimpan assignment', user));
     } finally {
       setFormLoading(false);
     }
@@ -172,7 +172,7 @@ const PegawaiShiftKelompokPage = () => {
       await deleteAssignment(item.id);
       fetchAssignments(page, 10);
     } catch (err) {
-      alert(formatErrorForAlert(err, user));
+      alert(formatErrorForAlert(formatErrorMessage(err, 'Gagal menghapus assignment', user)));
     }
   };
 
@@ -203,8 +203,8 @@ const PegawaiShiftKelompokPage = () => {
                 a.download = 'template_shift_pegawai.xlsx';
                 a.click();
                 URL.revokeObjectURL(url);
-              } catch (_) {
-                alert('Gagal mengunduh template');
+              } catch (err) {
+                alert(formatErrorForAlert(formatErrorMessage(err, 'Gagal mengunduh template', user)));
               }
             }}
           >

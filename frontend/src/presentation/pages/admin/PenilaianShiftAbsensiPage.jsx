@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { usePenilaianShiftAbsensi } from '../../../domain/hooks';
+import { usePenilaianShiftAbsensi, useAuth } from '../../../domain/hooks';
+import { formatErrorMessage, formatErrorForAlert } from '../../../utils/errorHandler';
 import PegawaiSearchInput from '../../components/common/PegawaiSearchInput';
 import UnitSearchInput from '../../components/common/UnitSearchInput';
 
@@ -59,6 +60,7 @@ const emptyEvalForm = {
 };
 
 const PenilaianShiftAbsensiPage = () => {
+  const { user } = useAuth();
   const {
     penilaian, loading, error, pagination,
     fetchPenilaian, createPenilaian, updatePenilaian, deletePenilaian, evaluate,
@@ -147,11 +149,11 @@ const PenilaianShiftAbsensiPage = () => {
       setShowModal(false);
       fetchPenilaian(page, pageSize);
     } catch (err) {
-      setFormError(err?.response?.data?.message || 'Gagal menyimpan data');
+      setFormError(formatErrorMessage(err, 'Gagal menyimpan penilaian', user));
     } finally {
       setSaving(false);
     }
-  }, [form, editTarget, createPenilaian, updatePenilaian, fetchPenilaian, page, pageSize]);
+  }, [form, editTarget, createPenilaian, updatePenilaian, fetchPenilaian, page, pageSize, user]);
 
   const handleDelete = useCallback(async () => {
     if (!confirmDelete) return;
@@ -161,11 +163,11 @@ const PenilaianShiftAbsensiPage = () => {
       setConfirmDelete(null);
       fetchPenilaian(page, pageSize);
     } catch (err) {
-      alert(err?.response?.data?.message || 'Gagal menghapus data');
+      alert(formatErrorForAlert(formatErrorMessage(err, 'Gagal menghapus penilaian', user)));
     } finally {
       setDeleting(false);
     }
-  }, [confirmDelete, deletePenilaian, fetchPenilaian, page, pageSize]);
+  }, [confirmDelete, deletePenilaian, fetchPenilaian, page, pageSize, user]);
 
   const openEvalModal = useCallback(() => {
     setEvalForm(emptyEvalForm);
@@ -190,11 +192,11 @@ const PenilaianShiftAbsensiPage = () => {
       setEvalResult(result);
       fetchPenilaian(page, pageSize);
     } catch (err) {
-      setEvalError(err?.response?.data?.message || 'Gagal menjalankan evaluasi');
+      setEvalError(formatErrorMessage(err, 'Gagal menjalankan evaluasi', user));
     } finally {
       setEvaluating(false);
     }
-  }, [evalForm, evaluate, fetchPenilaian, page, pageSize]);
+  }, [evalForm, evaluate, fetchPenilaian, page, pageSize, user]);
 
   return (
     <div className="space-y-6">
@@ -380,7 +382,7 @@ const PenilaianShiftAbsensiPage = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Unit (opsional)</label>
                     <UnitSearchInput
                       value={evalForm.id_unit}
-                      onChange={(unit) => setEvalForm(f => ({ ...f, id_unit: unit?.id_unit ?? '' }))}
+                      onChange={(id) => setEvalForm(f => ({ ...f, id_unit: id ?? '' }))}
                       placeholder="Semua unit..."
                     />
                   </div>
@@ -390,7 +392,7 @@ const PenilaianShiftAbsensiPage = () => {
                     <PegawaiSearchInput
                       value={evalForm.id_pegawai}
                       displayValue={evalForm.pegawai_nama}
-                      onChange={(p) => setEvalForm(f => ({ ...f, id_pegawai: p?.id_pegawai ?? '', pegawai_nama: p?.nama ?? '' }))}
+                      onChange={(id, nama) => setEvalForm(f => ({ ...f, id_pegawai: id ?? '', pegawai_nama: nama ?? '' }))}
                       placeholder="Semua pegawai..."
                     />
                   </div>
@@ -516,7 +518,7 @@ const PenilaianShiftAbsensiPage = () => {
                 <PegawaiSearchInput
                   value={form.id_pegawai}
                   displayValue={form.pegawai_nama}
-                  onChange={(p) => setForm(f => ({ ...f, id_pegawai: p?.id_pegawai ?? '', pegawai_nama: p?.nama ?? '' }))}
+                  onChange={(id, nama) => setForm(f => ({ ...f, id_pegawai: id ?? '', pegawai_nama: nama ?? '' }))}
                   placeholder="Cari pegawai..."
                 />
               </div>

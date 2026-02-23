@@ -44,6 +44,7 @@ const buildMenuItems = (menuGuard = {}) => {
       { path: '/shift-aturan',    label: 'Shift Aturan',    icon: '📋' },
       { path: '/shift-pegawai',   label: 'Shift Pegawai',   icon: '👤' },
       { path: '/roster-upload',   label: 'Roster Upload',   icon: '📄' },
+      { path: '/roster-adapter',  label: 'Roster Adapter',  icon: '🧩' },
       { path: '/roster-shift',    label: 'Roster Shift',    icon: '🗓️' },
       { path: '/penilaian-shift', label: 'Penilaian Shift', icon: '⚖️' },
     );

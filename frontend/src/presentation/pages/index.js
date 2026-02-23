@@ -17,5 +17,6 @@ export {
   PegawaiShiftKelompokPage,
   RosterUploadBatchPage,
   RosterShiftPage,
+  RosterAdapterPage,
   PenilaianShiftAbsensiPage,
 } from './admin';

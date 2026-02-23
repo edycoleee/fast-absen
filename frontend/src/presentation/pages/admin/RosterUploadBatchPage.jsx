@@ -65,7 +65,7 @@ const RosterUploadBatchPage = () => {
       a.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      alert(formatErrorForAlert(err, user));
+      alert(formatErrorForAlert(formatErrorMessage(err, 'Gagal mengunduh template', user)));
     } finally {
       setDownloading(false);
     }
@@ -116,7 +116,7 @@ const RosterUploadBatchPage = () => {
       fetchBatches(1, 20);
       setPage(1);
     } catch (err) {
-      setUploadError(formatErrorForAlert(err, user));
+      setUploadError(formatErrorMessage(err, 'Gagal mengimpor roster', user));
     } finally {
       setUploading(false);
     }
@@ -129,7 +129,7 @@ const RosterUploadBatchPage = () => {
       await deleteBatch(batch.id);
       fetchBatches(page, 20);
     } catch (err) {
-      alert(formatErrorForAlert(err, user));
+      alert(formatErrorForAlert(formatErrorMessage(err, 'Gagal menghapus batch', user)));
     }
   };
 

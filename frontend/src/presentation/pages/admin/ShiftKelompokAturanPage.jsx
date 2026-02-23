@@ -169,8 +169,7 @@ const ShiftKelompokAturanPage = () => {
       closeModal();
       fetchAturan(page, 10);
     } catch (err) {
-      const msg = formatErrorForAlert(err, user);
-      setFormError(msg);
+      setFormError(formatErrorMessage(err, 'Gagal menyimpan aturan shift', user));
     } finally {
       setFormLoading(false);
     }
@@ -183,7 +182,7 @@ const ShiftKelompokAturanPage = () => {
       await deleteAturan(item.id);
       fetchAturan(page, 10);
     } catch (err) {
-      alert(formatErrorForAlert(err, user));
+      alert(formatErrorForAlert(formatErrorMessage(err, 'Gagal menghapus aturan shift', user)));
     }
   };
 

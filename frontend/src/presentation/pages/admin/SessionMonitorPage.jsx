@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../../domain/hooks';
+import { formatErrorMessage, formatErrorForAlert } from '../../../utils/errorHandler';
 import SessionsRepository from '../../../data/repositories/SessionsRepository';
 
 // Session active threshold (in minutes) - should match backend SESSION_ACTIVE_MINUTES
@@ -82,15 +83,7 @@ const SessionsMonitor = () => {
       setActiveSessions(sessionsData);
     } catch (err) {
       console.error('Failed to load active sessions:', err);
-      const statusCode = err.response?.status;
-      let errorMessage = err.response?.data?.detail || 'Gagal memuat sesi aktif';
-      
-      // Check if it's a permission error
-      if (statusCode === 403) {
-        errorMessage = '⚠️ Anda tidak memiliki izin untuk mengakses fitur ini. Silakan login dengan akun admin atau super-admin.';
-      }
-      
-      setError(errorMessage);
+      setError(formatErrorMessage(err, 'Gagal memuat sesi aktif', user));
     } finally {
       setLoading(false);
     }
@@ -111,15 +104,7 @@ const SessionsMonitor = () => {
       setSessionHistory(historyData);
     } catch (err) {
       console.error('Failed to load session history:', err);
-      const statusCode = err.response?.status;
-      let errorMessage = err.response?.data?.detail || 'Gagal memuat riwayat sesi';
-      
-      // Check if it's a permission error
-      if (statusCode === 403) {
-        errorMessage = '⚠️ Anda tidak memiliki izin untuk mengakses fitur ini. Silakan login dengan akun admin atau super-admin.';
-      }
-      
-      setError(errorMessage);
+      setError(formatErrorMessage(err, 'Gagal memuat riwayat sesi', user));
     } finally {
       setLoading(false);
     }
@@ -137,15 +122,7 @@ const SessionsMonitor = () => {
       setStatistics(statsData);
     } catch (err) {
       console.error('Failed to load sessions statistics:', err);
-      const statusCode = err.response?.status;
-      let errorMessage = err.response?.data?.detail || err.response?.data?.message || err.message || 'Gagal memuat statistik';
-      
-      // Check if it's a permission error
-      if (statusCode === 403) {
-        errorMessage = '⚠️ Anda tidak memiliki izin untuk mengakses fitur ini. Silakan login dengan akun admin atau super-admin.';
-      }
-      
-      setError(errorMessage);
+      setError(formatErrorMessage(err, 'Gagal memuat statistik', user));
       setStatistics(null);
     } finally {
       setLoading(false);
@@ -165,7 +142,7 @@ const SessionsMonitor = () => {
       loadStatistics(); // Update stats
     } catch (err) {
       console.error('Failed to force logout:', err);
-      alert(err.response?.data?.detail || 'Gagal logout paksa');
+      alert(formatErrorForAlert(formatErrorMessage(err, 'Gagal logout paksa', user)));
     }
   };
 

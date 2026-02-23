@@ -73,7 +73,7 @@ const Pegawai = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      alert('Gagal mengunduh template: ' + (err.message || 'Error tidak diketahui'));
+      alert(formatErrorForAlert(formatErrorMessage(err, 'Gagal mengunduh template', user)));
     }
   };
 
@@ -86,8 +86,7 @@ const Pegawai = () => {
       setImportResult(res?.data ?? null);
       fetchPegawai(page, 10, search);
     } catch (err) {
-      const msg = err.response?.data?.detail || err.message || 'Import gagal';
-      alert('Gagal import: ' + msg);
+      alert(formatErrorForAlert(formatErrorMessage(err, 'Gagal mengimpor pegawai', user)));
     } finally {
       setImportLoading(false);
     }

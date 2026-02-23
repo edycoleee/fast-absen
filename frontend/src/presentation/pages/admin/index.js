@@ -13,4 +13,5 @@ export { default as ShiftKelompokAturanPage } from './ShiftKelompokAturanPage';
 export { default as PegawaiShiftKelompokPage } from './PegawaiShiftKelompokPage';
 export { default as RosterUploadBatchPage } from './RosterUploadBatchPage';
 export { default as RosterShiftPage } from './RosterShiftPage';
+export { default as RosterAdapterPage } from './RosterAdapterPage';
 export { default as PenilaianShiftAbsensiPage } from './PenilaianShiftAbsensiPage';

@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useRosterShift } from '../../../domain/hooks';
+import RosterShiftRepository from '../../../data/repositories/RosterShiftRepository';
+import { useRosterShift, useAuth } from '../../../domain/hooks';
+import { formatErrorMessage, formatErrorForAlert } from '../../../utils/errorHandler';
 import PegawaiSearchInput from '../../components/common/PegawaiSearchInput';
 import UnitSearchInput from '../../components/common/UnitSearchInput';
 import apiClient from '../../../data/api/client';
@@ -27,14 +29,27 @@ const emptyForm = {
   shift_kelompok_id: '',
   id_unit: '',
   tanggal_shift: '',
-  jam_mulai: '',
-  jam_selesai: '',
+  jam_mulai_date: '',
+  jam_mulai_time: '',
+  jam_selesai_date: '',
+  jam_selesai_time: '',
   jenis_shift: 'PAGI',
   nomor_sesi: 1,
   grace_telat_override_menit: '',
   toleransi_pulang_cepat_override_menit: '',
   status_roster: 'AKTIF',
   catatan: '',
+};
+
+const emptyFilter = {
+  id_pegawai: '',
+  pegawai_display: '',   // label untuk chip, tidak dikirim ke backend
+  tanggal_mulai: '',
+  tanggal_selesai: '',
+  jenis_shift: '',
+  status_roster: '',
+  shift_kelompok_id: '',
+  id_unit: '',
 };
 
 const formatDatetime = (isoStr) => {
@@ -49,37 +64,98 @@ const formatDatetime = (isoStr) => {
   }
 };
 
-// Convert ISO datetime → datetime-local input value (YYYY-MM-DDTHH:mm)
-const toDatetimeLocal = (isoStr) => {
-  if (!isoStr) return '';
+// Convert ISO datetime → { date: 'YYYY-MM-DD', time: 'HH:mm' }
+const splitIsoDatetime = (isoStr) => {
+  if (!isoStr) return { date: '', time: '' };
   try {
     const d = new Date(isoStr);
     const pad = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return {
+      date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+      time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+    };
   } catch {
-    return '';
+    return { date: '', time: '' };
   }
 };
 
+// Normalize time text input → HH:MM (24h), auto-insert colon
+const normalizeTimeInput = (raw) => {
+  const digits = raw.replace(/[^0-9]/g, '').slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+};
+
+// CSV / Excel export (BOM-prefixed, opens correctly in Excel)
+const exportToCSV = (data, filename) => {
+  const headers = [
+    'ID', 'ID Pegawai', 'Nama Pegawai', 'Unit', 'Shift Kelompok',
+    'Tanggal Shift', 'Jam Mulai', 'Jam Selesai', 'Jenis Shift',
+    'Sesi', 'Status', 'Grace Override (mnt)', 'Tol Pulang (mnt)', 'Catatan',
+  ];
+  const rows = data.map(item => [
+    item.id,
+    item.id_pegawai ?? '',
+    item.pegawai_nama ?? '',
+    item.unit_nama ?? (item.id_unit ? `ID ${item.id_unit}` : ''),
+    item.shift_kelompok_nama ?? (item.shift_kelompok_id ? `ID ${item.shift_kelompok_id}` : ''),
+    item.tanggal_shift ?? '',
+    item.jam_mulai ? new Date(item.jam_mulai).toLocaleString('id-ID') : '',
+    item.jam_selesai ? new Date(item.jam_selesai).toLocaleString('id-ID') : '',
+    item.jenis_shift ?? '',
+    item.nomor_sesi ?? '',
+    item.status_roster ?? '',
+    item.grace_telat_override_menit ?? '',
+    item.toleransi_pulang_cepat_override_menit ?? '',
+    item.catatan ?? '',
+  ]);
+  const csvContent = [headers, ...rows]
+    .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
 const RosterShiftPage = () => {
+  const { user } = useAuth();
   const { shifts, loading, error, pagination, fetchShifts, createShift, updateShift, deleteShift } = useRosterShift();
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
 
+  // ─ Filters
+  const [filters, setFilters] = useState(emptyFilter);
+  const [appliedFilters, setAppliedFilters] = useState(emptyFilter);
+
+  // ─ Modal
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
 
+  // ─ Lists
   const [shiftKelompokList, setShiftKelompokList] = useState([]);
+  const [unitList, setUnitList] = useState([]);
 
+  // ─ Delete
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  const totalPages = Math.ceil(pagination.total / pageSize) || 1;
+  // ─ Export / UI
+  const [exporting, setExporting] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
-  // Fetch shift kelompok options once
+  const totalPages = Math.ceil(pagination.total / pageSize) || 1;
+  const hasActiveFilter = Object.entries(appliedFilters)
+    .filter(([k]) => k !== 'pegawai_display')
+    .some(([, v]) => v !== '');
+
+  // Load shift kelompok + unit list once
   useEffect(() => {
     apiClient.get('/shift-kelompok/', { params: { skip: 0, limit: 500 } })
       .then(res => {
@@ -87,12 +163,47 @@ const RosterShiftPage = () => {
         setShiftKelompokList(items);
       })
       .catch(() => {});
+    apiClient.get('/unit/', { params: { skip: 0, limit: 500 } })
+      .then(res => {
+        const items = res.data?.data?.items ?? res.data?.items ?? [];
+        setUnitList(items);
+      })
+      .catch(() => {});
   }, []);
 
+  // Fetch when page or applied filters change
   useEffect(() => {
-    fetchShifts(page, pageSize);
-  }, [fetchShifts, page, pageSize]);
+    fetchShifts(page, pageSize, appliedFilters);
+  }, [fetchShifts, page, pageSize, appliedFilters]);
 
+  const applyFilters = useCallback(() => {
+    setAppliedFilters({ ...filters });
+    setPage(1);
+  }, [filters]);
+
+  const resetFilters = useCallback(() => {
+    setFilters(emptyFilter);
+    setAppliedFilters(emptyFilter);
+    setPage(1);
+  }, []);
+
+  // ─ Export all filtered records as CSV
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    try {
+      const data = await RosterShiftRepository.getAll(0, 99999, appliedFilters);
+      const items = data?.data?.items ?? data?.items ?? [];
+      const now = new Date();
+      const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+      exportToCSV(items, `roster_shift_${ts}.csv`);
+    } catch (err) {
+      alert(formatErrorForAlert(formatErrorMessage(err, 'Gagal mengekspor data', user)));
+    } finally {
+      setExporting(false);
+    }
+  }, [appliedFilters, user]);
+
+  // ─ CRUD
   const openCreate = useCallback(() => {
     setEditTarget(null);
     setForm(emptyForm);
@@ -102,14 +213,18 @@ const RosterShiftPage = () => {
 
   const openEdit = useCallback((item) => {
     setEditTarget(item);
+    const mulai = splitIsoDatetime(item.jam_mulai);
+    const selesai = splitIsoDatetime(item.jam_selesai);
     setForm({
       id_pegawai: item.id_pegawai ?? '',
       pegawai_nama: item.pegawai_nama ?? '',
       shift_kelompok_id: item.shift_kelompok_id ?? '',
       id_unit: item.id_unit ?? '',
       tanggal_shift: item.tanggal_shift ?? '',
-      jam_mulai: toDatetimeLocal(item.jam_mulai),
-      jam_selesai: toDatetimeLocal(item.jam_selesai),
+      jam_mulai_date: mulai.date,
+      jam_mulai_time: mulai.time,
+      jam_selesai_date: selesai.date,
+      jam_selesai_time: selesai.time,
       jenis_shift: item.jenis_shift ?? 'PAGI',
       nomor_sesi: item.nomor_sesi ?? 1,
       grace_telat_override_menit: item.grace_telat_override_menit ?? '',
@@ -122,10 +237,19 @@ const RosterShiftPage = () => {
   }, []);
 
   const handleSave = useCallback(async () => {
-    if (!form.id_pegawai) { setFormError('ID Pegawai wajib diisi'); return; }
-    if (!form.tanggal_shift) { setFormError('Tanggal shift wajib diisi'); return; }
-    if (!form.jam_mulai) { setFormError('Jam mulai wajib diisi'); return; }
-    if (!form.jam_selesai) { setFormError('Jam selesai wajib diisi'); return; }
+    if (!form.id_pegawai)       { setFormError('ID Pegawai wajib diisi'); return; }
+    if (!form.tanggal_shift)    { setFormError('Tanggal shift wajib diisi'); return; }
+    if (!form.jam_mulai_time)   { setFormError('Jam mulai wajib diisi'); return; }
+    if (!form.jam_selesai_time) { setFormError('Jam selesai wajib diisi'); return; }
+
+    const mulaiDate   = form.jam_mulai_date   || form.tanggal_shift;
+    const selesaiDate = form.jam_selesai_date || form.tanggal_shift;
+    const dtMulai   = new Date(`${mulaiDate}T${form.jam_mulai_time}`);
+    const dtSelesai = new Date(`${selesaiDate}T${form.jam_selesai_time}`);
+
+    if (isNaN(dtMulai.getTime()))   { setFormError('Format jam mulai tidak valid'); return; }
+    if (isNaN(dtSelesai.getTime())) { setFormError('Format jam selesai tidak valid'); return; }
+    if (dtSelesai <= dtMulai)       { setFormError('Jam selesai harus lebih besar dari jam mulai'); return; }
 
     setSaving(true);
     setFormError('');
@@ -135,8 +259,8 @@ const RosterShiftPage = () => {
         shift_kelompok_id: form.shift_kelompok_id !== '' ? Number(form.shift_kelompok_id) : null,
         id_unit: form.id_unit !== '' ? Number(form.id_unit) : null,
         tanggal_shift: form.tanggal_shift,
-        jam_mulai: new Date(form.jam_mulai).toISOString(),
-        jam_selesai: new Date(form.jam_selesai).toISOString(),
+        jam_mulai: dtMulai.toISOString(),
+        jam_selesai: dtSelesai.toISOString(),
         jenis_shift: form.jenis_shift,
         nomor_sesi: Number(form.nomor_sesi) || 1,
         grace_telat_override_menit: form.grace_telat_override_menit !== '' ? Number(form.grace_telat_override_menit) : null,
@@ -144,20 +268,19 @@ const RosterShiftPage = () => {
         status_roster: form.status_roster,
         catatan: form.catatan || null,
       };
-
       if (editTarget) {
         await updateShift(editTarget.id, payload);
       } else {
         await createShift(payload);
       }
       setShowModal(false);
-      fetchShifts(page, pageSize);
+      fetchShifts(page, pageSize, appliedFilters);
     } catch (err) {
-      setFormError(err?.response?.data?.message || 'Gagal menyimpan data');
+      setFormError(formatErrorMessage(err, 'Gagal menyimpan data roster', user));
     } finally {
       setSaving(false);
     }
-  }, [form, editTarget, createShift, updateShift, fetchShifts, page, pageSize]);
+  }, [form, editTarget, createShift, updateShift, fetchShifts, page, pageSize, appliedFilters, user]);
 
   const handleDelete = useCallback(async () => {
     if (!confirmDelete) return;
@@ -165,98 +288,324 @@ const RosterShiftPage = () => {
     try {
       await deleteShift(confirmDelete.id);
       setConfirmDelete(null);
-      fetchShifts(page, pageSize);
+      fetchShifts(page, pageSize, appliedFilters);
     } catch (err) {
-      alert(err?.response?.data?.message || 'Gagal menghapus data');
+      alert(formatErrorForAlert(formatErrorMessage(err, 'Gagal menghapus roster', user)));
     } finally {
       setDeleting(false);
     }
-  }, [confirmDelete, deleteShift, fetchShifts, page, pageSize]);
+  }, [confirmDelete, deleteShift, fetchShifts, page, pageSize, appliedFilters, user]);
+
+  // ─────────────────────────────────────────────────── Render ─────────────────
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-4">
+
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">🗓️ Roster Shift</h1>
-          <p className="text-gray-500 text-sm mt-1">Jadwal shift resmi pegawai</p>
+          <p className="text-gray-500 text-sm mt-0.5">Jadwal shift resmi pegawai</p>
         </div>
-        <button
-          onClick={openCreate}
-          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
-        >
-          + Tambah Roster
-        </button>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="px-4 py-2 text-sm border border-green-400 text-green-700 rounded-lg hover:bg-green-50 disabled:opacity-50 transition-colors font-medium"
+          >
+            {exporting ? '⏳ Mengekspor...' : '⬇️ Export CSV'}
+          </button>
+          <button
+            onClick={() => setShowFilters(v => !v)}
+            className={`px-4 py-2 text-sm rounded-lg transition-colors font-medium border ${showFilters || hasActiveFilter ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+          >
+            🔍 Filter{hasActiveFilter ? ' ●' : ''}
+          </button>
+          <button
+            onClick={openCreate}
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+          >
+            + Tambah Roster
+          </button>
+        </div>
       </div>
 
-      {/* Error */}
+      {/* ── Filter Panel ── */}
+      {showFilters && (
+        <div className="bg-white border border-blue-100 rounded-xl p-4 space-y-3 shadow-sm">
+          <div className="text-sm font-semibold text-gray-700">Filter Data</div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-xs font-medium text-gray-500 mb-1">Pegawai</label>
+              <PegawaiSearchInput
+                value={filters.id_pegawai}
+                displayValue={filters.pegawai_display}
+                onChange={(id, nama) => setFilters(f => ({
+                  ...f,
+                  id_pegawai: id ?? '',
+                  pegawai_display: nama ?? '',
+                }))}
+                placeholder="Cari nama / ID pegawai..."
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Tanggal Mulai</label>
+              <input
+                type="date"
+                value={filters.tanggal_mulai}
+                onChange={e => setFilters(f => ({ ...f, tanggal_mulai: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Tanggal Selesai</label>
+              <input
+                type="date"
+                value={filters.tanggal_selesai}
+                onChange={e => setFilters(f => ({ ...f, tanggal_selesai: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Shift Kelompok</label>
+              <select
+                value={filters.shift_kelompok_id}
+                onChange={e => setFilters(f => ({ ...f, shift_kelompok_id: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              >
+                <option value="">Semua kelompok</option>
+                {shiftKelompokList.map(sk => (
+                  <option key={sk.id} value={sk.id}>{sk.kode} – {sk.nama}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Jenis Shift</label>
+              <select
+                value={filters.jenis_shift}
+                onChange={e => setFilters(f => ({ ...f, jenis_shift: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              >
+                <option value="">Semua jenis</option>
+                {JENIS_SHIFT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
+              <select
+                value={filters.status_roster}
+                onChange={e => setFilters(f => ({ ...f, status_roster: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              >
+                <option value="">Semua status</option>
+                {STATUS_ROSTER_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Unit</label>
+              <select
+                value={filters.id_unit}
+                onChange={e => setFilters(f => ({ ...f, id_unit: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              >
+                <option value="">Semua unit</option>
+                {unitList.map(u => (
+                  <option key={u.id_unit} value={u.id_unit}>{u.nama_unit}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={applyFilters}
+              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+            >
+              Terapkan Filter
+            </button>
+            {hasActiveFilter && (
+              <button onClick={resetFilters} className="px-4 py-2 text-sm border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50">
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Active Filter Chips ── */}
+      {hasActiveFilter && (
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="text-xs text-gray-500">Filter aktif:</span>
+          {appliedFilters.id_pegawai && (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs">
+              Pegawai: {appliedFilters.pegawai_display || appliedFilters.id_pegawai}
+              <button onClick={() => { setFilters(f=>({...f,id_pegawai:'',pegawai_display:''})); setAppliedFilters(f=>({...f,id_pegawai:'',pegawai_display:''})); setPage(1); }}>✕</button>
+            </span>
+          )}
+          {(appliedFilters.tanggal_mulai || appliedFilters.tanggal_selesai) && (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs">
+              Tgl: {appliedFilters.tanggal_mulai||'...'} – {appliedFilters.tanggal_selesai||'...'}
+              <button onClick={() => { setFilters(f=>({...f,tanggal_mulai:'',tanggal_selesai:''})); setAppliedFilters(f=>({...f,tanggal_mulai:'',tanggal_selesai:''})); setPage(1); }}>✕</button>
+            </span>
+          )}
+          {appliedFilters.jenis_shift && (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs">
+              Jenis: {appliedFilters.jenis_shift}
+              <button onClick={() => { setFilters(f=>({...f,jenis_shift:''})); setAppliedFilters(f=>({...f,jenis_shift:''})); setPage(1); }}>✕</button>
+            </span>
+          )}
+          {appliedFilters.status_roster && (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs">
+              Status: {appliedFilters.status_roster}
+              <button onClick={() => { setFilters(f=>({...f,status_roster:''})); setAppliedFilters(f=>({...f,status_roster:''})); setPage(1); }}>✕</button>
+            </span>
+          )}
+          {appliedFilters.shift_kelompok_id && (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs">
+              Kelompok: {shiftKelompokList.find(s=>String(s.id)===String(appliedFilters.shift_kelompok_id))?.kode ?? appliedFilters.shift_kelompok_id}
+              <button onClick={() => { setFilters(f=>({...f,shift_kelompok_id:''})); setAppliedFilters(f=>({...f,shift_kelompok_id:''})); setPage(1); }}>✕</button>
+            </span>
+          )}
+          {appliedFilters.id_unit && (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs">
+              Unit: {unitList.find(u=>String(u.id_unit)===String(appliedFilters.id_unit))?.nama_unit ?? `ID ${appliedFilters.id_unit}`}
+              <button onClick={() => { setFilters(f=>({...f,id_unit:''})); setAppliedFilters(f=>({...f,id_unit:''})); setPage(1); }}>✕</button>
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* ── Error ── */}
       {error && (
         <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>
       )}
 
-      {/* Table */}
+      {/* ── Stats Bar ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-white border rounded-xl px-4 py-3">
+          <div className="text-xs text-gray-500">Total Roster</div>
+          <div className="text-2xl font-bold text-gray-900 mt-0.5">{pagination.total.toLocaleString('id-ID')}</div>
+          {hasActiveFilter && <div className="text-xs text-blue-500 mt-0.5">hasil filter</div>}
+        </div>
+        <div className="bg-white border rounded-xl px-4 py-3">
+          <div className="text-xs text-gray-500">Halaman Ini</div>
+          <div className="text-2xl font-bold text-gray-900 mt-0.5">{shifts.length}</div>
+          <div className="text-xs text-gray-400 mt-0.5">dari {pageSize} per hal.</div>
+        </div>
+        <div className="bg-white border rounded-xl px-4 py-3">
+          <div className="text-xs text-gray-500">Aktif (hal. ini)</div>
+          <div className="text-2xl font-bold text-green-700 mt-0.5">
+            {shifts.filter(s => s.status_roster === 'AKTIF').length}
+          </div>
+        </div>
+        <div className="bg-white border rounded-xl px-4 py-3">
+          <div className="text-xs text-gray-500">Halaman</div>
+          <div className="text-2xl font-bold text-gray-900 mt-0.5">
+            {page} <span className="text-sm font-normal text-gray-400">/ {totalPages}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Table ── */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between gap-2">
+          <span className="text-sm font-medium text-gray-700">
+            {loading ? 'Memuat...' : (
+              <>Menampilkan <strong>{pagination.total === 0 ? 0 : ((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, pagination.total)}</strong> dari <strong>{pagination.total.toLocaleString('id-ID')}</strong> roster</>
+            )}
+          </span>
+          {loading && <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />}
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="px-4 py-3 text-left font-medium text-gray-600">ID</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Pegawai</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Unit</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Kelompok</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Tanggal</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Jam Mulai</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Jam Selesai</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Jenis</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Sesi</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Status</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Aksi</th>
+              <tr className="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wide">
+                <th className="px-4 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">ID</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">Pegawai</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">Unit</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">Kelompok</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">Tanggal</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">Jam Mulai</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">Jam Selesai</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">Jenis</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">Sesi</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">Status</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">Override</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={11} className="px-4 py-8 text-center text-gray-500">Memuat data...</td>
+                  <td colSpan={12} className="px-4 py-12 text-center">
+                    <div className="flex flex-col items-center gap-2 text-gray-400">
+                      <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                      Memuat data...
+                    </div>
+                  </td>
                 </tr>
               ) : shifts.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="px-4 py-8 text-center text-gray-400">Belum ada data roster shift</td>
+                  <td colSpan={12} className="px-4 py-12 text-center">
+                    <div className="text-gray-400">
+                      <div className="text-4xl mb-2">📭</div>
+                      <div className="font-medium">{hasActiveFilter ? 'Tidak ada data yang cocok dengan filter' : 'Belum ada data roster shift'}</div>
+                      {hasActiveFilter && (
+                        <button onClick={resetFilters} className="mt-2 text-sm text-blue-600 hover:underline">Reset filter</button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ) : (
                 shifts.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-500 font-mono text-xs">{item.id}</td>
+                  <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 text-gray-400 font-mono text-xs">{item.id}</td>
                     <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{item.pegawai_nama || '-'}</div>
-                      <div className="text-xs text-gray-400">{item.id_pegawai}</div>
+                      <div className="font-medium text-gray-900 text-sm">{item.pegawai_nama || '-'}</div>
+                      <div className="text-xs text-gray-400 font-mono">{item.id_pegawai}</div>
                     </td>
-                    <td className="px-4 py-3 text-gray-700">{item.unit_nama || (item.id_unit ? `ID ${item.id_unit}` : '-')}</td>
-                    <td className="px-4 py-3 text-gray-700">{item.shift_kelompok_nama || (item.shift_kelompok_id ? `ID ${item.shift_kelompok_id}` : '-')}</td>
-                    <td className="px-4 py-3 text-gray-700">{item.tanggal_shift || '-'}</td>
-                    <td className="px-4 py-3 text-gray-700 text-xs">{formatDatetime(item.jam_mulai)}</td>
-                    <td className="px-4 py-3 text-gray-700 text-xs">{formatDatetime(item.jam_selesai)}</td>
+                    <td className="px-4 py-3 text-gray-700 text-xs">{item.unit_nama || (item.id_unit ? `ID ${item.id_unit}` : <span className="text-gray-300">—</span>)}</td>
+                    <td className="px-4 py-3 text-gray-700 text-xs">
+                      {item.shift_kelompok_nama || (item.shift_kelompok_id ? `ID ${item.shift_kelompok_id}` : <span className="text-gray-300">—</span>)}
+                    </td>
+                    <td className="px-4 py-3 font-medium text-gray-800 text-xs whitespace-nowrap">{item.tanggal_shift || '-'}</td>
+                    <td className="px-4 py-3 text-gray-700 text-xs whitespace-nowrap">{formatDatetime(item.jam_mulai)}</td>
+                    <td className="px-4 py-3 text-gray-700 text-xs whitespace-nowrap">{formatDatetime(item.jam_selesai)}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${JENIS_COLORS[item.jenis_shift] || 'bg-gray-100 text-gray-800'}`}>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${JENIS_COLORS[item.jenis_shift] || 'bg-gray-100 text-gray-800'}`}>
                         {item.jenis_shift}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-700">{item.nomor_sesi}</td>
+                    <td className="px-4 py-3 text-center text-gray-700 text-xs">{item.nomor_sesi}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[item.status_roster] || 'bg-gray-100 text-gray-800'}`}>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[item.status_roster] || 'bg-gray-100 text-gray-800'}`}>
                         {item.status_roster}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-xs text-gray-500 space-y-0.5">
+                      {item.grace_telat_override_menit != null && (
+                        <div title="Grace telat override">⏱ {item.grace_telat_override_menit} mnt</div>
+                      )}
+                      {item.toleransi_pulang_cepat_override_menit != null && (
+                        <div title="Tol. pulang cepat override">🚪 {item.toleransi_pulang_cepat_override_menit} mnt</div>
+                      )}
+                      {item.catatan && (
+                        <div className="text-gray-400 truncate max-w-[80px]" title={item.catatan}>📝 {item.catatan}</div>
+                      )}
+                      {item.grace_telat_override_menit == null && item.toleransi_pulang_cepat_override_menit == null && !item.catatan && (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         <button
                           onClick={() => openEdit(item)}
-                          className="px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors"
+                          className="px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors font-medium"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => setConfirmDelete(item)}
-                          className="px-3 py-1 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100 transition-colors"
+                          className="px-3 py-1 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100 transition-colors font-medium"
                         >
                           Hapus
                         </button>
@@ -270,33 +619,30 @@ const RosterShiftPage = () => {
         </div>
 
         {/* Pagination */}
-        <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
-          <span>Total: {pagination.total} data</span>
-          <div className="flex items-center gap-2">
-            <button
-              disabled={page <= 1}
-              onClick={() => setPage(p => p - 1)}
-              className="px-3 py-1 rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
-            >
-              &laquo; Prev
-            </button>
-            <span className="px-2">{page} / {totalPages}</span>
-            <button
-              disabled={page >= totalPages}
-              onClick={() => setPage(p => p + 1)}
-              className="px-3 py-1 rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
-            >
-              Next &raquo;
-            </button>
+        <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between gap-2 flex-wrap text-sm text-gray-500">
+          <span>
+            Total <strong className="text-gray-800">{pagination.total.toLocaleString('id-ID')}</strong> data
+            {hasActiveFilter && <span className="text-blue-500 ml-1">(terfilter)</span>}
+          </span>
+          <div className="flex items-center gap-1">
+            <button disabled={page <= 1} onClick={() => setPage(1)}
+              className="px-2 py-1 rounded border border-gray-200 disabled:opacity-30 hover:bg-gray-50 text-xs">«</button>
+            <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
+              className="px-3 py-1 rounded border border-gray-200 disabled:opacity-30 hover:bg-gray-50">‹ Prev</button>
+            <span className="px-3 py-1 font-medium text-gray-700">{page} / {totalPages}</span>
+            <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}
+              className="px-3 py-1 rounded border border-gray-200 disabled:opacity-30 hover:bg-gray-50">Next ›</button>
+            <button disabled={page >= totalPages} onClick={() => setPage(totalPages)}
+              className="px-2 py-1 rounded border border-gray-200 disabled:opacity-30 hover:bg-gray-50 text-xs">»</button>
           </div>
         </div>
       </div>
 
-      {/* Create/Edit Modal */}
+      {/* ── Create/Edit Modal ── */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
               <h2 className="text-lg font-semibold text-gray-900">
                 {editTarget ? 'Edit Roster Shift' : 'Tambah Roster Shift'}
               </h2>
@@ -305,135 +651,126 @@ const RosterShiftPage = () => {
 
             <div className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
               {formError && (
-                <div className="bg-red-50 text-red-700 px-3 py-2 rounded text-sm">{formError}</div>
+                <div className="bg-red-50 text-red-700 px-3 py-2 rounded text-sm whitespace-pre-wrap">{formError}</div>
               )}
 
-              {/* Pegawai */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Pegawai <span className="text-red-500">*</span></label>
                 <PegawaiSearchInput
                   value={form.id_pegawai}
                   displayValue={form.pegawai_nama}
-                  onChange={(pegawai) => setForm(f => ({ ...f, id_pegawai: pegawai?.id_pegawai ?? '', pegawai_nama: pegawai?.nama ?? '' }))}
+                  onChange={(id, nama, id_unit) => setForm(f => ({
+                    ...f,
+                    id_pegawai: id ?? '',
+                    pegawai_nama: nama ?? '',
+                    id_unit: id_unit != null ? String(id_unit) : f.id_unit,
+                  }))}
                   placeholder="Cari pegawai..."
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                {/* Shift Kelompok */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Shift Kelompok</label>
-                  <select
-                    value={form.shift_kelompok_id}
+                  <select value={form.shift_kelompok_id}
                     onChange={e => setForm(f => ({ ...f, shift_kelompok_id: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
-                  >
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
                     <option value="">— Tidak ada —</option>
                     {shiftKelompokList.map(sk => (
                       <option key={sk.id} value={sk.id}>{sk.kode} – {sk.nama}</option>
                     ))}
                   </select>
                 </div>
-                {/* Unit */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
                   <UnitSearchInput
                     value={form.id_unit}
-                    onChange={(unit) => setForm(f => ({ ...f, id_unit: unit?.id_unit ?? '' }))}
+                    onChange={(id) => setForm(f => ({ ...f, id_unit: id ?? '' }))}
                     placeholder="Pilih unit..."
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                {/* Tanggal Shift */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Shift <span className="text-red-500">*</span></label>
-                  <input
-                    type="date"
-                    value={form.tanggal_shift}
-                    onChange={e => setForm(f => ({ ...f, tanggal_shift: e.target.value }))}
+                  <input type="date" value={form.tanggal_shift}
+                    onChange={e => setForm(f => ({
+                      ...f, tanggal_shift: e.target.value,
+                      jam_mulai_date: f.jam_mulai_date || e.target.value,
+                      jam_selesai_date: f.jam_selesai_date || e.target.value,
+                    }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
                   />
                 </div>
-                {/* Jam Mulai */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Jam Mulai <span className="text-red-500">*</span></label>
-                  <input
-                    type="datetime-local"
-                    value={form.jam_mulai}
-                    onChange={e => setForm(f => ({ ...f, jam_mulai: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
-                  />
+                  <div className="flex gap-2">
+                    <input type="date" value={form.jam_mulai_date}
+                      onChange={e => setForm(f => ({ ...f, jam_mulai_date: e.target.value }))}
+                      className="flex-1 min-w-0 border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
+                    />
+                    <input type="text" value={form.jam_mulai_time}
+                      onChange={e => setForm(f => ({ ...f, jam_mulai_time: normalizeTimeInput(e.target.value) }))}
+                      placeholder="HH:MM" maxLength={5}
+                      className="w-20 border border-gray-300 rounded-lg px-2 py-2 text-sm font-mono text-center focus:outline-none focus:ring-2 focus:ring-primary-400"
+                    />
+                  </div>
                 </div>
-                {/* Jam Selesai */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Jam Selesai <span className="text-red-500">*</span></label>
-                  <input
-                    type="datetime-local"
-                    value={form.jam_selesai}
-                    onChange={e => setForm(f => ({ ...f, jam_selesai: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
-                  />
+                  <div className="flex gap-2">
+                    <input type="date" value={form.jam_selesai_date}
+                      onChange={e => setForm(f => ({ ...f, jam_selesai_date: e.target.value }))}
+                      className="flex-1 min-w-0 border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
+                    />
+                    <input type="text" value={form.jam_selesai_time}
+                      onChange={e => setForm(f => ({ ...f, jam_selesai_time: normalizeTimeInput(e.target.value) }))}
+                      placeholder="HH:MM" maxLength={5}
+                      className="w-20 border border-gray-300 rounded-lg px-2 py-2 text-sm font-mono text-center focus:outline-none focus:ring-2 focus:ring-primary-400"
+                    />
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-4">
-                {/* Jenis Shift */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Jenis Shift</label>
-                  <select
-                    value={form.jenis_shift}
+                  <select value={form.jenis_shift}
                     onChange={e => setForm(f => ({ ...f, jenis_shift: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
-                  >
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
                     {JENIS_SHIFT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                   </select>
                 </div>
-                {/* Nomor Sesi */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nomor Sesi</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={form.nomor_sesi}
+                  <input type="number" min={1} value={form.nomor_sesi}
                     onChange={e => setForm(f => ({ ...f, nomor_sesi: e.target.value }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
                   />
                 </div>
-                {/* Status Roster */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Status Roster</label>
-                  <select
-                    value={form.status_roster}
+                  <select value={form.status_roster}
                     onChange={e => setForm(f => ({ ...f, status_roster: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
-                  >
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
                     {STATUS_ROSTER_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                   </select>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                {/* Grace Telat Override */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Grace Telat Override (menit)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.grace_telat_override_menit}
+                  <input type="number" min={0} value={form.grace_telat_override_menit}
                     onChange={e => setForm(f => ({ ...f, grace_telat_override_menit: e.target.value }))}
                     placeholder="Default dari aturan"
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
                   />
                 </div>
-                {/* Toleransi Pulang Cepat Override */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tol. Pulang Cepat Override (menit)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.toleransi_pulang_cepat_override_menit}
+                  <input type="number" min={0} value={form.toleransi_pulang_cepat_override_menit}
                     onChange={e => setForm(f => ({ ...f, toleransi_pulang_cepat_override_menit: e.target.value }))}
                     placeholder="Default dari aturan"
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
@@ -441,12 +778,9 @@ const RosterShiftPage = () => {
                 </div>
               </div>
 
-              {/* Catatan */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
-                <textarea
-                  rows={2}
-                  value={form.catatan}
+                <textarea rows={2} value={form.catatan}
                   onChange={e => setForm(f => ({ ...f, catatan: e.target.value }))}
                   placeholder="Catatan opsional..."
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none"
@@ -454,18 +788,11 @@ const RosterShiftPage = () => {
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-              <button
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
-              >
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 shrink-0">
+              <button onClick={() => setShowModal(false)}
+                className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Batal</button>
+              <button onClick={handleSave} disabled={saving}
+                className="px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
                 {saving ? 'Menyimpan...' : 'Simpan'}
               </button>
             </div>
@@ -473,27 +800,21 @@ const RosterShiftPage = () => {
         </div>
       )}
 
-      {/* Confirm Delete Modal */}
+      {/* ── Confirm Delete Modal ── */}
       {confirmDelete && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">Konfirmasi Hapus</h3>
             <p className="text-sm text-gray-600">
               Yakin hapus roster shift ID <strong>{confirmDelete.id}</strong> untuk pegawai{' '}
-              <strong>{confirmDelete.pegawai_nama || confirmDelete.id_pegawai}</strong>?
+              <strong>{confirmDelete.pegawai_nama || confirmDelete.id_pegawai}</strong>
+              {confirmDelete.tanggal_shift && <> tanggal <strong>{confirmDelete.tanggal_shift}</strong></>}?
             </p>
             <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setConfirmDelete(null)}
-                className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
-              >
+              <button onClick={() => setConfirmDelete(null)}
+                className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Batal</button>
+              <button onClick={handleDelete} disabled={deleting}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50">
                 {deleting ? 'Menghapus...' : 'Hapus'}
               </button>
             </div>

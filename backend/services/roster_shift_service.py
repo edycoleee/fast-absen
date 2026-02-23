@@ -22,12 +22,41 @@ class RosterShiftService:
         self.db = db
         self.repo = RosterShiftRepository(db)
 
-    def get_all(self, skip: int = 0, limit: int = 100) -> List[RosterShiftResponse]:
-        items = self.repo.get_all_with_relations(skip=skip, limit=limit)
+    def get_all(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        id_pegawai: str = None,
+        tanggal_mulai=None,
+        tanggal_selesai=None,
+        jenis_shift: str = None,
+        status_roster: str = None,
+        shift_kelompok_id: int = None,
+        id_unit: int = None,
+    ) -> List[RosterShiftResponse]:
+        items = self.repo.get_all_with_relations(
+            skip=skip, limit=limit,
+            id_pegawai=id_pegawai, tanggal_mulai=tanggal_mulai, tanggal_selesai=tanggal_selesai,
+            jenis_shift=jenis_shift, status_roster=status_roster,
+            shift_kelompok_id=shift_kelompok_id, id_unit=id_unit,
+        )
         return [self._to_response(item) for item in items]
 
-    def count_all(self) -> int:
-        return self.repo.count()
+    def count_all(
+        self,
+        id_pegawai: str = None,
+        tanggal_mulai=None,
+        tanggal_selesai=None,
+        jenis_shift: str = None,
+        status_roster: str = None,
+        shift_kelompok_id: int = None,
+        id_unit: int = None,
+    ) -> int:
+        return self.repo.count_filtered(
+            id_pegawai=id_pegawai, tanggal_mulai=tanggal_mulai, tanggal_selesai=tanggal_selesai,
+            jenis_shift=jenis_shift, status_roster=status_roster,
+            shift_kelompok_id=shift_kelompok_id, id_unit=id_unit,
+        )
 
     def get_by_id(self, roster_id: int) -> RosterShiftResponse:
         item = self.repo.get_by_id_with_relations(roster_id)
