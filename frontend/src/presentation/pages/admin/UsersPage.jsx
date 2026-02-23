@@ -19,6 +19,7 @@ const Users = () => {
     deleteUser
   } = useUsers();
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
   const [pegawaiOptions, setPegawaiOptions] = useState([]);
   const [pegawaiLoading, setPegawaiLoading] = useState(false);
   const [pegawaiError, setPegawaiError] = useState('');
@@ -46,8 +47,8 @@ const Users = () => {
   });
 
   useEffect(() => {
-    fetchUsers(page, 10);
-  }, [page, fetchUsers]);
+    fetchUsers(page, 10, search);
+  }, [page, search, fetchUsers]);
 
   useEffect(() => {
     if (!isModalOpen) return;
@@ -99,12 +100,19 @@ const Users = () => {
     setPendingRoleNames([]);
   }, [pendingRoleNames, roleOptions]);
 
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const nextPage = 1;
+    setPage(nextPage);
+    fetchUsers(nextPage, 10, search);
+  };
+
   const handleDelete = async (id) => {
     if (!confirm('Apakah Anda yakin ingin menghapus user ini?')) return;
     
     try {
       await deleteUser(id);
-      fetchUsers(page, 10);
+      fetchUsers(page, 10, search);
     } catch (err) {
       const errorMessage = formatErrorMessage(err, 'Gagal menghapus user', user);
       alert(formatErrorForAlert(errorMessage));
@@ -233,7 +241,7 @@ const Users = () => {
       }
 
       closeModal();
-      fetchUsers(page, 10);
+      fetchUsers(page, 10, search);
     } catch (err) {
       setFormError(err.response?.data?.message || err.message || 'Gagal menyimpan data user');
     } finally {
@@ -301,6 +309,22 @@ const Users = () => {
         </div>
       )}
 
+      {/* Search Bar */}
+      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+        <form onSubmit={handleSearch} className="flex gap-2">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cari user (username, nama pegawai)..."
+            className="input-field flex-1"
+          />
+          <button type="submit" className="btn-primary">
+            🔍 Cari
+          </button>
+        </form>
+      </div>
+
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         {loading ? (
           <div className="p-8 text-center">
@@ -317,6 +341,9 @@ const Users = () => {
                       Username
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      ID / Nama Pegawai
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Role
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -330,7 +357,7 @@ const Users = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {users.length === 0 ? (
                     <tr>
-                      <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
+                      <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
                         Tidak ada data
                       </td>
                     </tr>
@@ -339,6 +366,16 @@ const Users = () => {
                       <tr key={user.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="font-medium text-gray-900">{user.username}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {user.id_pegawai ? (
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{user.pegawai_nama || '-'}</div>
+                              <div className="text-xs text-gray-500 font-mono">ID: {user.id_pegawai}</div>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400 italic">—</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded">

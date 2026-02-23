@@ -30,11 +30,12 @@ def get_users(
     Supports pagination with page and limit parameters
     """
     user_service = UserService(db)
-    users = user_service.get_all(skip=commons.offset, limit=commons.limit)
-    total = user_service.count_all()
-    
+    search = commons.search or ''
+    users = user_service.get_all(skip=commons.offset, limit=commons.limit, search=search)
+    total = user_service.count_all(search=search)
+
     return success_response(
-        data={"items": [user.model_dump() for user in users], "total": total, "skip": commons.offset, "limit": commons.limit},
+        data={"items": [user.model_dump() for user in users], "total": total, "page": commons.page, "limit": commons.limit},
         message="Users retrieved successfully"
     )
 

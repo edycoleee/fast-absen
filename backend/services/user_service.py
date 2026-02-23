@@ -27,9 +27,9 @@ class UserService:
             return False
         return all(role.name in admin_role_names for role in roles)
 
-    def get_all(self, skip: int = 0, limit: int = 100) -> List[UserDetail]:
+    def get_all(self, skip: int = 0, limit: int = 100, search: str = '') -> List[UserDetail]:
         """Get all users"""
-        users = self.user_repo.get_all_with_roles(skip=skip, limit=limit)
+        users = self.user_repo.get_all_with_roles(skip=skip, limit=limit, search=search)
 
         result = []
         for user in users:
@@ -47,8 +47,8 @@ class UserService:
 
         return result
 
-    def count_all(self) -> int:
-        return self.user_repo.count()
+    def count_all(self, search: str = '') -> int:
+        return self.user_repo.count_with_search(search)
 
     def get_by_id(self, user_id: int) -> UserDetail:
         """Get user by ID"""

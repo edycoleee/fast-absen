@@ -12,13 +12,13 @@ export const useUnits = () => {
     skip: 0,
   });
 
-  const fetchUnits = useCallback(async (page = 1, limit = 10) => {
+  const fetchUnits = useCallback(async (page = 1, limit = 10, search = '') => {
     try {
       setLoading(true);
       setError(null);
 
       const skip = (page - 1) * limit;
-      const response = await UnitRepository.getAll(skip, limit);
+      const response = await UnitRepository.getAll(skip, limit, search);
 
       if (response.success) {
         const items = response?.data?.items || [];

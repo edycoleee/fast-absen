@@ -14,12 +14,12 @@ class UnitService:
         self.db = db
         self.unit_repo = UnitRepository(db)
 
-    def get_all(self, skip: int = 0, limit: int = 100) -> List[UnitResponse]:
-        units = self.unit_repo.get_all(skip=skip, limit=limit, order_by="id_unit", order_dir="asc")
+    def get_all(self, skip: int = 0, limit: int = 100, search: str = '') -> List[UnitResponse]:
+        units = self.unit_repo.get_all_with_search(skip=skip, limit=limit, search=search)
         return [UnitResponse.model_validate(unit) for unit in units]
 
-    def count_all(self) -> int:
-        return self.unit_repo.count()
+    def count_all(self, search: str = '') -> int:
+        return self.unit_repo.count_with_search(search)
 
     def get_by_id(self, id_unit: int) -> UnitResponse:
         unit = self.unit_repo.get(id_unit)

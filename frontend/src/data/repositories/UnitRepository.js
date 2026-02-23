@@ -4,8 +4,9 @@ import apiClient from '../api/client';
  * Unit repository.
  * Provides unit CRUD API operations.
  */
-const getAll = async (skip = 0, limit = 10) => {
+const getAll = async (skip = 0, limit = 10, search = '') => {
   const params = new URLSearchParams({ skip, limit });
+  if (search) params.append('search', search);
   const response = await apiClient.get(`/unit/?${params}`);
   return response.data;
 };

@@ -6,6 +6,7 @@ const UnitsPage = () => {
   const { user } = useAuth();
   const { units, loading, error, pagination, fetchUnits, createUnit, updateUnit, deleteUnit } = useUnits();
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create');
   const [editingId, setEditingId] = useState(null);
@@ -18,8 +19,14 @@ const UnitsPage = () => {
   });
 
   useEffect(() => {
-    fetchUnits(page, 10);
-  }, [page, fetchUnits]);
+    fetchUnits(page, 10, search);
+  }, [page, search, fetchUnits]);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setPage(1);
+    fetchUnits(1, 10, search);
+  };
 
   const resetForm = () => {
     setFormData({
@@ -91,7 +98,7 @@ const UnitsPage = () => {
       }
 
       closeModal();
-      fetchUnits(page, 10);
+      fetchUnits(page, 10, search);
     } catch (err) {
       setFormError(formatErrorMessage(err, 'Gagal menyimpan unit', user));
     } finally {
@@ -104,7 +111,7 @@ const UnitsPage = () => {
 
     try {
       await deleteUnit(id);
-      fetchUnits(page, 10);
+      fetchUnits(page, 10, search);
     } catch (err) {
       const errorMessage = formatErrorMessage(err, 'Gagal menghapus unit', user);
       alert(formatErrorForAlert(errorMessage));
@@ -128,6 +135,22 @@ const UnitsPage = () => {
           {error}
         </div>
       )}
+
+      {/* Search Bar */}
+      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+        <form onSubmit={handleSearch} className="flex gap-2">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cari unit (ID atau nama)..."
+            className="input-field flex-1"
+          />
+          <button type="submit" className="btn-primary">
+            🔍 Cari
+          </button>
+        </form>
+      </div>
 
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         {loading ? (

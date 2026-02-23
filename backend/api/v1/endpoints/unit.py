@@ -19,14 +19,16 @@ router = APIRouter(prefix="/unit", tags=["Unit"])
 def get_units(
     skip: int = 0,
     limit: int = 100,
+    search: str = "",
     db: Session = Depends(get_db),
 ):
     service = UnitService(db)
-    items = service.get_all(skip=skip, limit=limit)
-    total = service.count_all()
+    items = service.get_all(skip=skip, limit=limit, search=search)
+    total = service.count_all(search=search)
+    page = (skip // limit) + 1 if limit else 1
     return success_response(
         message="Unit retrieved successfully",
-        data={"items": [item.model_dump() for item in items], "total": total, "skip": skip, "limit": limit},
+        data={"items": [item.model_dump() for item in items], "total": total, "page": page, "skip": skip, "limit": limit},
     )
 
 
