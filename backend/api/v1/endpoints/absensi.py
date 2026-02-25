@@ -252,7 +252,6 @@ def get_all_absensi(
     end_date: Optional[date] = None,
     id_pegawai: Optional[str] = None,
     id_unit: Optional[int] = None,
-    shift: Optional[str] = None,
     status: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission(PermissionKeys.ABSENSI_READ))
@@ -265,7 +264,6 @@ def get_all_absensi(
     - end_date: Filter to date (YYYY-MM-DD)
     - id_pegawai: Filter by pegawai ID
     - id_unit: Filter by unit ID pegawai
-    - shift: Filter by jenis shift roster (PAGI, SORE, MALAM, ON_CALL, CUSTOM)
     - status: Filter by status (HADIR, IZIN, SAKIT, ALPHA, TERLAMBAT, CUTI)
     """
     from models.absensi import Absensi
@@ -293,17 +291,6 @@ def get_all_absensi(
     if status:
         ids_query = ids_query.filter(Absensi.status == status.upper())
 
-    if shift:
-        ids_query = (
-            ids_query
-            .join(
-                PenilaianShiftAbsensi,
-                PenilaianShiftAbsensi.matched_absensi_id == Absensi.id,
-            )
-            .join(RosterShift, RosterShift.id == PenilaianShiftAbsensi.roster_shift_id)
-            .filter(RosterShift.jenis_shift == shift.upper())
-        )
-
     ids_query = ids_query.order_by(Absensi.tanggal.desc(), Absensi.jam_masuk.desc(), Absensi.id.desc())
 
     total = ids_query.distinct().count()
@@ -325,7 +312,6 @@ def get_all_absensi(
             Pegawai.nama.label("pegawai_nama"),
             Pegawai.id_unit.label("id_unit"),
             Unit.nama_unit.label("nama_unit"),
-            RosterShift.jenis_shift.label("jenis_shift"),
             PenilaianShiftAbsensi.status_final.label("status_final_shift"),
         )
         .join(Pegawai, Pegawai.id_pegawai == Absensi.id_pegawai)
@@ -360,7 +346,6 @@ def get_all_absensi(
             "status": a.status,
             "id_unit": row.id_unit,
             "nama_unit": row.nama_unit,
-            "jenis_shift": row.jenis_shift,
             "status_final_shift": row.status_final_shift,
             "keterangan": a.keterangan,
             "ip_address": str(a.ip_address) if a.ip_address else None,

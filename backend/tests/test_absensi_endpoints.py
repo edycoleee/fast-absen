@@ -192,7 +192,6 @@ class TestAbsensiAdminFlow:
                 tanggal_shift=today,
                 jam_mulai=datetime(today.year, today.month, today.day, 7, 0, 0),
                 jam_selesai=datetime(today.year, today.month, today.day, 14, 0, 0),
-                jenis_shift="PAGI",
                 nomor_sesi=1,
                 status_roster="AKTIF",
             ),
@@ -203,7 +202,6 @@ class TestAbsensiAdminFlow:
                 tanggal_shift=today,
                 jam_mulai=datetime(today.year, today.month, today.day, 19, 0, 0),
                 jam_selesai=datetime(today.year, today.month, today.day, 23, 0, 0),
-                jenis_shift="MALAM",
                 nomor_sesi=1,
                 status_roster="AKTIF",
             ),
@@ -233,7 +231,7 @@ class TestAbsensiAdminFlow:
         db_with_data.commit()
 
         response = client.get(
-            f"{API_PREFIX}/?start_date={today.isoformat()}&end_date={today.isoformat()}&id_unit=10&shift=PAGI&status=HADIR&skip=0&limit=1",
+            f"{API_PREFIX}/?start_date={today.isoformat()}&end_date={today.isoformat()}&id_unit=10&status=HADIR&skip=0&limit=1",
             headers=auth_headers_admin,
         )
 
@@ -249,7 +247,6 @@ class TestAbsensiAdminFlow:
         assert item["id_pegawai"] == "PGW001"
         assert item["id_unit"] == 10
         assert item["nama_unit"] == "Rawat Inap"
-        assert item["jenis_shift"] == "PAGI"
         assert item["status"] == "HADIR"
 
     def test_admin_get_all_absensi_shift_filter_with_no_match_returns_empty_items(
@@ -266,7 +263,7 @@ class TestAbsensiAdminFlow:
         assert checkin.status_code == 201
 
         response = client.get(
-            f"{API_PREFIX}/?shift=MALAM&skip=0&limit=10",
+            f"{API_PREFIX}/?status=IZIN&skip=0&limit=10",
             headers=auth_headers_admin,
         )
 

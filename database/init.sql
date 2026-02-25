@@ -197,8 +197,6 @@ CREATE TABLE roster_shift (
     tanggal_shift DATE NOT NULL,
     jam_mulai TIMESTAMPTZ NOT NULL,
     jam_selesai TIMESTAMPTZ NOT NULL,
-    jenis_shift VARCHAR(20) NOT NULL DEFAULT 'CUSTOM'
-        CHECK (jenis_shift IN ('PAGI', 'SORE', 'MALAM', 'ON_CALL', 'CUSTOM')),
     nomor_sesi SMALLINT NOT NULL DEFAULT 1 CHECK (nomor_sesi > 0),
     grace_telat_override_menit INTEGER CHECK (grace_telat_override_menit >= 0),
     toleransi_pulang_cepat_override_menit INTEGER CHECK (toleransi_pulang_cepat_override_menit >= 0),
@@ -453,8 +451,8 @@ ON CONFLICT (id_unit) DO NOTHING;
 INSERT INTO shift_kelompok (kode, nama, deskripsi, is_shift_based)
 VALUES
 ('JK_SHIFT', 'Jam Kerja Shift', 'Kelompok Jam Kerja Shift Lintas Tanggal', TRUE),
-('JK_REGULER', 'Jam Kerja Reguler', 'Kelompok Jam Kerja Reguler 1x', TRUE),
-('JK_TERTENTU', 'Jam Kerja Tertentu', 'Kelompok Jam Kerja Tertentu', TRUE),
+('JK_REGULER', 'Jam Kerja Reguler', 'Kelompok Jam Kerja Reguler 1x', FALSE),
+('JK_TERTENTU', 'Jam Kerja Tertentu', 'Kelompok Jam Kerja Tertentu', FALSE)
 ON CONFLICT (kode) DO NOTHING;
 
 -- Roles

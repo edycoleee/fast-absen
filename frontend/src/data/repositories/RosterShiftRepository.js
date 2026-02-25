@@ -8,7 +8,6 @@ const RosterShiftRepository = {
     if (filters.id_pegawai)       params.id_pegawai       = filters.id_pegawai;
     if (filters.tanggal_mulai)    params.tanggal_mulai    = filters.tanggal_mulai;
     if (filters.tanggal_selesai)  params.tanggal_selesai  = filters.tanggal_selesai;
-    if (filters.jenis_shift)      params.jenis_shift      = filters.jenis_shift;
     if (filters.status_roster)    params.status_roster    = filters.status_roster;
     if (filters.shift_kelompok_id) params.shift_kelompok_id = filters.shift_kelompok_id;
     if (filters.id_unit)          params.id_unit          = filters.id_unit;

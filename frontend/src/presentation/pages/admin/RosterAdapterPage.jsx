@@ -13,8 +13,6 @@ import RosterShiftRepository from '../../../data/repositories/RosterShiftReposit
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const JENIS_OPTIONS = ['PAGI', 'SORE', 'MALAM', 'ON_CALL', 'CUSTOM'];
-
 const NAMA_BULAN = [
   '', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
@@ -22,23 +20,19 @@ const NAMA_BULAN = [
 
 const NAMA_HARI_SHORT = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
-// Warna default per jenis shift (untuk kamus)
+// Warna per entri kamus: libur = abu-abu, aktif = teal
 const JENIS_COLOR_MAP = {
-  PAGI:    { bg: 'bg-blue-100',   text: 'text-blue-800',   border: 'border-blue-300' },
-  SORE:    { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-300' },
-  MALAM:   { bg: 'bg-indigo-100', text: 'text-indigo-800', border: 'border-indigo-300' },
-  ON_CALL: { bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-300' },
-  CUSTOM:  { bg: 'bg-teal-100',   text: 'text-teal-800',   border: 'border-teal-300' },
+  AKTIF:   { bg: 'bg-teal-100',   text: 'text-teal-800',   border: 'border-teal-300' },
   LIBUR:   { bg: 'bg-gray-100',   text: 'text-gray-500',   border: 'border-gray-300' },
 };
 
 const DEFAULT_KAMUS = [
-  { kode: 'P1', jam_mulai: '07:00', jam_selesai: '14:00', jenis_shift: 'PAGI',  is_libur: false },
-  { kode: 'P2', jam_mulai: '07:00', jam_selesai: '11:00', jenis_shift: 'PAGI',  is_libur: false },
-  { kode: 'P3', jam_mulai: '07:00', jam_selesai: '12:30', jenis_shift: 'PAGI',  is_libur: false },
-  { kode: 'S1', jam_mulai: '14:00', jam_selesai: '21:00', jenis_shift: 'SORE',  is_libur: false },
-  { kode: 'M1', jam_mulai: '21:00', jam_selesai: '07:00', jenis_shift: 'MALAM', is_libur: false },
-  { kode: 'L1', jam_mulai: '',      jam_selesai: '',      jenis_shift: 'CUSTOM',is_libur: true  },
+  { kode: 'P1', jam_mulai: '07:00', jam_selesai: '14:00', is_libur: false },
+  { kode: 'P2', jam_mulai: '07:00', jam_selesai: '11:00', is_libur: false },
+  { kode: 'P3', jam_mulai: '07:00', jam_selesai: '12:30', is_libur: false },
+  { kode: 'S1', jam_mulai: '14:00', jam_selesai: '21:00', is_libur: false },
+  { kode: 'M1', jam_mulai: '21:00', jam_selesai: '07:00', is_libur: false },
+  { kode: 'L1', jam_mulai: '',      jam_selesai: '',      is_libur: true  },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -113,7 +107,6 @@ const buildRosterPayloads = (rows, kamus, tahun, bulan, shiftKelompokId, idUnit)
         tanggal_shift: `${tahun}-${String(bulan).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
         jam_mulai: jam_mulai_iso,
         jam_selesai: jam_selesai_iso,
-        jenis_shift: entry.jenis_shift,
         nomor_sesi: 1,
         status_roster: 'AKTIF',
         catatan: null,
@@ -130,7 +123,7 @@ const KodeBadge = ({ kode, kamMap }) => {
   if (!kode) return null;
   const entry = kamMap[kode];
   if (!entry) return <span className="px-1 py-0.5 rounded text-xs bg-yellow-100 text-yellow-800">{kode}</span>;
-  const colors = entry.is_libur ? JENIS_COLOR_MAP.LIBUR : (JENIS_COLOR_MAP[entry.jenis_shift] || JENIS_COLOR_MAP.CUSTOM);
+  const colors = entry.is_libur ? JENIS_COLOR_MAP.LIBUR : JENIS_COLOR_MAP.AKTIF;
   return (
     <span className={`px-1 py-0.5 rounded text-xs font-medium ${colors.bg} ${colors.text}`}>
       {kode}
@@ -163,7 +156,7 @@ const CellPopup = ({ anchorRect, kamus, currentKode, onSelect, onClose }) => {
         — Kosong
       </button>
       {kamus.map(k => {
-        const colors = k.is_libur ? JENIS_COLOR_MAP.LIBUR : (JENIS_COLOR_MAP[k.jenis_shift] || JENIS_COLOR_MAP.CUSTOM);
+        const colors = k.is_libur ? JENIS_COLOR_MAP.LIBUR : JENIS_COLOR_MAP.AKTIF;
         return (
           <button
             key={k.kode}
@@ -300,7 +293,7 @@ const RosterAdapterPage = () => {
     setEditingKamus(false);
   };
   const addKamusRow = () => setKamEdits(prev => [...prev,
-    { kode: '', jam_mulai: '07:00', jam_selesai: '14:00', jenis_shift: 'PAGI', is_libur: false }
+    { kode: '', jam_mulai: '07:00', jam_selesai: '14:00', is_libur: false }
   ]);
   const updateKamusRow = (idx, field, value) => setKamEdits(prev =>
     prev.map((k, i) => i === idx ? { ...k, [field]: value } : k)
@@ -424,11 +417,11 @@ const RosterAdapterPage = () => {
         <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Kamus Kode Aktif</div>
         <div className="flex flex-wrap gap-2">
           {kamus.map(k => {
-            const colors = k.is_libur ? JENIS_COLOR_MAP.LIBUR : (JENIS_COLOR_MAP[k.jenis_shift] || JENIS_COLOR_MAP.CUSTOM);
+            const colors = k.is_libur ? JENIS_COLOR_MAP.LIBUR : JENIS_COLOR_MAP.AKTIF;
             return (
               <div key={k.kode} className={`px-2 py-1 rounded border text-xs font-medium ${colors.bg} ${colors.text} ${colors.border}`}>
                 <span className="font-bold">{k.kode}</span>
-                {k.is_libur ? ' · Libur' : ` · ${k.jam_mulai}–${k.jam_selesai} · ${k.jenis_shift}`}
+                {k.is_libur ? ' · Libur' : ` · ${k.jam_mulai}–${k.jam_selesai}`}
                 {!k.is_libur && isLintasTanggal(k.jam_mulai, k.jam_selesai) && (
                   <span className="ml-1 text-purple-600" title="Lintas Tanggal">🌙</span>
                 )}
@@ -532,7 +525,7 @@ const RosterAdapterPage = () => {
                     {days.map(d => {
                       const kode = row.grid[d.day] || '';
                       const entry = kamMap[kode];
-                      const colors = !kode ? null : (entry?.is_libur ? JENIS_COLOR_MAP.LIBUR : (JENIS_COLOR_MAP[entry?.jenis_shift] || JENIS_COLOR_MAP.CUSTOM));
+                      const colors = !kode ? null : (entry?.is_libur ? JENIS_COLOR_MAP.LIBUR : JENIS_COLOR_MAP.AKTIF);
                       return (
                         <td
                           key={d.day}
@@ -648,16 +641,6 @@ const RosterAdapterPage = () => {
                         <div className="text-purple-600 text-[10px] mt-0.5">🌙 Lintas tanggal</div>
                       )}
                     </td>
-                    <td className="border px-1 py-1">
-                      <select
-                        value={k.jenis_shift}
-                        onChange={e => updateKamusRow(i, 'jenis_shift', e.target.value)}
-                        disabled={k.is_libur}
-                        className="border rounded px-1 py-1 w-full text-xs disabled:opacity-40"
-                      >
-                        {JENIS_OPTIONS.map(j => <option key={j} value={j}>{j}</option>)}
-                      </select>
-                    </td>
                     <td className="border px-1 py-1 text-center">
                       <div
                         onClick={() => updateKamusRow(i, 'is_libur', !k.is_libur)}
@@ -753,7 +736,6 @@ const RosterAdapterPage = () => {
                     <th className="border px-2 py-1.5 text-left">Tanggal</th>
                     <th className="border px-2 py-1.5 text-left">Jam Mulai</th>
                     <th className="border px-2 py-1.5 text-left">Jam Selesai</th>
-                    <th className="border px-2 py-1.5 text-left">Jenis</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -767,11 +749,6 @@ const RosterAdapterPage = () => {
                       </td>
                       <td className="border px-2 py-1 font-mono">
                         {new Date(p.jam_selesai).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                      </td>
-                      <td className="border px-2 py-1">
-                        <span className={`px-1 py-0.5 rounded ${(JENIS_COLOR_MAP[p.jenis_shift] || JENIS_COLOR_MAP.CUSTOM).bg} ${(JENIS_COLOR_MAP[p.jenis_shift] || JENIS_COLOR_MAP.CUSTOM).text}`}>
-                          {p.jenis_shift}
-                        </span>
                       </td>
                     </tr>
                   ))}

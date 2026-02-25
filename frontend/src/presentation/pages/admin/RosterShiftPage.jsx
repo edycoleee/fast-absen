@@ -6,21 +6,12 @@ import PegawaiSearchInput from '../../components/common/PegawaiSearchInput';
 import UnitSearchInput from '../../components/common/UnitSearchInput';
 import apiClient from '../../../data/api/client';
 
-const JENIS_SHIFT_OPTIONS = ['PAGI', 'SORE', 'MALAM', 'ON_CALL', 'CUSTOM'];
 const STATUS_ROSTER_OPTIONS = ['AKTIF', 'BATAL', 'DIUBAH'];
 
 const STATUS_COLORS = {
   AKTIF: 'bg-green-100 text-green-800',
   BATAL: 'bg-red-100 text-red-800',
   DIUBAH: 'bg-yellow-100 text-yellow-800',
-};
-
-const JENIS_COLORS = {
-  PAGI: 'bg-blue-100 text-blue-800',
-  SORE: 'bg-orange-100 text-orange-800',
-  MALAM: 'bg-indigo-100 text-indigo-800',
-  ON_CALL: 'bg-purple-100 text-purple-800',
-  CUSTOM: 'bg-gray-100 text-gray-800',
 };
 
 const emptyForm = {
@@ -33,7 +24,6 @@ const emptyForm = {
   jam_mulai_time: '',
   jam_selesai_date: '',
   jam_selesai_time: '',
-  jenis_shift: 'PAGI',
   nomor_sesi: 1,
   grace_telat_override_menit: '',
   toleransi_pulang_cepat_override_menit: '',
@@ -46,7 +36,6 @@ const emptyFilter = {
   pegawai_display: '',   // label untuk chip, tidak dikirim ke backend
   tanggal_mulai: '',
   tanggal_selesai: '',
-  jenis_shift: '',
   status_roster: '',
   shift_kelompok_id: '',
   id_unit: '',
@@ -90,7 +79,7 @@ const normalizeTimeInput = (raw) => {
 const exportToCSV = (data, filename) => {
   const headers = [
     'ID', 'ID Pegawai', 'Nama Pegawai', 'Unit', 'Shift Kelompok',
-    'Tanggal Shift', 'Jam Mulai', 'Jam Selesai', 'Jenis Shift',
+    'Tanggal Shift', 'Jam Mulai', 'Jam Selesai',
     'Sesi', 'Status', 'Grace Override (mnt)', 'Tol Pulang (mnt)', 'Catatan',
   ];
   const rows = data.map(item => [
@@ -102,7 +91,6 @@ const exportToCSV = (data, filename) => {
     item.tanggal_shift ?? '',
     item.jam_mulai ? new Date(item.jam_mulai).toLocaleString('id-ID') : '',
     item.jam_selesai ? new Date(item.jam_selesai).toLocaleString('id-ID') : '',
-    item.jenis_shift ?? '',
     item.nomor_sesi ?? '',
     item.status_roster ?? '',
     item.grace_telat_override_menit ?? '',
@@ -225,7 +213,6 @@ const RosterShiftPage = () => {
       jam_mulai_time: mulai.time,
       jam_selesai_date: selesai.date,
       jam_selesai_time: selesai.time,
-      jenis_shift: item.jenis_shift ?? 'PAGI',
       nomor_sesi: item.nomor_sesi ?? 1,
       grace_telat_override_menit: item.grace_telat_override_menit ?? '',
       toleransi_pulang_cepat_override_menit: item.toleransi_pulang_cepat_override_menit ?? '',
@@ -261,7 +248,6 @@ const RosterShiftPage = () => {
         tanggal_shift: form.tanggal_shift,
         jam_mulai: dtMulai.toISOString(),
         jam_selesai: dtSelesai.toISOString(),
-        jenis_shift: form.jenis_shift,
         nomor_sesi: Number(form.nomor_sesi) || 1,
         grace_telat_override_menit: form.grace_telat_override_menit !== '' ? Number(form.grace_telat_override_menit) : null,
         toleransi_pulang_cepat_override_menit: form.toleransi_pulang_cepat_override_menit !== '' ? Number(form.toleransi_pulang_cepat_override_menit) : null,
@@ -380,17 +366,6 @@ const RosterShiftPage = () => {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Jenis Shift</label>
-              <select
-                value={filters.jenis_shift}
-                onChange={e => setFilters(f => ({ ...f, jenis_shift: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-              >
-                <option value="">Semua jenis</option>
-                {JENIS_SHIFT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-              </select>
-            </div>
-            <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
               <select
                 value={filters.status_roster}
@@ -445,12 +420,6 @@ const RosterShiftPage = () => {
             <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs">
               Tgl: {appliedFilters.tanggal_mulai||'...'} – {appliedFilters.tanggal_selesai||'...'}
               <button onClick={() => { setFilters(f=>({...f,tanggal_mulai:'',tanggal_selesai:''})); setAppliedFilters(f=>({...f,tanggal_mulai:'',tanggal_selesai:''})); setPage(1); }}>✕</button>
-            </span>
-          )}
-          {appliedFilters.jenis_shift && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs">
-              Jenis: {appliedFilters.jenis_shift}
-              <button onClick={() => { setFilters(f=>({...f,jenis_shift:''})); setAppliedFilters(f=>({...f,jenis_shift:''})); setPage(1); }}>✕</button>
             </span>
           )}
           {appliedFilters.status_roster && (
@@ -526,7 +495,6 @@ const RosterShiftPage = () => {
                 <th className="px-4 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">Tanggal</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">Jam Mulai</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">Jam Selesai</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">Jenis</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">Sesi</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">Status</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">Override</th>
@@ -570,11 +538,6 @@ const RosterShiftPage = () => {
                     <td className="px-4 py-3 font-medium text-gray-800 text-xs whitespace-nowrap">{item.tanggal_shift || '-'}</td>
                     <td className="px-4 py-3 text-gray-700 text-xs whitespace-nowrap">{formatDatetime(item.jam_mulai)}</td>
                     <td className="px-4 py-3 text-gray-700 text-xs whitespace-nowrap">{formatDatetime(item.jam_selesai)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${JENIS_COLORS[item.jenis_shift] || 'bg-gray-100 text-gray-800'}`}>
-                        {item.jenis_shift}
-                      </span>
-                    </td>
                     <td className="px-4 py-3 text-center text-gray-700 text-xs">{item.nomor_sesi}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[item.status_roster] || 'bg-gray-100 text-gray-800'}`}>
@@ -733,15 +696,7 @@ const RosterShiftPage = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Jenis Shift</label>
-                  <select value={form.jenis_shift}
-                    onChange={e => setForm(f => ({ ...f, jenis_shift: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
-                    {JENIS_SHIFT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nomor Sesi</label>
                   <input type="number" min={1} value={form.nomor_sesi}

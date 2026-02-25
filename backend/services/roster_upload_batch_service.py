@@ -25,7 +25,6 @@ from schemas.roster_upload_batch import (
 
 
 VALID_UPLOAD_STATUS = {"UPLOADED", "VALIDATED", "IMPORTED", "FAILED"}
-VALID_JENIS_SHIFT = {"PAGI", "SORE", "MALAM", "ON_CALL", "CUSTOM"}
 
 TEMPLATE_HEADERS = [
     "id_pegawai",
@@ -34,7 +33,6 @@ TEMPLATE_HEADERS = [
     "tanggal_shift",
     "jam_mulai",
     "jam_selesai",
-    "jenis_shift",
     "nomor_sesi",
     "grace_telat_override_menit",
     "toleransi_pulang_cepat_override_menit",
@@ -113,11 +111,10 @@ class RosterUploadBatchService:
         worksheet.append([
             "P001",
             15,
-            "PERAWAT_SHIFT",
+            "JK_REGULER",
             "2026-02-23",
             "07:00",
             "14:00",
-            "PAGI",
             1,
             10,
             0,
@@ -126,11 +123,10 @@ class RosterUploadBatchService:
         worksheet.append([
             "P002",
             15,
-            "PERAWAT_SHIFT",
+            "JK_SHIFT",
             "2026-02-23",
             "19:00",
             "07:00",
-            "MALAM",
             1,
             10,
             0,
@@ -408,11 +404,6 @@ class RosterUploadBatchService:
             if not shift_kelompok_id:
                 raise ValueError(f"shift_kelompok_kode {shift_kelompok_kode} tidak ditemukan")
 
-        jenis_shift = self._to_str(row[column_index["jenis_shift"]]) or "CUSTOM"
-        jenis_shift = jenis_shift.upper()
-        if jenis_shift not in VALID_JENIS_SHIFT:
-            raise ValueError(f"jenis_shift tidak valid: {jenis_shift}")
-
         nomor_sesi_raw = row[column_index["nomor_sesi"]]
         nomor_sesi = 1 if nomor_sesi_raw in (None, "") else int(nomor_sesi_raw)
         if nomor_sesi <= 0:
@@ -437,7 +428,6 @@ class RosterUploadBatchService:
             "tanggal_shift": tanggal_shift,
             "jam_mulai": jam_mulai,
             "jam_selesai": jam_selesai,
-            "jenis_shift": jenis_shift,
             "nomor_sesi": nomor_sesi,
             "grace_telat_override_menit": grace_telat_override_menit,
             "toleransi_pulang_cepat_override_menit": toleransi_pulang_cepat_override_menit,

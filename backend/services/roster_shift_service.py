@@ -13,7 +13,6 @@ from schemas.roster_shift import (
 )
 
 
-VALID_JENIS_SHIFT = {"PAGI", "SORE", "MALAM", "ON_CALL", "CUSTOM"}
 VALID_STATUS_ROSTER = {"AKTIF", "BATAL", "DIUBAH"}
 
 
@@ -29,7 +28,6 @@ class RosterShiftService:
         id_pegawai: str = None,
         tanggal_mulai=None,
         tanggal_selesai=None,
-        jenis_shift: str = None,
         status_roster: str = None,
         shift_kelompok_id: int = None,
         id_unit: int = None,
@@ -37,7 +35,7 @@ class RosterShiftService:
         items = self.repo.get_all_with_relations(
             skip=skip, limit=limit,
             id_pegawai=id_pegawai, tanggal_mulai=tanggal_mulai, tanggal_selesai=tanggal_selesai,
-            jenis_shift=jenis_shift, status_roster=status_roster,
+            status_roster=status_roster,
             shift_kelompok_id=shift_kelompok_id, id_unit=id_unit,
         )
         return [self._to_response(item) for item in items]
@@ -47,14 +45,13 @@ class RosterShiftService:
         id_pegawai: str = None,
         tanggal_mulai=None,
         tanggal_selesai=None,
-        jenis_shift: str = None,
         status_roster: str = None,
         shift_kelompok_id: int = None,
         id_unit: int = None,
     ) -> int:
         return self.repo.count_filtered(
             id_pegawai=id_pegawai, tanggal_mulai=tanggal_mulai, tanggal_selesai=tanggal_selesai,
-            jenis_shift=jenis_shift, status_roster=status_roster,
+            status_roster=status_roster,
             shift_kelompok_id=shift_kelompok_id, id_unit=id_unit,
         )
 
@@ -84,7 +81,6 @@ class RosterShiftService:
         merged = {
             "jam_mulai": data.get("jam_mulai", item.jam_mulai),
             "jam_selesai": data.get("jam_selesai", item.jam_selesai),
-            "jenis_shift": data.get("jenis_shift", item.jenis_shift),
             "status_roster": data.get("status_roster", item.status_roster),
             "nomor_sesi": data.get("nomor_sesi", item.nomor_sesi),
             "grace_telat_override_menit": data.get("grace_telat_override_menit", item.grace_telat_override_menit),
@@ -112,10 +108,6 @@ class RosterShiftService:
         jam_selesai = data.get("jam_selesai")
         if jam_mulai and jam_selesai and jam_selesai <= jam_mulai:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="jam_selesai harus lebih besar dari jam_mulai")
-
-        jenis_shift = data.get("jenis_shift")
-        if jenis_shift and jenis_shift not in VALID_JENIS_SHIFT:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"jenis_shift tidak valid. Gunakan salah satu: {', '.join(sorted(VALID_JENIS_SHIFT))}")
 
         status_roster = data.get("status_roster")
         if status_roster and status_roster not in VALID_STATUS_ROSTER:

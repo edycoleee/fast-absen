@@ -15,7 +15,6 @@ class RosterShiftBase(BaseModel):
     tanggal_shift: date
     jam_mulai: datetime
     jam_selesai: datetime
-    jenis_shift: str = "CUSTOM"
     nomor_sesi: int = 1
     grace_telat_override_menit: Optional[int] = None
     toleransi_pulang_cepat_override_menit: Optional[int] = None
@@ -36,7 +35,6 @@ class RosterShiftUpdate(BaseModel):
     tanggal_shift: Optional[date] = None
     jam_mulai: Optional[datetime] = None
     jam_selesai: Optional[datetime] = None
-    jenis_shift: Optional[str] = None
     nomor_sesi: Optional[int] = None
     grace_telat_override_menit: Optional[int] = None
     toleransi_pulang_cepat_override_menit: Optional[int] = None

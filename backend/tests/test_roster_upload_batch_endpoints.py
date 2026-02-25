@@ -77,7 +77,6 @@ class TestRosterUploadBatchImportEndpoint:
                 tanggal_shift=datetime(2026, 3, 1).date(),
                 jam_mulai=datetime(2026, 3, 1, 7, 0),
                 jam_selesai=datetime(2026, 3, 1, 14, 0),
-                jenis_shift="PAGI",
                 nomor_sesi=1,
             )
         )
@@ -91,7 +90,6 @@ class TestRosterUploadBatchImportEndpoint:
                 "tanggal_shift",
                 "jam_mulai",
                 "jam_selesai",
-                "jenis_shift",
                 "nomor_sesi",
                 "grace_telat_override_menit",
                 "toleransi_pulang_cepat_override_menit",
@@ -105,7 +103,6 @@ class TestRosterUploadBatchImportEndpoint:
                     "2026-03-01",
                     "08:00",
                     "15:00",
-                    "PAGI",
                     2,
                     10,
                     0,

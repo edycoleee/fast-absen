@@ -25,7 +25,6 @@ def _create_roster(
         tanggal_shift=jam_mulai.date(),
         jam_mulai=jam_mulai,
         jam_selesai=jam_selesai,
-        jenis_shift="CUSTOM",
         nomor_sesi=1,
         status_roster="AKTIF",
     )

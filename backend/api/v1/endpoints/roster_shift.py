@@ -23,7 +23,6 @@ def get_roster_shifts(
     id_pegawai: str = None,
     tanggal_mulai: str = None,
     tanggal_selesai: str = None,
-    jenis_shift: str = None,
     status_roster: str = None,
     shift_kelompok_id: int = None,
     id_unit: int = None,
@@ -42,13 +41,13 @@ def get_roster_shifts(
         skip=skip, limit=limit,
         id_pegawai=id_pegawai or None,
         tanggal_mulai=tgl_mulai, tanggal_selesai=tgl_selesai,
-        jenis_shift=jenis_shift or None, status_roster=status_roster or None,
+        status_roster=status_roster or None,
         shift_kelompok_id=shift_kelompok_id, id_unit=id_unit,
     )
     total = service.count_all(
         id_pegawai=id_pegawai or None,
         tanggal_mulai=tgl_mulai, tanggal_selesai=tgl_selesai,
-        jenis_shift=jenis_shift or None, status_roster=status_roster or None,
+        status_roster=status_roster or None,
         shift_kelompok_id=shift_kelompok_id, id_unit=id_unit,
     )
     return success_response(

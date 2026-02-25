@@ -19,7 +19,6 @@ class RosterShift(Base):
     tanggal_shift = Column(Date, nullable=False)
     jam_mulai = Column(DateTime(timezone=True), nullable=False)
     jam_selesai = Column(DateTime(timezone=True), nullable=False)
-    jenis_shift = Column(String(20), nullable=False, default="CUSTOM")
     nomor_sesi = Column(SmallInteger, nullable=False, default=1)
     grace_telat_override_menit = Column(Integer, nullable=True)
     toleransi_pulang_cepat_override_menit = Column(Integer, nullable=True)
