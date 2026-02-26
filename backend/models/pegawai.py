@@ -35,3 +35,4 @@ class Pegawai(Base):
     penilaian_shift_absensi = relationship("PenilaianShiftAbsensi", foreign_keys="PenilaianShiftAbsensi.id_pegawai", back_populates="pegawai")
     approved_penilaian_shift_absensi = relationship("PenilaianShiftAbsensi", foreign_keys="PenilaianShiftAbsensi.approved_by_pegawai", back_populates="approved_by")
     approval_pengajuan_logs = relationship("ApprovalPengajuanAbsensiLog", back_populates="action_by")
+    face_embeddings = relationship("FaceEmbedding", back_populates="pegawai", cascade="all, delete-orphan")

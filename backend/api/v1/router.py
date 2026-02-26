@@ -22,6 +22,7 @@ from api.v1.endpoints import (
 	penilaian_shift_absensi,
 	approval_pengajuan_absensi_log,
 	approval_pengajuan_absensi,
+	face,
 )
 
 api_router = APIRouter()
@@ -76,6 +77,9 @@ api_router.include_router(user_sessions.router)
 
 # Dashboard stats
 api_router.include_router(stats.router)
+
+# Face Recognition (User + Admin)
+api_router.include_router(face.router)
 
 # Legacy/Example endpoint
 api_router.include_router(halo.router)

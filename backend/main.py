@@ -22,6 +22,7 @@ from utils.exception_handlers import (
 from utils.logger import logger
 from utils.bootstrap_admin import bootstrap_super_admin
 from utils.scheduler import start_scheduler, stop_scheduler
+from services.face_service import _get_face_app
 
 
 @asynccontextmanager
@@ -39,6 +40,13 @@ async def lifespan(app: FastAPI):
     if check_database_connection():
         logger.info("Database connection established")
         bootstrap_super_admin()
+        
+        # Preload InsightFace model
+        try:
+            _get_face_app()
+            logger.info("InsightFace model checked/downloaded at startup.")
+        except Exception as exc:
+            logger.error(f"InsightFace preload failed: {exc}")
         
         # Start background scheduler for session cleanup
         start_scheduler()

@@ -39,3 +39,7 @@ htmlcov/
 
 # Docker SSL (local)
 docker/prod/ssl/*
+
+#AI Model
+*.onnx
+buffalo_l.zip

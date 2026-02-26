@@ -8,7 +8,9 @@ from typing import Optional
 from config.database import get_db
 from config.settings import settings
 from schemas.auth import LoginRequest, TokenResponse
+from schemas.face import FaceLoginRequest
 from services.auth_service import AuthService
+from services.face_service import FaceService
 from utils.response import success_response
 from utils.auth import decode_refresh_token, create_access_token
 from utils.dependencies import get_current_user
@@ -16,6 +18,37 @@ from repositories.user_repository import UserRepository
 from models.user import User
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+@router.get("/check-username/{username}", response_model=dict, status_code=status.HTTP_200_OK)
+def check_username(
+    username: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Cek apakah username terdaftar dan aktif, serta sudah mendaftarkan wajah.
+    Digunakan oleh frontend sebelum membuka popup kamera face login
+    sehingga error bisa ditampilkan lebih awal tanpa harus membuka kamera.
+    """
+    user_repo = UserRepository(db)
+    user = user_repo.get_by_username(username)
+
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Username tidak ditemukan atau akun tidak aktif.",
+        )
+
+    if not user.id_pegawai:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Akun user tidak terhubung ke data pegawai. Hubungi admin.",
+        )
+
+    return success_response(
+        data={"username": user.username, "id_pegawai": user.id_pegawai},
+        message="Username valid",
+    )
 
 
 @router.post("/login", response_model=dict, status_code=status.HTTP_200_OK)
@@ -186,4 +219,109 @@ def logout(response: Response):
     return success_response(
         data=None,
         message="Logout successful"
+    )
+
+
+@router.post("/login-face", response_model=dict, status_code=status.HTTP_200_OK)
+def login_face(
+    login_data: FaceLoginRequest,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    """
+    Login menggunakan verifikasi wajah 1:1.
+
+    Flow:
+      1. Lookup user by username
+      2. Ambil id_pegawai dari user
+      3. Verifikasi foto dengan embedding tersimpan (cosine similarity)
+      4. Jika verified → buat JWT tokens + session (sama dengan login biasa)
+
+    **Penting**: User harus sudah mendaftarkan wajah terlebih dahulu via
+    `POST /face/users/{id_pegawai}/register`.
+    """
+    auth_service = AuthService(db)
+    face_service = FaceService(db)
+
+    # 1. Cari user berdasarkan username
+    user_repo = UserRepository(db)
+    user = user_repo.get_by_username(login_data.username)
+
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Username tidak ditemukan atau akun tidak aktif.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not user.id_pegawai:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Akun user tidak terhubung ke data pegawai. Hubungi admin.",
+        )
+
+    # 2. Verifikasi wajah (HTTPException jika gagal detect atau belum register)
+    verified, similarity = face_service.verify_face_for_login(
+        id_pegawai=user.id_pegawai,
+        b64=login_data.image,
+        threshold=login_data.threshold or 0.6,
+    )
+
+    if not verified:
+        # Log failed login attempt
+        try:
+            auth_service.create_session(user, request, login_status="failed")
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=(
+                f"Verifikasi wajah gagal (similarity={similarity:.4f} "
+                f"< threshold={login_data.threshold or 0.6}). "
+                "Pastikan pencahayaan baik dan wajah terlihat jelas."
+            ),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # 3. Buat token & session (sama persis dengan login password)
+    user_with_roles = user_repo.get_with_roles(user.id)
+    auth_context = auth_service.build_auth_context(user_with_roles)
+    session_id = auth_service.create_session(user, request, login_status="success")
+
+    access_token = create_access_token(
+        data={
+            "user_id": user.id,
+            "username": user.username,
+            "roles": auth_context["roles"],
+            "id_pegawai": user.id_pegawai,
+            "session_id": session_id,
+        }
+    )
+    from utils.auth import create_refresh_token
+    refresh_token = create_refresh_token(user.id)
+
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=not settings.DEBUG,
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        path="/api/v1/auth",
+    )
+
+    return success_response(
+        data={
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user_id": user.id,
+            "username": user.username,
+            "roles": auth_context["roles"],
+            "permissions": auth_context["permissions"],
+            "menu_guard": auth_context["menu_guard"],
+            "session_id": session_id,
+            "face_similarity": round(similarity, 4),
+        },
+        message="Login wajah berhasil.",
     )

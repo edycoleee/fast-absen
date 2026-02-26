@@ -20,6 +20,7 @@ from models.absensi import Absensi
 from models.user_session import UserSession
 from models.approval_pengajuan_absensi import ApprovalPengajuanAbsensi
 from models.approval_pengajuan_absensi_log import ApprovalPengajuanAbsensiLog
+from models.face_embedding import FaceEmbedding
 
 __all__ = [
     "Base",
@@ -39,5 +40,4 @@ __all__ = [
     "Absensi",
     "UserSession",
     "ApprovalPengajuanAbsensi",
-    "ApprovalPengajuanAbsensiLog"
-]
+    "ApprovalPengajuanAbsensiLog"    "FaceEmbedding",]

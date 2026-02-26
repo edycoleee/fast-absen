@@ -1,5 +1,5 @@
 export { LandingPage } from './public';
-export { AdminLoginPage, AttendanceLoginPage } from './auth';
+export { AdminLoginPage, AttendanceLoginPage, FaceLoginPopup } from './auth';
 export { AttendanceDashboardPage } from './attendance';
 export {
   AdminDashboardPage,
@@ -19,4 +19,5 @@ export {
   RosterShiftPage,
   RosterAdapterPage,
   PenilaianShiftAbsensiPage,
+  FaceRegistrationPage,
 } from './admin';

@@ -116,6 +116,88 @@ export const AuthProvider = ({ children }) => {
   };
 
   /**
+   * Login menggunakan verifikasi wajah (username + foto base64)
+   */
+  const loginFace = async (username, imageBase64, threshold = 0.6) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await AuthRepository.loginFace(username, imageBase64, threshold);
+
+      if (response.success) {
+        const {
+          access_token,
+          user_id,
+          username: user_name,
+          roles,
+          permissions,
+          menu_guard,
+          session_id,
+        } = response.data;
+
+        LocalStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, access_token);
+        if (session_id) {
+          LocalStorage.setItem(STORAGE_KEYS.SESSION_ID, session_id);
+        }
+
+        const userData = User({
+          id: user_id,
+          username: user_name,
+          roles: roles,
+          permissions: permissions || [],
+          menu_guard: menu_guard || {},
+        });
+
+        LocalStorage.setItem(STORAGE_KEYS.USER, userData.toJSON());
+        setUser(userData);
+
+        return response;
+      } else {
+        throw new Error(response.message || 'Login wajah gagal');
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || 'Login wajah gagal';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Hydrate auth state dari data token yang sudah ada
+   * (digunakan setelah menerima postMessage dari popup face login)
+   */
+  const setAuthData = (data) => {
+    const {
+      access_token,
+      user_id,
+      username: user_name,
+      roles,
+      permissions,
+      menu_guard,
+      session_id,
+    } = data;
+
+    LocalStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, access_token);
+    if (session_id) {
+      LocalStorage.setItem(STORAGE_KEYS.SESSION_ID, session_id);
+    }
+
+    const userData = User({
+      id: user_id,
+      username: user_name,
+      roles: roles,
+      permissions: permissions || [],
+      menu_guard: menu_guard || {},
+    });
+
+    LocalStorage.setItem(STORAGE_KEYS.USER, userData.toJSON());
+    setUser(userData);
+  };
+
+  /**
    * Logout user
    * Calls backend to clear refresh token cookie
    */
@@ -161,6 +243,8 @@ export const AuthProvider = ({ children }) => {
     loading,
     error,
     login,
+    loginFace,
+    setAuthData,
     logout,
     isAuthenticated,
     hasRole,

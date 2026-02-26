@@ -1,0 +1,347 @@
+/* ═══════════════════════════════════════════════════════════════════
+   FaceLoginPopup.css
+   Popup window face login — gradient ungu-biru, glassmorphism
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Root layout ──────────────────────────────────────────────────── */
+.flp-root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, sans-serif;
+  animation: flpFadeIn 0.3s ease-out;
+}
+
+@keyframes flpFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Header ────────────────────────────────────────────────────────── */
+.flp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.25rem;
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.flp-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Username badge — posisi tengah header */
+.flp-username-badge {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.82rem;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.2rem 0.75rem;
+  border-radius: 20px;
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.92;
+}
+
+/* Tombol tutup (X) */
+.flp-btn-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.4rem 0.65rem;
+  border-radius: 8px;
+  line-height: 1;
+  transition: background 0.2s, transform 0.2s;
+  z-index: 1;
+}
+.flp-btn-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+/* ── Body ──────────────────────────────────────────────────────────── */
+.flp-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem 1.5rem;
+  gap: 1.25rem;
+  overflow-y: auto;
+}
+
+/* ── Camera section ────────────────────────────────────────────────── */
+.flp-camera-section {
+  width: 100%;
+  max-width: 420px;
+}
+
+/* Container rasio 4:3 dengan border-radius */
+.flp-camera-box {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Placeholder sebelum kamera aktif */
+.flp-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+.flp-placeholder-icon { font-size: 3rem; line-height: 1; }
+
+/* Video stream */
+.flp-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── Oval guide overlay ─────────────────────────────────────────────── */
+.flp-oval-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none; /* tidak menghalangi klik */
+}
+
+.flp-oval-svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Animasi pulse pada ellipse — berkedip pelan biru-putih */
+.flp-oval-ellipse {
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.5));
+  animation: flpPulseOval 2s ease-in-out infinite;
+}
+
+@keyframes flpPulseOval {
+  0%, 100% { opacity: 0.8; stroke: white; }
+  50%       { opacity: 1;   stroke: #a5f3fc; }
+}
+
+/* ── Verifying overlay ──────────────────────────────────────────────── */
+.flp-verifying-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+/* Spinner */
+.flp-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: flpSpin 0.75s linear infinite;
+}
+@keyframes flpSpin { to { transform: rotate(360deg); } }
+
+/* ── Success overlay ────────────────────────────────────────────────── */
+.flp-success-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(16, 185, 129, 0.35); /* hijau transparan */
+  backdrop-filter: blur(3px);
+}
+
+.flp-success-icon {
+  width: 80px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 3px solid white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  animation: flpCheckmark 0.45s ease-out;
+}
+@keyframes flpCheckmark {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+/* ── Status teks ────────────────────────────────────────────────────── */
+.flp-status {
+  width: 100%;
+  max-width: 420px;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.flp-status-text {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.9;
+  line-height: 1.4;
+}
+
+.flp-status-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  animation: flpFadeIn 0.4s ease-out;
+}
+
+.flp-confidence {
+  margin: 0;
+  font-size: 0.82rem;
+  opacity: 0.75;
+}
+
+/* ── Tombol aksi ─────────────────────────────────────────────────────── */
+.flp-actions {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 420px;
+  flex-wrap: wrap;
+}
+
+/* Primary (Capture & Verify) */
+.flp-btn-primary {
+  flex: 1;
+  min-width: 160px;
+  padding: 0.85rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  background: white;
+  color: #667eea;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.flp-btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.3);
+}
+.flp-btn-primary:disabled,
+.flp-btn-primary.flp-btn-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Secondary (Batal) */
+.flp-btn-secondary {
+  flex: 1;
+  min-width: 100px;
+  padding: 0.85rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 14px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  transition: background 0.2s, border-color 0.2s;
+}
+.flp-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: white;
+}
+
+/* Retry (kuning hangat) */
+.flp-btn-retry {
+  flex: 1;
+  min-width: 130px;
+  padding: 0.85rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 14px;
+  cursor: pointer;
+  background: rgba(251, 191, 36, 0.3);
+  color: white;
+  border: 2px solid rgba(251, 191, 36, 0.7);
+  transition: background 0.2s, border-color 0.2s;
+}
+.flp-btn-retry:hover {
+  background: rgba(251, 191, 36, 0.45);
+  border-color: rgba(251, 191, 36, 0.9);
+}
+
+/* ── Redirect message ──────────────────────────────────────────────── */
+.flp-redirect-msg {
+  text-align: center;
+  opacity: 0.75;
+  font-size: 0.88rem;
+  padding: 0.75rem;
+  width: 100%;
+  margin: 0;
+}
+
+/* ── Threshold info ────────────────────────────────────────────────── */
+.flp-threshold-info {
+  text-align: center;
+  opacity: 0.55;
+  font-size: 0.78rem;
+  margin-top: -0.5rem;
+}
+
+/* ── Responsive (mobile < 640px) ───────────────────────────────────── */
+@media (max-width: 640px) {
+  .flp-header { padding: 0.7rem 1rem; }
+  .flp-title  { font-size: 1rem; }
+
+  .flp-username-badge {
+    position: static;
+    transform: none;
+    font-size: 0.75rem;
+    max-width: 120px;
+  }
+
+  .flp-body { padding: 1rem; gap: 1rem; }
+
+  .flp-actions  { flex-direction: column; }
+  .flp-btn-primary,
+  .flp-btn-secondary,
+  .flp-btn-retry { min-width: unset; width: 100%; }
+}

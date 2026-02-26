@@ -92,7 +92,13 @@ PERMISSIONS = {
     "user_sessions.read": "Melihat data sesi pengguna",
     "user_sessions.create": "Membuat sesi pengguna baru",
     "user_sessions.update": "Mengubah status session",
-    "user_sessions.delete": "Menghapus session"
+    "user_sessions.delete": "Menghapus session",
+
+    # Face Recognition Management
+    "face.read": "Melihat status registrasi dan data face embeddings",
+    "face.register": "Mendaftarkan/register wajah pegawai (upload embeddings)",
+    "face.delete": "Menghapus face embeddings pegawai",
+    "face.verify": "Verifikasi/validasi wajah untuk login dan absensi",
 }
 
 
@@ -186,6 +192,12 @@ class PermissionKeys:
     USER_SESSIONS_CREATE = "user_sessions.create"
     USER_SESSIONS_UPDATE = "user_sessions.update"
     USER_SESSIONS_DELETE = "user_sessions.delete"
+
+    # Face Recognition Management
+    FACE_READ = "face.read"
+    FACE_REGISTER = "face.register"
+    FACE_DELETE = "face.delete"
+    FACE_VERIFY = "face.verify"
 
 
 def list_permissions() -> list[str]:

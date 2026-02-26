@@ -1,8 +1,10 @@
 # ============================================================
 # DATABASE SERVICE ONLY
 # ============================================================
-# PostgreSQL + pgAdmin for attendance face recognition system
+# PostgreSQL 16 + pgvector + pgAdmin
+# Image: pgvector/pgvector:pg16 (pgvector pre-installed)
 # Usage: docker-compose up -d
+# Reset:  docker-compose down -v && docker-compose up -d
 # ============================================================
 
 services:
@@ -19,13 +21,35 @@ services:
       POSTGRES_INITDB_ARGS: "-E UTF8"
       # Timezone
       TZ: Asia/Jakarta
+    # -------------------------------------------------------
+    # PostgreSQL tuning for pgvector / face recognition
+    # -------------------------------------------------------
+    # maintenance_work_mem : faster IVFFlat index build
+    # max_parallel_maintenance_workers : parallel index creation
+    # work_mem             : cosine similarity query performance
+    # shared_buffers       : general cache (≈25% of RAM)
+    # effective_cache_size : planner hint (≈75% of RAM)
+    # -------------------------------------------------------
+    command: >
+      postgres
+      -c shared_buffers=4GB
+      -c work_mem=256MB
+      -c maintenance_work_mem=2GB
+      -c max_parallel_maintenance_workers=4
+      -c effective_cache_size=12GB
+      -c log_min_duration_statement=2000
     ports:
       - "${DOCKER_HOST_IP:-0.0.0.0}:${POSTGRES_PORT:-5432}:5432"
     volumes:
-      # Init script for first-time setup
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      # Init script — prefix 01_ ensures correct execution order
+      # :ro = readonly, prevent accidental modification inside container
+      - ./init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
       # Persistent data storage
       - postgres_data:/var/lib/postgresql/data
+    # Shared memory untuk PostgreSQL buffer management
+    # Host RAM: 16GB → shared_buffers=4GB → shm_size minimal harus ≥ ~256MB
+    # (PostgreSQL >= 9.3 pakai mmap, bukan POSIX shmem, jadi 512MB sudah cukup)
+    shm_size: '512mb'
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s

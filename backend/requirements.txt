@@ -29,3 +29,12 @@ email-validator==2.1.0
 Pillow==10.2.0  # Image processing and optimization
 APScheduler==3.10.4  # Background task scheduler for session cleanup
 openpyxl==3.1.5
+
+# ============================================================
+# Face Recognition
+# ============================================================
+pgvector==0.3.2             # pgvector type for SQLAlchemy (Vector column)
+insightface==0.7.3          # InsightFace: SCRFD detection + ArcFace embedding
+onnxruntime==1.16.3         # ONNX Runtime for InsightFace inference (CPU)
+opencv-python-headless==4.9.0.80  # OpenCV tanpa GUI (server/Docker friendly)
+numpy>=1.24.0,<2.0               # Array ops untuk embedding

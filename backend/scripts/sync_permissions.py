@@ -21,6 +21,11 @@ USER_PERMISSIONS = {
     "absensi.read",
     "absensi.create",
     "absensi.update",
+    # Face recognition — user kelola wajah sendiri
+    "face.read",
+    "face.register",
+    "face.delete",
+    "face.verify",
 }
 
 ADMIN_PERMISSIONS = {
@@ -29,6 +34,8 @@ ADMIN_PERMISSIONS = {
     "pegawai.read", "pegawai.create", "pegawai.update", "pegawai.delete",
     "absensi.read", "absensi.create", "absensi.update", "absensi.delete",
     "user_sessions.read",
+    # Face recognition — admin bisa kelola semua pegawai
+    "face.read", "face.register", "face.delete", "face.verify",
 }
 
 

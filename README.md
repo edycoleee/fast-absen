@@ -39,10 +39,13 @@ pip install -r requirements.txt
 
 # Salin dan sesuaikan .env
 cp .env.example .env
-
+# Port Already in Use
+lsof -ti:8000 | xargs kill -9  # Kill process
 # Jalankan server
 python run.py
 # → http://192.168.30.21:8000
+
+
 ```
 
 ### 3. Frontend

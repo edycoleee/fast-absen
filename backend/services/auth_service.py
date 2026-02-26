@@ -58,7 +58,7 @@ class AuthService:
             "kepala_unit_scope_id": kepala_unit_scope_id,
             "menus": {
                 "dashboard": {
-                    "visible": can_view_kpi or "absensi.read" in permission_set,
+                    "visible": is_admin or can_view_kpi or "absensi.read" in permission_set,
                 },
                 "kpi_unit_role": {
                     "visible": can_view_kpi,

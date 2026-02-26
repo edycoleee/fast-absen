@@ -14,3 +14,7 @@ export { usePegawaiShiftKelompok } from './usePegawaiShiftKelompok';
 export { useRosterUploadBatch } from './useRosterUploadBatch';
 export { useRosterShift } from './useRosterShift';
 export { usePenilaianShiftAbsensi } from './usePenilaianShiftAbsensi';
+export { useCamera } from './useCamera';
+export { useCapture } from './useCapture';
+export { useFaceValidation } from './useFaceValidation';
+export { useOvalGuide } from './useOvalGuide';

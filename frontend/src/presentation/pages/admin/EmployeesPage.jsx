@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { usePegawai } from '../../../domain/hooks';
 import { useAuth } from '../../../domain/hooks';
 import PegawaiRepository from '../../../data/repositories/PegawaiRepository';
@@ -7,6 +8,7 @@ import { formatErrorMessage, formatErrorForAlert } from '../../../utils/errorHan
 
 const Pegawai = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const {
     pegawai,
     loading,
@@ -366,6 +368,12 @@ const Pegawai = () => {
                             onClick={() => openEditModal(p)}
                           >
                             Edit
+                          </button>
+                          <button
+                            onClick={() => navigate(`/pegawai/${p.id_pegawai}/register-face?mode=register`)}
+                            className="text-indigo-600 hover:text-indigo-900 mr-3"
+                          >
+                            Wajah
                           </button>
                           <button
                             onClick={() => handleDelete(p.id_pegawai)}

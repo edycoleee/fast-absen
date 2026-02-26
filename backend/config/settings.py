@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     SESSION_EXPIRY_HOURS: int = 24  # Auto-logout sessions idle for X hours
     SESSION_CLEANUP_INTERVAL_MINUTES: int = 60  # Run cleanup every X minutes (default: 1 hour)
 
+    # Face Recognition
+    # Path direktori model InsightFace (None = default ~/.insightface)
+    # Contoh: /app/models/insightface
+    INSIGHTFACE_MODEL_DIR: str | None = None
+
     # Initial admin bootstrap (optional)
     ADMIN_USERNAME: str | None = None
     ADMIN_PASSWORD: str | None = None

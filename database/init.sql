@@ -7,6 +7,7 @@
 -- EXTENSIONS (optional but recommended)
 -- ============================================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS vector;  -- pgvector: face embedding similarity search
 
 -- ============================================================
 -- TABLE: unit (Master Unit/Instalasi)
@@ -391,6 +392,30 @@ CREATE INDEX idx_penilaian_shift_absensi_status ON penilaian_shift_absensi(statu
 CREATE INDEX idx_penilaian_shift_absensi_evaluated ON penilaian_shift_absensi(evaluated_at DESC);
 
 -- ============================================================
+-- TABLE: face_embeddings (Face Recognition - InsightFace Buffalo_L)
+-- Requires: pgvector extension
+-- Stores 512-dim ArcFace embeddings per pegawai
+-- ============================================================
+CREATE TABLE face_embeddings (
+    id SERIAL PRIMARY KEY,
+    id_pegawai VARCHAR(20) NOT NULL REFERENCES pegawai(id_pegawai) ON DELETE CASCADE,
+    embedding vector(512) NOT NULL,            -- 512-dim L2-normalized ArcFace embedding
+    is_average BOOLEAN DEFAULT FALSE,           -- TRUE = averaged embedding dari multiple photos
+    quality_score FLOAT
+        CHECK (quality_score IS NULL OR (quality_score >= 0.0 AND quality_score <= 1.0)),
+    model_version VARCHAR(50) DEFAULT 'buffalo_l',  -- Untuk versioning migrasi model
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_face_embeddings_pegawai ON face_embeddings(id_pegawai);
+CREATE INDEX idx_face_embeddings_pegawai_avg ON face_embeddings(id_pegawai, is_average);
+-- IVFFlat index untuk fast cosine similarity search (1:N identification)
+-- lists = 100 sesuai rekomendasi pgvector untuk dataset ratusan-ribuan embeddings
+CREATE INDEX idx_face_embeddings_vector
+    ON face_embeddings USING ivfflat (embedding vector_cosine_ops)
+    WITH (lists = 100);
+
+-- ============================================================
 -- NOTE: Multiple absensi records per employee per day are allowed
 -- Use application logic to ensure only one ACTIVE session at a time
 -- ============================================================
@@ -556,7 +581,13 @@ INSERT INTO permissions (name, description) VALUES
 
 -- Legacy Session Absensi Management (compatibility)
 ('login_absensi.read', 'Melihat data sesi absensi (legacy)'),
-('login_absensi.create', 'Membuat data sesi absensi (legacy)');
+('login_absensi.create', 'Membuat data sesi absensi (legacy)'),
+
+-- Face Recognition Management
+('face.read', 'Melihat status registrasi dan data face embeddings'),
+('face.register', 'Mendaftarkan/register wajah pegawai (upload embeddings)'),
+('face.delete', 'Menghapus face embeddings pegawai'),
+('face.verify', 'Verifikasi/validasi wajah untuk login dan absensi');
 
 -- ============================================================
 -- ROLE-PERMISSION ASSIGNMENTS
@@ -587,7 +618,8 @@ JOIN permissions p ON p.name IN (
     'absensi.read', 'absensi.create', 'absensi.update', 'absensi.delete',
     'approval_pengajuan_absensi.read', 'approval_pengajuan_absensi.create', 'approval_pengajuan_absensi.update',
     'approval_pengajuan_absensi_log.read',
-    'user_sessions.read', 'user_sessions.update'
+    'user_sessions.read', 'user_sessions.update',
+    'face.read', 'face.register', 'face.delete', 'face.verify'
 )
 WHERE r.name = 'admin';
 
@@ -604,7 +636,8 @@ JOIN permissions p ON p.name IN (
     'absensi.read',
     'approval_pengajuan_absensi.read',
     'approval_pengajuan_absensi.update',
-    'approval_pengajuan_absensi_log.read'
+    'approval_pengajuan_absensi_log.read',
+    'face.read'
 )
 WHERE r.name = 'ka-unit';
 
@@ -619,6 +652,10 @@ JOIN permissions p ON p.name IN (
     'absensi.update',       -- Check-out (IMPORTANT!)
     'approval_pengajuan_absensi.read',
     'approval_pengajuan_absensi.create',
-    'approval_pengajuan_absensi.update'
+    'approval_pengajuan_absensi.update',
+    'face.read',       -- Cek status registrasi wajah sendiri
+    'face.register',   -- Daftarkan wajah sendiri
+    'face.delete',     -- Hapus/re-register wajah sendiri
+    'face.verify'      -- Login & absensi via face
 )
 WHERE r.name = 'user';

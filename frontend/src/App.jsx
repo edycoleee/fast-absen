@@ -7,6 +7,7 @@ import {
   LandingPage,
   AdminLoginPage,
   AttendanceLoginPage,
+  FaceLoginPopup,
   AttendanceDashboardPage,
   AdminDashboardPage,
   UsersPage,
@@ -25,6 +26,7 @@ import {
   RosterShiftPage,
   PenilaianShiftAbsensiPage,
   RosterAdapterPage,
+  FaceRegistrationPage,
 } from './presentation/pages'
 import { useAuth, useSessionHeartbeat } from './domain/hooks'
 
@@ -64,6 +66,7 @@ function App() {
           {/* Login Routes */}
           <Route path="/login-admin" element={<AdminLoginPage />} />
           <Route path="/login-absensi" element={<AttendanceLoginPage />} />
+          <Route path="/login-face-popup" element={<FaceLoginPopup />} />
           
           {/* Absensi Dashboard (for regular users/pegawai) - No admin layout */}
           <Route path="/absensi-dashboard" element={<AttendancePrivateRoute />}>
@@ -78,6 +81,7 @@ function App() {
             <Route path="permissions" element={<PermissionsPage />} />
             <Route path="unit" element={<UnitsPage />} />
             <Route path="pegawai" element={<EmployeesPage />} />
+            <Route path="pegawai/:idPegawai/register-face" element={<FaceRegistrationPage />} />
             <Route path="shift-kelompok" element={<ShiftKelompokPage />} />
             <Route path="shift-aturan" element={<ShiftKelompokAturanPage />} />
             <Route path="shift-pegawai" element={<PegawaiShiftKelompokPage />} />

@@ -25,6 +25,12 @@ const logout = async () => {
   return response.data;
 };
 
+/** Check if username exists, is active, and has pegawai linked — lightweight pre-check before face popup. */
+const checkUsername = async (username) => {
+  const response = await apiClient.get(`/auth/check-username/${encodeURIComponent(username)}`);
+  return response.data;
+};
+
 /** Get current authenticated user profile. */
 const getCurrentUser = async () => {
   const response = await apiClient.get('/auth/me');
@@ -36,6 +42,17 @@ const AuthRepository = {
   refreshToken,
   logout,
   getCurrentUser,
+  checkUsername,
+
+  /** Login menggunakan verifikasi wajah (username + foto base64). */
+  loginFace: async (username, imageBase64, threshold = 0.6) => {
+    const response = await apiClient.post('/auth/login-face', {
+      username,
+      image: imageBase64,
+      threshold,
+    });
+    return response.data;
+  },
 };
 
 export default AuthRepository;
