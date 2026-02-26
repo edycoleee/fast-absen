@@ -26,11 +26,28 @@ Refresh token dikirim via HTTP-only cookie (`refresh_token`) untuk endpoint `/au
 
 | Method | Endpoint | Auth | Permission |
 |---|---|---|---|
+| GET | `/auth/check-username/{username}` | ❌ | - |
 | POST | `/auth/login` | ❌ | - |
+| POST | `/auth/login-face` | ❌ | - |
 | POST | `/auth/refresh` | 🍪 Cookie | - |
 | POST | `/auth/logout` | 🍪 Cookie | - |
 
-## 2) Users (`/users`)
+## 2) Face Recognition (`/face`)
+
+| Method | Endpoint | Auth | Permission |
+|---|---|---|---|
+| POST | `/face/validate` | ✅ | `face.verify` |
+| POST | `/face/users/{id_pegawai}/register` | ✅ | `face.register` |
+| GET | `/face/users/{id_pegawai}/embeddings` | ✅ | `face.read` |
+| DELETE | `/face/users/{id_pegawai}/embeddings` | ✅ | `face.delete` |
+| POST | `/face/verify` | ✅ | `face.verify` |
+
+Catatan akses:
+- `POST /face/users/{id_pegawai}/register`: Role `user` hanya bisa mendaftarkan wajah miliknya sendiri; admin/super-admin bebas.
+- `GET /face/users/{id_pegawai}/embeddings` dan `DELETE /face/users/{id_pegawai}/embeddings`: idem, user hanya bisa akses data sendiri.
+- Re-register otomatis menghapus embedding lama.
+
+## 3) Users (`/users`)
 
 | Method | Endpoint | Auth | Permission |
 |---|---|---|---|
@@ -44,7 +61,7 @@ Refresh token dikirim via HTTP-only cookie (`refresh_token`) untuk endpoint `/au
 
 Contoh kolom template `users/import`: `username *`, `password (default: Absen@1234)`, `id_pegawai`, `role_names (e.g: user)`, `is_active (TRUE/FALSE)`
 
-## 3) Roles (`/roles`) *(super-admin)*
+## 4) Roles (`/roles`) *(super-admin)*
 
 | Method | Endpoint | Auth | Guard |
 |---|---|---|---|
@@ -54,7 +71,7 @@ Contoh kolom template `users/import`: `username *`, `password (default: Absen@12
 | PUT | `/roles/{role_id}` | ✅ | `require_super_admin` |
 | DELETE | `/roles/{role_id}` | ✅ | `require_super_admin` |
 
-## 4) Permissions (`/permissions`) *(super-admin)*
+## 5) Permissions (`/permissions`) *(super-admin)*
 
 | Method | Endpoint | Auth | Guard |
 |---|---|---|---|
@@ -64,7 +81,7 @@ Contoh kolom template `users/import`: `username *`, `password (default: Absen@12
 | PUT | `/permissions/{permission_id}` | ✅ | `require_super_admin` |
 | DELETE | `/permissions/{permission_id}` | ✅ | `require_super_admin` |
 
-## 5) Pegawai (`/pegawai`)
+## 6) Pegawai (`/pegawai`)
 
 | Method | Endpoint | Auth | Permission |
 |---|---|---|---|
@@ -78,7 +95,7 @@ Contoh kolom template `users/import`: `username *`, `password (default: Absen@12
 
 Contoh kolom template `pegawai/import`: `id_pegawai *`, `nip`, `nama *`, `jenis_kelamin (L/P)`, `tempat_lahir`, `tanggal_lahir (YYYY-MM-DD)`, `alamat`, `id_unit`, `kepala_id_unit`, `status`
 
-## 6) Unit (`/unit`)
+## 7) Unit (`/unit`)
 
 | Method | Endpoint | Auth | Permission |
 |---|---|---|---|
@@ -88,7 +105,7 @@ Contoh kolom template `pegawai/import`: `id_pegawai *`, `nip`, `nama *`, `jenis_
 | PUT | `/unit/{id_unit}` | ✅ | `unit.update` |
 | DELETE | `/unit/{id_unit}` | ✅ | `unit.delete` |
 
-## 7) Shift Kelompok (`/shift-kelompok`)
+## 8) Shift Kelompok (`/shift-kelompok`)
 
 | Method | Endpoint | Auth | Permission |
 |---|---|---|---|
@@ -98,7 +115,7 @@ Contoh kolom template `pegawai/import`: `id_pegawai *`, `nip`, `nama *`, `jenis_
 | PUT | `/shift-kelompok/{shift_kelompok_id}` | ✅ | `shift_kelompok.update` |
 | DELETE | `/shift-kelompok/{shift_kelompok_id}` | ✅ | `shift_kelompok.delete` |
 
-## 8) Shift Kelompok Aturan (`/shift-kelompok-aturan`)
+## 9) Shift Kelompok Aturan (`/shift-kelompok-aturan`)
 
 | Method | Endpoint | Auth | Permission |
 |---|---|---|---|
@@ -108,7 +125,7 @@ Contoh kolom template `pegawai/import`: `id_pegawai *`, `nip`, `nama *`, `jenis_
 | PUT | `/shift-kelompok-aturan/{aturan_id}` | ✅ | `shift_kelompok_aturan.update` |
 | DELETE | `/shift-kelompok-aturan/{aturan_id}` | ✅ | `shift_kelompok_aturan.delete` |
 
-## 9) Pegawai Shift Kelompok (`/pegawai-shift-kelompok`)
+## 10) Pegawai Shift Kelompok (`/pegawai-shift-kelompok`)
 
 | Method | Endpoint | Auth | Permission |
 |---|---|---|---|
@@ -122,7 +139,7 @@ Contoh kolom template `pegawai/import`: `id_pegawai *`, `nip`, `nama *`, `jenis_
 
 Contoh kolom template `pegawai-shift-kelompok/import`: `id_pegawai *`, `shift_kelompok_kode *`, `effective_start_date * (YYYY-MM-DD)`, `effective_end_date (YYYY-MM-DD)`, `is_default (TRUE/FALSE)`, `catatan`
 
-## 10) Roster Upload Batch (`/roster-upload-batch`)
+## 11) Roster Upload Batch (`/roster-upload-batch`)
 
 | Method | Endpoint | Auth | Permission |
 |---|---|---|---|
@@ -143,7 +160,7 @@ Catatan kontrak `POST /roster-upload-batch/import` (freeze):
   - duplikasi baris exact match.
 - Jika semua baris invalid, endpoint tetap `201` dengan ringkasan `result.valid_rows=0`, `result.invalid_rows>0`, dan detail error per baris.
 
-## 11) Roster Shift (`/roster-shift`)
+## 12) Roster Shift (`/roster-shift`)
 
 | Method | Endpoint | Auth | Permission |
 |---|---|---|---|
@@ -153,7 +170,7 @@ Catatan kontrak `POST /roster-upload-batch/import` (freeze):
 | PUT | `/roster-shift/{roster_id}` | ✅ | `roster_shift.update` |
 | DELETE | `/roster-shift/{roster_id}` | ✅ | `roster_shift.delete` |
 
-## 12) Penilaian Shift Absensi (`/penilaian-shift-absensi`)
+## 13) Penilaian Shift Absensi (`/penilaian-shift-absensi`)
 
 | Method | Endpoint | Auth | Permission |
 |---|---|---|---|
@@ -164,7 +181,7 @@ Catatan kontrak `POST /roster-upload-batch/import` (freeze):
 | PUT | `/penilaian-shift-absensi/{penilaian_id}` | ✅ | `penilaian_shift_absensi.update` |
 | DELETE | `/penilaian-shift-absensi/{penilaian_id}` | ✅ | `penilaian_shift_absensi.delete` |
 
-## 13) Approval Pengajuan Absensi (`/approval-pengajuan-absensi`)
+## 14) Approval Pengajuan Absensi (`/approval-pengajuan-absensi`)
 
 | Method | Endpoint | Auth | Permission |
 |---|---|---|---|
@@ -181,14 +198,14 @@ Kontrak alur W2 (freeze):
 - Approval create: `POST /approval-pengajuan-absensi/`
 - Approval decision: `POST /approval-pengajuan-absensi/{pengajuan_id}/decision`
 
-## 14) Approval Pengajuan Absensi Log (`/approval-pengajuan-absensi-log`)
+## 15) Approval Pengajuan Absensi Log (`/approval-pengajuan-absensi-log`)
 
 | Method | Endpoint | Auth | Permission |
 |---|---|---|---|
 | GET | `/approval-pengajuan-absensi-log/` | ✅ | `approval_pengajuan_absensi_log.read` |
 | GET | `/approval-pengajuan-absensi-log/pengajuan/{pengajuan_id}` | ✅ | `approval_pengajuan_absensi_log.read` |
 
-## 15) Absensi (`/absensi`)
+## 16) Absensi (`/absensi`)
 
 ### User flow
 
@@ -217,7 +234,7 @@ Query filter produksi untuk `GET /absensi/`:
 - `status`
 - pagination konsisten: `skip`, `limit` → response `items`, `total`, `skip`, `limit`
 
-## 16) User Sessions (`/user-sessions`)
+## 17) User Sessions (`/user-sessions`)
 
 | Method | Endpoint | Auth | Permission |
 |---|---|---|---|
@@ -232,7 +249,7 @@ Query filter produksi untuk `GET /absensi/`:
 | POST | `/user-sessions/heartbeat?session_id=...` | ✅ | `get_current_user` |
 | POST | `/user-sessions/cleanup-expired` | ✅ | `user_sessions.update` |
 
-## 17) Stats (`/stats`)
+## 18) Stats (`/stats`)
 
 | Method | Endpoint | Auth | Guard |
 |---|---|---|---|
@@ -267,7 +284,7 @@ Aturan scope akses:
 - Non-admin (kepala unit) otomatis terscope ke `kepala_id_unit` miliknya.
 - Endpoint `/stats/kpi/unit-role/my-unit` selalu memaksa scope unit milik user login (frontend tidak perlu kirim `id_unit`).
 
-## 18) Halo (`/halo`) *(legacy/example)*
+## 19) Halo (`/halo`) *(legacy/example)*
 
 | Method | Endpoint | Auth |
 |---|---|---|
@@ -279,6 +296,13 @@ Aturan scope akses:
 ## Endpoint Detail Penting
 
 ## Auth flow
+
+### `GET /auth/check-username/{username}`
+- Path param: `username`
+- Tidak perlu auth
+- Return: `username`, `id_pegawai`
+- Digunakan frontend untuk memvalidasi username **sebelum** membuka kamera face login
+- Error: `404` jika username tidak ditemukan/nonaktif, `400` jika user tidak terhubung ke pegawai
 
 ### `POST /auth/login`
 - Body: `username`, `password`
@@ -293,12 +317,49 @@ Aturan scope akses:
 - `menus.approval.visible`, `menus.approval.can_decide`
 - `menus.user_sessions.visible`
 
+### `POST /auth/login-face`
+- Body: `username`, `image` (base64), `threshold` (opsional, default `0.6`)
+- Tidak perlu auth
+- Flow: lookup user → ambil `id_pegawai` → verifikasi wajah via cosine similarity → buat JWT + session
+- Return: sama dengan `POST /auth/login` ditambah `face_similarity` (float)
+- Set cookie: `refresh_token` (HTTP-only)
+- Error: `401` jika username tidak ditemukan, wajah belum terdaftar, atau similarity di bawah threshold
+- **Prasyarat**: pegawai sudah mendaftarkan wajah via `POST /face/users/{id_pegawai}/register`
+
 ### `POST /auth/refresh`
 - Tanpa body, wajib cookie `refresh_token`
 - Return access token baru + `roles`, `permissions`, `menu_guard`
 
 ### `POST /auth/logout`
 - Hapus cookie `refresh_token`
+
+## Face Recognition flow
+
+### `POST /face/validate`
+- Body: `image` (base64)
+- Validasi kualitas gambar tanpa menyimpan embedding
+- Return: hasil deteksi (jumlah wajah, kualitas, dll)
+- Digunakan frontend untuk feedback sebelum registrasi/login
+
+### `POST /face/users/{id_pegawai}/register`
+- Path param: `id_pegawai`
+- Body: `images` (array base64, 1–10 foto), `model_version` (opsional, default `buffalo_l`)
+- Re-register **otomatis menghapus** embedding lama
+- Setiap foto diproses individual, lalu dibuat rata-rata embedding
+- Role `user`: hanya bisa mendaftarkan wajah miliknya sendiri
+
+### `GET /face/users/{id_pegawai}/embeddings`
+- Status registrasi wajah pegawai
+- Raw embedding vector **tidak** dikembalikan (keamanan)
+
+### `DELETE /face/users/{id_pegawai}/embeddings`
+- Hapus semua embedding pegawai
+- Setelah dihapus, pegawai harus melakukan registrasi ulang
+
+### `POST /face/verify`
+- Body: `id_pegawai`, `image` (base64), `threshold` (opsional)
+- Verifikasi wajah 1:1 tanpa login (digunakan untuk absensi, dll)
+- Return: `verified` (bool), `similarity` (float), `message`
 
 ## Absensi flow
 
