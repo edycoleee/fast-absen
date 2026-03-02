@@ -9,22 +9,26 @@ import re
 
 def get_client_ip(request: Request) -> str:
     """
-    Extract client IP address from request
-    Handles reverse proxy headers (X-Forwarded-For)
+    Extract client IP address from request.
+    Prioritizes Cloudflare's CF-Connecting-IP header which contains
+    the real visitor IP when using Cloudflare Tunnel.
     """
-    # Check for X-Forwarded-For header (from reverse proxy)
-    forwarded_for = request.headers.get('x-forwarded-for')
-    if forwarded_for:
-        # X-Forwarded-For can contain multiple IPs: client, proxy1, proxy2
-        # First IP is the original client
-        return forwarded_for.split(',')[0].strip()
-    
-    # Check for X-Real-IP header
+    # Prioritas 1: CF-Connecting-IP dari Cloudflare (IP asli user)
+    cf_ip = request.headers.get('cf-connecting-ip')
+    if cf_ip:
+        return cf_ip.strip()
+
+    # Prioritas 2: X-Real-IP (di-set oleh nginx dari CF-Connecting-IP)
     real_ip = request.headers.get('x-real-ip')
     if real_ip:
         return real_ip.strip()
-    
-    # Fallback to direct client host
+
+    # Prioritas 3: X-Forwarded-For (ambil IP pertama = client asli)
+    forwarded_for = request.headers.get('x-forwarded-for')
+    if forwarded_for:
+        return forwarded_for.split(',')[0].strip()
+
+    # Fallback ke koneksi langsung
     return request.client.host if request.client else 'unknown'
 
 
