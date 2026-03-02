@@ -26,9 +26,10 @@ export function useCamera() {
 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width:      { ideal: 640 },
-          height:     { ideal: 480 },
+          width:      { ideal: 480 },
+          height:     { ideal: 640 },
           facingMode: 'user',  // kamera depan
+          aspectRatio: { ideal: 0.75 }, // portrait 3:4
         },
         audio: false,
       });

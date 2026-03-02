@@ -48,11 +48,28 @@ const deleteEmbeddings = async (idPegawai) => {
   return response.data;
 };
 
+/**
+ * Verifikasi wajah 1:1 untuk pegawai tertentu.
+ * @param {string|number} idPegawai
+ * @param {string} imageBase64 — base64 tanpa data URI prefix
+ * @param {number} [threshold=0.6]
+ */
+const verifyFace = async (idPegawai, imageBase64, threshold = 0.6) => {
+  const response = await apiClient.post('/face/verify', {
+    id_pegawai: String(idPegawai),
+    image: imageBase64,
+    threshold,
+  });
+  return response.data;
+  // Returns: { success, data: { verified, similarity, threshold, id_pegawai, message } }
+};
+
 const FaceRepository = {
   getEmbeddingCount,
   validateFace,
   registerFaces,
   deleteEmbeddings,
+  verifyFace,
 };
 
 export default FaceRepository;

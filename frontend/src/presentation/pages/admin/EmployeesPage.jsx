@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePegawai } from '../../../domain/hooks';
 import { useAuth } from '../../../domain/hooks';
 import PegawaiRepository from '../../../data/repositories/PegawaiRepository';
+import FaceRepository from '../../../data/repositories/FaceRepository';
 import UnitSearchInput from '../../components/common/UnitSearchInput';
 import { formatErrorMessage, formatErrorForAlert } from '../../../utils/errorHandler';
 
@@ -28,6 +29,9 @@ const Pegawai = () => {
   const [formError, setFormError] = useState('');
   const [currentPhoto, setCurrentPhoto] = useState('');
 
+  // Face embedding counts per pegawai { [id_pegawai]: number }
+  const [faceCounts, setFaceCounts] = useState({});
+
   // Excel import state
   const [importOpen, setImportOpen] = useState(false);
   const [importFile, setImportFile] = useState(null);
@@ -50,6 +54,23 @@ const Pegawai = () => {
   useEffect(() => {
     fetchPegawai(page, 10, search);
   }, [page, search, fetchPegawai]);
+
+  // Fetch face embedding counts for all pegawai on current page
+  useEffect(() => {
+    if (!pegawai.length) return;
+    let cancelled = false;
+    Promise.all(
+      pegawai.map((p) =>
+        FaceRepository.getEmbeddingCount(p.id_pegawai)
+          .then((res) => ({ id: p.id_pegawai, count: res?.data?.total_embeddings ?? 0 }))
+          .catch(() => ({ id: p.id_pegawai, count: null }))
+      )
+    ).then((results) => {
+      if (cancelled) return;
+      setFaceCounts(Object.fromEntries(results.map((r) => [r.id, r.count])));
+    });
+    return () => { cancelled = true; };
+  }, [pegawai]);
 
   const handleDelete = async (id) => {
     if (!confirm('Apakah Anda yakin ingin menghapus pegawai ini?')) return;
@@ -309,6 +330,9 @@ const Pegawai = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Face
+                    </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
@@ -361,6 +385,19 @@ const Pegawai = () => {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-700">{p.status || '-'}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          {faceCounts[p.id_pegawai] == null ? (
+                            <span className="text-gray-300 text-xs">…</span>
+                          ) : faceCounts[p.id_pegawai] === 0 ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                              ✕ Belum
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                              ✓ {faceCounts[p.id_pegawai]}
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button

@@ -27,12 +27,12 @@ function CaptureGrid({ captures, onDelete }) {
     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 mt-3">
       {captures.map((c, i) => (
         <div key={c.id} className="relative group rounded overflow-hidden border border-gray-200">
-          <img src={c.dataUrl} alt={`capture-${i}`} className="w-full h-20 object-cover" />
+          <img src={c.image?.dataUrl} alt={`capture-${i}`} className="w-full h-20 object-cover" />
           {/* overlay info */}
           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center">
-            {c.confidence != null && (
+            {c.image?.confidence != null && (
               <span className="text-xs text-white mb-1">
-                {(c.confidence * 100).toFixed(0)}%
+                {(c.image.confidence * 100).toFixed(0)}%
               </span>
             )}
             <button
@@ -46,12 +46,12 @@ function CaptureGrid({ captures, onDelete }) {
           <span className="absolute top-1 left-1 bg-black/60 text-white text-[10px] px-1 rounded">
             {i + 1}
           </span>
-          {c.valid === false && (
+          {c.image?.valid === false && (
             <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] px-1 rounded">
               ✕
             </span>
           )}
-          {c.valid === true && (
+          {c.image?.valid === true && (
             <span className="absolute top-1 right-1 bg-green-500 text-white text-[10px] px-1 rounded">
               ✓
             </span>
@@ -81,7 +81,7 @@ function CameraSection({
   return (
     <div className="flex flex-col items-center gap-3">
       {/* video container */}
-      <div className="relative w-full max-w-xs mx-auto rounded-lg overflow-hidden bg-gray-900 aspect-video">
+      <div className="relative w-full max-w-sm mx-auto rounded-lg overflow-hidden bg-gray-900 aspect-[3/4]">
         <video
           ref={videoRef}
           muted
@@ -161,6 +161,258 @@ function CameraSection({
   );
 }
 
+/* ═══════════════════════════ VerifyCard component ═══════════════════════ */
+function VerifyCard({ idPegawai }) {
+  const fileRef = useRef(null);
+  const videoRef = useRef(null);
+  const [camActive, setCamActive] = useState(false);
+  const [camError, setCamError]   = useState(null);
+  const streamRef = useRef(null);
+
+  const [preview, setPreview]       = useState(null); // dataUrl
+  const [b64, setB64]               = useState(null); // base64 string
+  const [threshold, setThreshold]   = useState(0.6);
+  const [verifying, setVerifying]   = useState(false);
+  const [result, setResult]         = useState(null);  // { verified, similarity, message }
+  const [verifyError, setVerifyError] = useState(null);
+
+  /* camera helpers */
+  const startCam = async () => {
+    setCamError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      streamRef.current = stream;
+      setCamActive(true); // mount video element dulu, stream di-attach via useEffect
+    } catch {
+      setCamError('Kamera tidak dapat diakses.');
+    }
+  };
+
+  // Attach stream ke video element setelah camActive true (element sudah ter-mount)
+  useEffect(() => {
+    if (camActive && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [camActive]);
+
+  const stopCam = () => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setCamActive(false);
+  };
+
+  const snapFromCam = () => {
+    if (!videoRef.current) return;
+    const canvas = document.createElement('canvas');
+    canvas.width  = videoRef.current.videoWidth  || 640;
+    canvas.height = videoRef.current.videoHeight || 480;
+    canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    setPreview(dataUrl);
+    setB64(dataUrl.split(',')[1]);
+    setResult(null);
+    setVerifyError(null);
+    stopCam();
+  };
+
+  const loadFile = (file) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      setPreview(dataUrl);
+      setB64(dataUrl.split(',')[1]);
+      setResult(null);
+      setVerifyError(null);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleVerify = async () => {
+    if (!b64) return;
+    setVerifying(true);
+    setVerifyError(null);
+    setResult(null);
+    try {
+      const res = await FaceRepository.verifyFace(idPegawai, b64, threshold);
+      setResult(res?.data ?? res);
+    } catch (err) {
+      setVerifyError(
+        err?.response?.data?.detail || err?.message || 'Verifikasi gagal.'
+      );
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const reset = () => {
+    setPreview(null);
+    setB64(null);
+    setResult(null);
+    setVerifyError(null);
+    stopCam();
+  };
+
+  const similarity  = result?.similarity ?? null;
+  const verified    = result?.verified   ?? null;
+  const pct         = similarity != null ? Math.round(similarity * 100) : null;
+
+  return (
+    <div className="mt-6 bg-white rounded-xl border border-gray-200 shadow-sm p-4 md:p-6">
+      <h2 className="text-base font-semibold text-gray-800 mb-1">🔍 Test Verifikasi Wajah</h2>
+      <p className="text-xs text-gray-500 mb-4">
+        Upload atau ambil foto baru untuk menguji apakah cocok dengan embedding yang tersimpan.
+      </p>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* LEFT: input */}
+        <div className="flex flex-col gap-3">
+
+          {/* Camera preview */}
+          {camActive && (
+            <div className="relative rounded-lg overflow-hidden bg-gray-900 aspect-[3/4] w-full max-w-sm mx-auto">
+              <video ref={videoRef} muted playsInline autoPlay
+                className="w-full h-full object-cover scale-x-[-1]" />
+              <button
+                onClick={snapFromCam}
+                className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white text-gray-800 text-sm font-medium px-4 py-1.5 rounded-full shadow hover:bg-gray-100"
+              >
+                📸 Ambil
+              </button>
+            </div>
+          )}
+
+          {/* Photo preview */}
+          {preview && !camActive && (
+            <div className="relative w-full max-w-xs mx-auto rounded-lg overflow-hidden border border-gray-200">
+              <img src={preview} alt="preview" className="w-full object-cover max-h-48" />
+              <button
+                onClick={reset}
+                className="absolute top-1 right-1 bg-black/60 text-white text-xs px-2 py-0.5 rounded hover:bg-black/80"
+              >
+                Ganti
+              </button>
+            </div>
+          )}
+
+          {/* Buttons */}
+          {!camActive && !preview && (
+            <div className="flex gap-2 flex-wrap justify-center">
+              <button
+                onClick={startCam}
+                className="btn-primary text-sm px-4 py-2"
+              >
+                📷 Buka Kamera
+              </button>
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm px-4 py-2 rounded-lg border border-gray-300"
+              >
+                🖼️ Upload Foto
+              </button>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden"
+                onChange={(e) => { loadFile(e.target.files?.[0]); e.target.value = ''; }} />
+            </div>
+          )}
+
+          {camActive && (
+            <div className="flex gap-2 justify-center">
+              <button onClick={stopCam} className="bg-gray-500 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded-lg">
+                Tutup Kamera
+              </button>
+            </div>
+          )}
+
+          {camError && <p className="text-xs text-red-500 text-center">{camError}</p>}
+
+          {/* Threshold slider */}
+          <div className="mt-1">
+            <label className="text-xs text-gray-600 flex justify-between mb-1">
+              <span>Threshold kemiripan</span>
+              <span className="font-medium text-gray-800">{threshold.toFixed(2)}</span>
+            </label>
+            <input
+              type="range" min="0.3" max="0.9" step="0.05"
+              value={threshold}
+              onChange={(e) => setThreshold(parseFloat(e.target.value))}
+              className="w-full accent-indigo-600"
+            />
+            <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
+              <span>Longgar (0.3)</span>
+              <span>Ketat (0.9)</span>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT: result */}
+        <div className="flex flex-col justify-between gap-4">
+
+          {/* Result display */}
+          {result ? (
+            <div className={`rounded-xl border p-5 text-center ${
+              verified
+                ? 'bg-green-50 border-green-300'
+                : 'bg-red-50 border-red-300'
+            }`}>
+              <div className="text-4xl mb-2">{verified ? '✅' : '❌'}</div>
+              <p className={`text-lg font-bold ${verified ? 'text-green-700' : 'text-red-700'}`}>
+                {verified ? 'Wajah Cocok' : 'Wajah Tidak Cocok'}
+              </p>
+
+              {/* Similarity bar */}
+              <div className="mt-4 mx-auto max-w-xs">
+                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                  <span>Similarity</span>
+                  <span className="font-medium">{pct}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div
+                    className="h-3 rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(pct, 100)}%`,
+                      backgroundColor: verified ? '#16a34a' : '#dc2626',
+                    }}
+                  />
+                </div>
+                <div className="relative mt-0.5">
+                  <div
+                    className="absolute top-0 h-3 w-px bg-gray-500"
+                    style={{ left: `${threshold * 100}%` }}
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1 text-center">
+                    Threshold: {Math.round(threshold * 100)}%
+                  </p>
+                </div>
+              </div>
+
+              <p className="mt-3 text-xs text-gray-500">{result.message}</p>
+            </div>
+          ) : verifyError ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 text-center">
+              ❌ {verifyError}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-8 text-center text-gray-400 text-sm">
+              Hasil verifikasi akan tampil di sini
+            </div>
+          )}
+
+          {/* Action button */}
+          <button
+            onClick={handleVerify}
+            disabled={!b64 || verifying}
+            className="btn-primary py-2.5 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {verifying ? '⏳ Memverifikasi…' : '🔍 Verifikasi Sekarang'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════════════════════ FaceRegistrationPage ═══════════════════════ */
 export default function FaceRegistrationPage() {
   const { idPegawai } = useParams();
@@ -203,7 +455,7 @@ export default function FaceRegistrationPage() {
         ]);
         if (cancelled) return;
         setPegawai(pData?.data ?? pData);
-        setEmbedCount(eData?.count ?? eData?.total ?? 0);
+        setEmbedCount(eData?.data?.total_embeddings ?? eData?.count ?? eData?.total ?? 0);
       } catch {
         // non-fatal: pegawai info optional
       } finally {
@@ -578,6 +830,11 @@ export default function FaceRegistrationPage() {
           <li>Hindari menggunakan kacamata gelap atau masker</li>
         </ul>
       </div>
+
+      {/* ── Verification Test Card ──────────────────────────────────────── */}
+      {embedCount != null && embedCount > 0 && (
+        <VerifyCard idPegawai={idPegawai} />
+      )}
     </div>
   );
 }
