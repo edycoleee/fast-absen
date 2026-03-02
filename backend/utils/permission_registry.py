@@ -100,6 +100,10 @@ PERMISSIONS = {
     "face.delete": "Menghapus face embeddings pegawai",
     "face.verify": "Verifikasi/validasi wajah untuk login dan absensi",
 
+    # App Settings Management
+    "app_settings.read": "Melihat konfigurasi sistem",
+    "app_settings.update": "Mengubah konfigurasi sistem",
+
     # Kamus Kode Shift Management
     "kamus_kode_shift.read": "Melihat data kamus kode shift",
     "kamus_kode_shift.create": "Membuat kode shift baru",
@@ -222,6 +226,10 @@ class PermissionKeys:
     FACE_REGISTER = "face.register"
     FACE_DELETE = "face.delete"
     FACE_VERIFY = "face.verify"
+
+    # App Settings Management
+    APP_SETTINGS_READ   = "app_settings.read"
+    APP_SETTINGS_UPDATE = "app_settings.update"
 
 
 def list_permissions() -> list[str]:

@@ -4,48 +4,49 @@ Menggabungkan semua endpoint
 """
 from fastapi import APIRouter
 from api.v1.endpoints import (
-	halo,
-	auth,
-	users,
-	roles,
-	permissions,
-	pegawai,
-	absensi,
-	user_sessions,
-	stats,
-	unit,
-	shift_kelompok,
-	shift_kelompok_aturan,
-	pegawai_shift_kelompok,
-	roster_upload_batch,
-	roster_shift,
-	penilaian_shift_absensi,
-	approval_pengajuan_absensi_log,
-	approval_pengajuan_absensi,
-	face,
-	kamus_kode_shift,
-	kamus_pola_shift,
+    halo,
+    auth,
+    users,
+    roles,
+    permissions,
+    pegawai,
+    absensi,
+    user_sessions,
+    stats,
+    unit,
+    shift_kelompok,
+    shift_kelompok_aturan,
+    pegawai_shift_kelompok,
+    roster_upload_batch,
+    roster_shift,
+    penilaian_shift_absensi,
+    approval_pengajuan_absensi_log,
+    approval_pengajuan_absensi,
+    face,
+    kamus_kode_shift,
+    kamus_pola_shift,
+    app_settings,
 )
 
 api_router = APIRouter()
 
-# Authentication
+# Autentikasi
 api_router.include_router(auth.router)
 
-# Users Management (Admin)
+# User Management (Admin)
 api_router.include_router(users.router)
 
-# Roles Management (Admin)
+# Role Management (Admin)
 api_router.include_router(roles.router)
 
-# Permissions Management (Admin)
+# Permission Management (Admin)
 api_router.include_router(permissions.router)
-
-# Pegawai Management (Admin)
-api_router.include_router(pegawai.router)
 
 # Unit Management (Admin)
 api_router.include_router(unit.router)
+
+# Pegawai Management (Admin)
+api_router.include_router(pegawai.router)
 
 # Shift Kelompok Management (Admin)
 api_router.include_router(shift_kelompok.router)
@@ -88,6 +89,9 @@ api_router.include_router(kamus_kode_shift.router)
 
 # Kamus Pola Shift Master (Admin)
 api_router.include_router(kamus_pola_shift.router)
+
+# App Settings (Admin read/write, public read)
+api_router.include_router(app_settings.router)
 
 # Legacy/Example endpoint
 api_router.include_router(halo.router)

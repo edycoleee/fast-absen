@@ -47,6 +47,7 @@ const buildMenuItems = (menuGuard = {}) => {
       { path: '/roster-adapter',  label: 'Roster Adapter',  icon: '🧩' },
       { path: '/roster-shift',    label: 'Roster Shift',    icon: '🗓️' },
       { path: '/penilaian-shift', label: 'Penilaian Shift', icon: '⚖️' },
+      { path: '/system-settings', label: 'Pengaturan Sistem', icon: '⚙️' },
     );
   }
 

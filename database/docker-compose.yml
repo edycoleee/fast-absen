@@ -73,7 +73,7 @@ services:
       PGADMIN_CONFIG_SERVER_MODE: 'False'
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
     ports:
-      - "${DOCKER_HOST_IP:-0.0.0.0}:${PGADMIN_PORT:-5050}:5050"
+      - "${DOCKER_HOST_IP:-0.0.0.0}:${PGADMIN_PORT:-5050}:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:

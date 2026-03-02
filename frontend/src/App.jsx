@@ -8,6 +8,7 @@ import {
   AdminLoginPage,
   AttendanceLoginPage,
   FaceLoginPopup,
+  FaceLoginPage,
   AttendanceDashboardPage,
   AdminDashboardPage,
   UsersPage,
@@ -27,6 +28,7 @@ import {
   PenilaianShiftAbsensiPage,
   RosterAdapterPage,
   FaceRegistrationPage,
+  SystemSettingsPage,
 } from './presentation/pages'
 import { useAuth, useSessionHeartbeat } from './domain/hooks'
 
@@ -67,6 +69,7 @@ function App() {
           <Route path="/login-admin" element={<AdminLoginPage />} />
           <Route path="/login-absensi" element={<AttendanceLoginPage />} />
           <Route path="/login-face-popup" element={<FaceLoginPopup />} />
+          <Route path="/login-face-absensi" element={<FaceLoginPage />} />
           
           {/* Absensi Dashboard (for regular users/pegawai) - No admin layout */}
           <Route path="/absensi-dashboard" element={<AttendancePrivateRoute />}>
@@ -93,6 +96,7 @@ function App() {
             <Route path="sessions-monitor" element={<SessionMonitorPage />} />
             <Route path="approval" element={<ApprovalPage />} />
             <Route path="rekap-unit-role" element={<KpiUnitRolePage />} />
+            <Route path="system-settings" element={<SystemSettingsPage />} />
           </Route>
 
           {/* Fallback */}

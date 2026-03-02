@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 
 from config.settings import settings
 from repositories.face_repository import FaceRepository
+from repositories.app_setting_repository import AppSettingRepository
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +134,20 @@ class FaceService:
     def __init__(self, db: Session):
         self.db = db
         self.repo = FaceRepository(db)
+        self._settings_repo = AppSettingRepository(db)
+
+    def _get_effective_threshold(self, requested: float) -> float:
+        """
+        Kembalikan threshold yang berlaku:
+        - Jika admin mengunci (face_threshold_locked=true) → pakai nilai sistem
+        - Jika tidak dikunci → pakai nilai yang diminta client
+        """
+        try:
+            locked = self._settings_repo.get_bool("face_threshold_locked", False)
+            system_val = self._settings_repo.get_float("face_threshold", self.DEFAULT_THRESHOLD)
+            return system_val if locked else requested
+        except Exception:
+            return requested
 
     # ──────────────────────────
     # Internal helpers
@@ -339,8 +354,9 @@ class FaceService:
     ) -> dict:
         """
         Verifikasi wajah 1:1 untuk pegawai spesifik.
-        Bandingkan embedding query dengan semua stored embedding (max similarity).
+        Jika admin mengunci threshold, nilai client diabaikan.
         """
+        threshold = self._get_effective_threshold(threshold)
         records = self.repo.get_by_pegawai(id_pegawai)
         if not records:
             raise HTTPException(

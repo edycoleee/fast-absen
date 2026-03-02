@@ -727,3 +727,36 @@ JOIN permissions p ON p.name IN (
     'face.verify'      -- Login & absensi via face
 )
 WHERE r.name = 'user';
+
+-- ============================================================
+-- App Settings — System configuration managed by super-admin
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS app_settings (
+    key         VARCHAR(100) PRIMARY KEY,
+    value       TEXT         NOT NULL,
+    description TEXT,
+    locked      BOOLEAN      NOT NULL DEFAULT FALSE,
+    updated_at  TIMESTAMP    NOT NULL DEFAULT NOW(),
+    updated_by  INTEGER      REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- Seed: default face recognition threshold (unlocked = user can adjust)
+INSERT INTO app_settings (key, value, description, locked) VALUES
+    ('face_threshold',        '0.60', 'Threshold cosine similarity untuk pengenalan wajah (0.0–1.0)', FALSE),
+    ('face_threshold_locked', 'false','Jika true, pengguna tidak dapat mengubah threshold di halaman login', FALSE)
+ON CONFLICT (key) DO NOTHING;
+
+-- Seed: new permissions
+INSERT INTO permissions (name, description) VALUES
+    ('app_settings.read',   'Melihat konfigurasi sistem'),
+    ('app_settings.update', 'Mengubah konfigurasi sistem')
+ON CONFLICT (name) DO NOTHING;
+
+-- Grant app_settings permissions to super-admin
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+JOIN permissions p ON p.name IN ('app_settings.read', 'app_settings.update')
+WHERE r.name IN ('super-admin', 'super_admin', 'superadmin')
+ON CONFLICT DO NOTHING;
