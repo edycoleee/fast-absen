@@ -194,17 +194,21 @@ class AbsensiService:
         )
     
     def get_user_history(
-        self, 
-        id_pegawai: str, 
-        skip: int = 0, 
-        limit: int = 30
+        self,
+        id_pegawai: str,
+        skip: int = 0,
+        limit: int = 30,
+        start_date=None,
+        end_date=None,
     ) -> List[AbsensiResponse]:
-        """Get absensi history for current user"""
-        absensi_list = self.absensi_repo.get_by_pegawai(id_pegawai, skip=skip, limit=limit)
+        """Get absensi history for current user, optionally filtered by date range"""
+        absensi_list = self.absensi_repo.get_by_pegawai(
+            id_pegawai, skip=skip, limit=limit, start_date=start_date, end_date=end_date
+        )
         return [AbsensiResponse.model_validate(a) for a in absensi_list]
 
-    def count_user_history(self, id_pegawai: str) -> int:
-        return self.absensi_repo.count_by_pegawai(id_pegawai)
+    def count_user_history(self, id_pegawai: str, start_date=None, end_date=None) -> int:
+        return self.absensi_repo.count_by_pegawai(id_pegawai, start_date=start_date, end_date=end_date)
     
     def get_user_summary(
         self,

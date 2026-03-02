@@ -217,6 +217,48 @@ CREATE UNIQUE INDEX uq_roster_shift_per_sesi
     ON roster_shift(id_pegawai, jam_mulai, jam_selesai, nomor_sesi);
 
 -- ============================================================
+-- TABLE: kamus_kode_shift (Master Kamus Kode Shift untuk RosterAdapter)
+-- Mendefinisikan kode shift (P1, S1, M1, L1, dst.) beserta jam dan jenisnya.
+-- Kode dengan is_libur=TRUE tidak membuat baris roster.
+-- ============================================================
+CREATE TABLE kamus_kode_shift (
+    id SERIAL PRIMARY KEY,
+    kode VARCHAR(20) UNIQUE NOT NULL,
+    label VARCHAR(100),
+    jam_mulai TIME,
+    jam_selesai TIME,
+    is_libur BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CHECK (
+        is_libur = TRUE
+        OR (jam_mulai IS NOT NULL AND jam_selesai IS NOT NULL)
+    )
+);
+
+CREATE INDEX idx_kamus_kode_shift_kode ON kamus_kode_shift(kode);
+CREATE INDEX idx_kamus_kode_shift_active ON kamus_kode_shift(is_active);
+
+-- ============================================================
+-- TABLE: kamus_pola_shift (Master Pola Shift Berulang untuk RosterAdapter)
+-- Menyimpan urutan kode shift sebagai string CSV, e.g.: "P1,S1,M1,L1,L1"
+-- Pola diulang dari hari ke hari, offset menentukan posisi awal.
+-- ============================================================
+CREATE TABLE kamus_pola_shift (
+    id SERIAL PRIMARY KEY,
+    nama VARCHAR(100) UNIQUE NOT NULL,
+    pola TEXT NOT NULL,            -- CSV kode, e.g. "P1,S1,M1,L1,L1"
+    offset_default INTEGER NOT NULL DEFAULT 0 CHECK (offset_default >= 0),
+    deskripsi TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_kamus_pola_shift_active ON kamus_pola_shift(is_active);
+
+-- ============================================================
 -- TABLE: approval_pengajuan_absensi (Workflow approval koreksi)
 -- ============================================================
 CREATE TABLE approval_pengajuan_absensi (
@@ -546,6 +588,18 @@ INSERT INTO permissions (name, description) VALUES
 ('roster_upload_batch.update', 'Mengubah data batch upload roster'),
 ('roster_upload_batch.delete', 'Menghapus data batch upload roster'),
 
+-- Kamus Kode Shift Management
+('kamus_kode_shift.read', 'Melihat data kamus kode shift'),
+('kamus_kode_shift.create', 'Membuat kode shift baru'),
+('kamus_kode_shift.update', 'Mengubah data kode shift'),
+('kamus_kode_shift.delete', 'Menghapus kode shift'),
+
+-- Kamus Pola Shift Management
+('kamus_pola_shift.read', 'Melihat data kamus pola shift'),
+('kamus_pola_shift.create', 'Membuat pola shift baru'),
+('kamus_pola_shift.update', 'Mengubah data pola shift'),
+('kamus_pola_shift.delete', 'Menghapus pola shift'),
+
 -- Roster Shift Management
 ('roster_shift.read', 'Melihat data roster shift'),
 ('roster_shift.create', 'Membuat data roster shift'),
@@ -589,6 +643,16 @@ INSERT INTO permissions (name, description) VALUES
 ('face.delete', 'Menghapus face embeddings pegawai'),
 ('face.verify', 'Verifikasi/validasi wajah untuk login dan absensi');
 
+-- Seed: Default kamus kode shift (sesuai DEFAULT_KAMUS RosterAdapterPage)
+INSERT INTO kamus_kode_shift (kode, label, jam_mulai, jam_selesai, is_libur) VALUES
+('P1', 'Pagi 1',   '07:00', '14:00', FALSE),
+('P2', 'Pagi 2',   '07:00', '11:00', FALSE),
+('P3', 'Pagi 3',   '07:00', '12:30', FALSE),
+('S1', 'Sore 1',   '14:00', '21:00', FALSE),
+('M1', 'Malam 1',  '21:00', '07:00', FALSE),
+('L1', 'Libur',    NULL,    NULL,    TRUE)
+ON CONFLICT (kode) DO NOTHING;
+
 -- ============================================================
 -- ROLE-PERMISSION ASSIGNMENTS
 -- ============================================================
@@ -613,6 +677,8 @@ JOIN permissions p ON p.name IN (
     'shift_kelompok_aturan.read', 'shift_kelompok_aturan.create', 'shift_kelompok_aturan.update', 'shift_kelompok_aturan.delete',
     'pegawai_shift_kelompok.read', 'pegawai_shift_kelompok.create', 'pegawai_shift_kelompok.update', 'pegawai_shift_kelompok.delete',
     'roster_upload_batch.read', 'roster_upload_batch.create', 'roster_upload_batch.update', 'roster_upload_batch.delete',
+    'kamus_kode_shift.read', 'kamus_kode_shift.create', 'kamus_kode_shift.update', 'kamus_kode_shift.delete',
+    'kamus_pola_shift.read', 'kamus_pola_shift.create', 'kamus_pola_shift.update', 'kamus_pola_shift.delete',
     'roster_shift.read', 'roster_shift.create', 'roster_shift.update', 'roster_shift.delete',
     'penilaian_shift_absensi.read', 'penilaian_shift_absensi.create', 'penilaian_shift_absensi.update', 'penilaian_shift_absensi.delete',
     'absensi.read', 'absensi.create', 'absensi.update', 'absensi.delete',
@@ -631,6 +697,8 @@ JOIN permissions p ON p.name IN (
     'user.login',
     'pegawai.read',
     'unit.read',
+    'kamus_kode_shift.read',
+    'kamus_pola_shift.read',
     'roster_shift.read',
     'penilaian_shift_absensi.read',
     'absensi.read',

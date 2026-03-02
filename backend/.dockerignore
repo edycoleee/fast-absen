@@ -1,0 +1,30 @@
+venv/
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Tests & coverage
+tests/
+pytest.ini
+.pytest_cache/
+htmlcov/
+.coverage
+requirements-test.txt
+
+# Dev artifacts
+.env
+.env.*
+logs/
+uploads/
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.egg-info/
+dist/
+build/

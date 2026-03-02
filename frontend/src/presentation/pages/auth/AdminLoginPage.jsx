@@ -17,7 +17,7 @@ const LoginAdmin = () => {
 
   useEffect(() => {
     let isMounted = true;
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://192.168.171.15:8000/api/v1';
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.origin}/api/v1`;
     const healthUrl = new URL('/health/detail', apiBaseUrl).toString();
 
     const fetchHealthDetail = async () => {

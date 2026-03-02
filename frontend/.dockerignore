@@ -1,0 +1,20 @@
+node_modules/
+dist/
+.env
+.env.*
+*.local
+
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Docs / markdown (not needed in image)
+*.md
+CLEAN_ARCHITECTURE.md
+JWT_IMPLEMENTATION.md
+JWT_TEST_GUIDE.md
+MIGRATION.md
+README_STRUCTURE.md
+README.md
+prompt_frontend.md

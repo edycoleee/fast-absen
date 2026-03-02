@@ -109,15 +109,35 @@ const exportToCSV = (data, filename) => {
   URL.revokeObjectURL(url);
 };
 
+const NAMA_BULAN_CAL = [
+  '', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+];
+const NAMA_HARI_CAL = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+
 const RosterShiftPage = () => {
   const { user } = useAuth();
   const { shifts, loading, error, pagination, fetchShifts, createShift, updateShift, deleteShift } = useRosterShift();
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
 
+  // ─ View mode
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'calendar'
+
   // ─ Filters
   const [filters, setFilters] = useState(emptyFilter);
   const [appliedFilters, setAppliedFilters] = useState(emptyFilter);
+
+  // ─ Calendar state
+  const nowCal = new Date();
+  const [calBulan, setCalBulan] = useState(nowCal.getMonth() + 1);
+  const [calTahun, setCalTahun] = useState(nowCal.getFullYear());
+  const [calPegawaiId, setCalPegawaiId] = useState('');
+  const [calPegawaiDisplay, setCalPegawaiDisplay] = useState('');
+  const [calUnitId, setCalUnitId] = useState('');
+  const [calShifts, setCalShifts] = useState([]);
+  const [calLoading, setCalLoading] = useState(false);
+  const [calError, setCalError] = useState('');
 
   // ─ Modal
   const [showModal, setShowModal] = useState(false);
@@ -142,6 +162,31 @@ const RosterShiftPage = () => {
   const hasActiveFilter = Object.entries(appliedFilters)
     .filter(([k]) => k !== 'pegawai_display')
     .some(([, v]) => v !== '');
+
+  const loadCalendar = useCallback(async () => {
+    setCalLoading(true);
+    setCalError('');
+    try {
+      const pad = (n) => String(n).padStart(2, '0');
+      const lastDay = new Date(calTahun, calBulan, 0).getDate();
+      const calFilters = {
+        tanggal_mulai:  `${calTahun}-${pad(calBulan)}-01`,
+        tanggal_selesai: `${calTahun}-${pad(calBulan)}-${pad(lastDay)}`,
+      };
+      if (calPegawaiId) calFilters.id_pegawai = calPegawaiId;
+      if (calUnitId)    calFilters.id_unit    = calUnitId;
+      const res = await RosterShiftRepository.getAll(0, 1000, calFilters);
+      setCalShifts(res?.data?.items ?? res?.items ?? []);
+    } catch {
+      setCalError('Gagal memuat data kalender.');
+    } finally {
+      setCalLoading(false);
+    }
+  }, [calBulan, calTahun, calPegawaiId, calUnitId]);
+
+  useEffect(() => {
+    if (viewMode === 'calendar') loadCalendar();
+  }, [viewMode]);
 
   // Load shift kelompok + unit list once
   useEffect(() => {
@@ -294,19 +339,42 @@ const RosterShiftPage = () => {
           <p className="text-gray-500 text-sm mt-0.5">Jadwal shift resmi pegawai</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            className="px-4 py-2 text-sm border border-green-400 text-green-700 rounded-lg hover:bg-green-50 disabled:opacity-50 transition-colors font-medium"
-          >
-            {exporting ? '⏳ Mengekspor...' : '⬇️ Export CSV'}
-          </button>
-          <button
-            onClick={() => setShowFilters(v => !v)}
-            className={`px-4 py-2 text-sm rounded-lg transition-colors font-medium border ${showFilters || hasActiveFilter ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
-          >
-            🔍 Filter{hasActiveFilter ? ' ●' : ''}
-          </button>
+          {/* View Toggle */}
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-2 text-sm font-medium transition-colors ${
+                viewMode === 'table' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              📋 Tabel
+            </button>
+            <button
+              onClick={() => setViewMode('calendar')}
+              className={`px-3 py-2 text-sm font-medium transition-colors ${
+                viewMode === 'calendar' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              📅 Kalender
+            </button>
+          </div>
+          {viewMode === 'table' && (
+            <>
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                className="px-4 py-2 text-sm border border-green-400 text-green-700 rounded-lg hover:bg-green-50 disabled:opacity-50 transition-colors font-medium"
+              >
+                {exporting ? '⏳ Mengekspor...' : '⬇️ Export CSV'}
+              </button>
+              <button
+                onClick={() => setShowFilters(v => !v)}
+                className={`px-4 py-2 text-sm rounded-lg transition-colors font-medium border ${showFilters || hasActiveFilter ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+              >
+                🔍 Filter{hasActiveFilter ? ' ●' : ''}
+              </button>
+            </>
+          )}
           <button
             onClick={openCreate}
             className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
@@ -316,8 +384,299 @@ const RosterShiftPage = () => {
         </div>
       </div>
 
+      {/* ── Calendar View ── */}
+      {viewMode === 'calendar' && (() => {
+        const pad = (n) => String(n).padStart(2, '0');
+        const daysInMonth = new Date(calTahun, calBulan, 0).getDate();
+        const firstDow = new Date(calTahun, calBulan - 1, 1).getDay();
+        const todayStr = `${nowCal.getFullYear()}-${pad(nowCal.getMonth()+1)}-${pad(nowCal.getDate())}`;
+
+        // Group shifts by day
+        const shiftByDay = {};
+        calShifts.forEach(s => {
+          if (!s.tanggal_shift) return;
+          const d = parseInt(s.tanggal_shift.split('-')[2], 10);
+          if (!shiftByDay[d]) shiftByDay[d] = [];
+          shiftByDay[d].push(s);
+        });
+
+        const cells = [];
+        for (let i = 0; i < firstDow; i++) cells.push(null);
+        for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+        const fmtTime = (iso) => {
+          if (!iso) return '';
+          try { return new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }); }
+          catch { return iso; }
+        };
+
+        const isNight = (s) => {
+          if (!s.jam_mulai || !s.jam_selesai) return false;
+          return new Date(s.jam_selesai) < new Date(s.jam_mulai) ||
+            new Date(s.jam_selesai).getDate() !== new Date(s.jam_mulai).getDate();
+        };
+
+        const shiftColor = (s) => {
+          const h = s.jam_mulai ? new Date(s.jam_mulai).getHours() : -1;
+          if (h >= 5  && h < 12) return 'bg-amber-50  text-amber-800  border-amber-200';
+          if (h >= 12 && h < 18) return 'bg-sky-50    text-sky-800    border-sky-200';
+          if (h >= 0)            return 'bg-indigo-50 text-indigo-800 border-indigo-200';
+          return                        'bg-gray-50   text-gray-600   border-gray-200';
+        };
+
+        const total  = calShifts.length;
+        const pagi   = calShifts.filter(s => { const h = s.jam_mulai ? new Date(s.jam_mulai).getHours() : -1; return h >= 5  && h < 12; }).length;
+        const sore   = calShifts.filter(s => { const h = s.jam_mulai ? new Date(s.jam_mulai).getHours() : -1; return h >= 12 && h < 18; }).length;
+        const malam  = calShifts.filter(s => { const h = s.jam_mulai ? new Date(s.jam_mulai).getHours() : -1; return h >= 18 || (h >= 0 && h < 5); }).length;
+        const pegawaiSet = new Set(calShifts.map(s => s.id_pegawai).filter(Boolean));
+
+        return (
+          <div className="space-y-4">
+            {/* Calendar filter bar */}
+            <div className="bg-white border rounded-xl p-4 shadow-sm">
+              <div className="flex flex-wrap gap-3 items-end">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Pegawai</label>
+                  <PegawaiSearchInput
+                    value={calPegawaiId}
+                    displayValue={calPegawaiDisplay}
+                    onChange={(id, nama) => { setCalPegawaiId(id ?? ''); setCalPegawaiDisplay(nama ?? ''); }}
+                    placeholder="Semua pegawai"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Unit</label>
+                  <select
+                    value={calUnitId}
+                    onChange={e => setCalUnitId(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[160px]"
+                  >
+                    <option value="">Semua unit</option>
+                    {unitList.map(u => <option key={u.id_unit} value={u.id_unit}>{u.nama_unit}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Bulan</label>
+                  <select
+                    value={calBulan}
+                    onChange={e => setCalBulan(parseInt(e.target.value))}
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    {NAMA_BULAN_CAL.slice(1).map((n, i) => <option key={i+1} value={i+1}>{n}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Tahun</label>
+                  <input
+                    type="number" min="2020" max="2100"
+                    value={calTahun}
+                    onChange={e => setCalTahun(parseInt(e.target.value))}
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-24 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+                <button
+                  onClick={loadCalendar}
+                  disabled={calLoading}
+                  className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {calLoading ? '⏳' : '🔄'} Muat
+                </button>
+                {(calPegawaiId || calUnitId) && (
+                  <button
+                    onClick={() => { setCalPegawaiId(''); setCalPegawaiDisplay(''); setCalUnitId(''); }}
+                    className="px-3 py-2 text-sm border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {calError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{calError}</div>
+            )}
+
+            {/* Summary chips */}
+            {!calLoading && (
+              <div className="flex flex-wrap gap-3">
+                <div className="bg-white border rounded-xl px-4 py-3 text-center shadow-sm">
+                  <div className="text-2xl font-bold text-gray-800">{total}</div>
+                  <div className="text-xs text-gray-500">Total Shift</div>
+                </div>
+                <div className="bg-white border rounded-xl px-4 py-3 text-center shadow-sm">
+                  <div className="text-2xl font-bold text-blue-700">{pegawaiSet.size}</div>
+                  <div className="text-xs text-gray-500">Pegawai</div>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-center shadow-sm">
+                  <div className="text-2xl font-bold text-amber-700">{pagi}</div>
+                  <div className="text-xs text-amber-600">🌅 Pagi</div>
+                </div>
+                <div className="bg-sky-50 border border-sky-200 rounded-xl px-4 py-3 text-center shadow-sm">
+                  <div className="text-2xl font-bold text-sky-700">{sore}</div>
+                  <div className="text-xs text-sky-600">☀️ Siang/Sore</div>
+                </div>
+                <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 text-center shadow-sm">
+                  <div className="text-2xl font-bold text-indigo-700">{malam}</div>
+                  <div className="text-xs text-indigo-600">🌙 Malam</div>
+                </div>
+              </div>
+            )}
+
+            {/* Calendar card */}
+            <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+              <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
+                <h3 className="font-semibold text-gray-700">
+                  {NAMA_BULAN_CAL[calBulan]} {calTahun}
+                  {calPegawaiDisplay && <span className="ml-2 text-sm font-normal text-blue-600">— {calPegawaiDisplay}</span>}
+                  {calUnitId && !calPegawaiDisplay && <span className="ml-2 text-sm font-normal text-blue-600">— {unitList.find(u => String(u.id_unit) === String(calUnitId))?.nama_unit}</span>}
+                </h3>
+                {calLoading && <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />}
+              </div>
+
+              {calLoading ? (
+                <div className="text-center py-16">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto" />
+                  <p className="mt-3 text-gray-400 text-sm">Memuat jadwal…</p>
+                </div>
+              ) : (
+                <div className="p-3 sm:p-4">
+                  <div className="grid grid-cols-7 mb-2">
+                    {NAMA_HARI_CAL.map((h, i) => (
+                      <div key={h} className={`text-center text-xs font-semibold py-1 ${
+                        i === 0 ? 'text-red-500' : 'text-gray-500'
+                      }`}>{h}</div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
+                    {cells.map((day, idx) => {
+                      if (day === null) return <div key={`e-${idx}`} />;
+                      const dow = (firstDow + day - 1) % 7;
+                      const dayShifts = shiftByDay[day] || [];
+                      const isToday = `${calTahun}-${pad(calBulan)}-${pad(day)}` === todayStr;
+                      return (
+                        <div
+                          key={day}
+                          className={`rounded-lg border min-h-[80px] p-1 text-xs ${
+                            isToday ? 'border-blue-400 bg-blue-50'
+                              : dow === 0 ? 'border-red-100 bg-red-50/40'
+                              : 'border-gray-100 bg-white hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className={`font-bold mb-1 text-center ${
+                            isToday ? 'text-blue-700'
+                              : dow === 0 ? 'text-red-500' : 'text-gray-700'
+                          }`}>
+                            {isToday ? (
+                              <span className="inline-flex items-center justify-center w-5 h-5 bg-blue-500 text-white rounded-full text-[10px]">{day}</span>
+                            ) : day}
+                          </div>
+                          {dayShifts.length === 0 ? (
+                            <div className="text-gray-300 text-center text-[10px]">—</div>
+                          ) : (
+                            <div className="space-y-0.5 max-h-[120px] overflow-y-auto">
+                              {dayShifts.map((s, si) => (
+                                <div
+                                  key={si}
+                                  className={`rounded px-1 py-0.5 border leading-tight cursor-pointer hover:opacity-80 ${
+                                    shiftColor(s)
+                                  }${s.status_roster === 'BATAL' ? ' opacity-40 line-through' : ''}`}
+                                  title={`${s.pegawai_nama || s.id_pegawai} | ${fmtTime(s.jam_mulai)}–${fmtTime(s.jam_selesai)}${isNight(s) ? ' (lintas)' : ''} | ${s.status_roster}`}
+                                  onClick={() => openEdit(s)}
+                                >
+                                  <div className="font-semibold truncate text-[10px]">{s.pegawai_nama || s.id_pegawai}</div>
+                                  <div className="opacity-75 truncate">{fmtTime(s.jam_mulai)}–{fmtTime(s.jam_selesai)}{isNight(s) ? ' 🌙' : ''}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Detail table */}
+            {!calLoading && calShifts.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                <div className="px-4 py-3 border-b bg-gray-50">
+                  <h3 className="font-semibold text-gray-700 text-sm">Daftar Shift — {NAMA_BULAN_CAL[calBulan]} {calTahun}</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b text-xs uppercase tracking-wide">
+                        <th className="px-4 py-3 text-left text-gray-500">#</th>
+                        <th className="px-4 py-3 text-left text-gray-500">Pegawai</th>
+                        <th className="px-4 py-3 text-left text-gray-500">Unit</th>
+                        <th className="px-4 py-3 text-left text-gray-500">Tanggal</th>
+                        <th className="px-4 py-3 text-left text-gray-500">Hari</th>
+                        <th className="px-4 py-3 text-left text-gray-500">Jam Mulai</th>
+                        <th className="px-4 py-3 text-left text-gray-500">Jam Selesai</th>
+                        <th className="px-4 py-3 text-left text-gray-500">Status</th>
+                        <th className="px-4 py-3 text-left text-gray-500">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {calShifts
+                        .slice()
+                        .sort((a, b) => (a.tanggal_shift || '').localeCompare(b.tanggal_shift || '') || (a.pegawai_nama || '').localeCompare(b.pegawai_nama || ''))
+                        .map((s, i) => {
+                          const isToday = s.tanggal_shift === todayStr;
+                          return (
+                            <tr key={s.id || i} className={isToday ? 'bg-blue-50 font-medium' : 'hover:bg-gray-50'}>
+                              <td className="px-4 py-2 text-gray-400 text-xs">{i + 1}</td>
+                              <td className="px-4 py-2">
+                                <div className="font-medium text-gray-900 text-sm">{s.pegawai_nama || '-'}</div>
+                                <div className="text-xs text-gray-400 font-mono">{s.id_pegawai}</div>
+                              </td>
+                              <td className="px-4 py-2 text-xs text-gray-600">{s.unit_nama || '-'}</td>
+                              <td className="px-4 py-2 text-xs">
+                                {s.tanggal_shift ? new Date(s.tanggal_shift + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+                                {isToday && <span className="ml-1 text-blue-600 font-bold text-[10px]">← Hari ini</span>}
+                              </td>
+                              <td className="px-4 py-2 text-xs text-gray-500">
+                                {s.tanggal_shift ? new Date(s.tanggal_shift + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'long' }) : '-'}
+                              </td>
+                              <td className="px-4 py-2 text-xs font-mono">{fmtTime(s.jam_mulai) || '-'}</td>
+                              <td className="px-4 py-2 text-xs font-mono">
+                                {fmtTime(s.jam_selesai) || '-'}
+                                {isNight(s) && <span className="ml-1 text-indigo-500">🌙</span>}
+                              </td>
+                              <td className="px-4 py-2">
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[s.status_roster] || 'bg-gray-100 text-gray-800'}`}>
+                                  {s.status_roster}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2">
+                                <div className="flex gap-1">
+                                  <button onClick={() => openEdit(s)} className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100">Edit</button>
+                                  <button onClick={() => setConfirmDelete(s)} className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100">Hapus</button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {!calLoading && calShifts.length === 0 && !calError && (
+              <div className="bg-white rounded-xl border p-10 text-center text-gray-400">
+                <div className="text-5xl mb-3">📅</div>
+                <p className="font-medium">Tidak ada jadwal shift</p>
+                <p className="text-sm mt-1">{NAMA_BULAN_CAL[calBulan]} {calTahun}</p>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* ── Filter Panel ── */}
-      {showFilters && (
+      {viewMode === 'table' && showFilters && (
         <div className="bg-white border border-blue-100 rounded-xl p-4 space-y-3 shadow-sm">
           <div className="text-sm font-semibold text-gray-700">Filter Data</div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -405,6 +764,10 @@ const RosterShiftPage = () => {
           </div>
         </div>
       )}
+
+      {/* ── Table-mode sections ── */}
+      {viewMode === 'table' && (
+        <>
 
       {/* ── Active Filter Chips ── */}
       {hasActiveFilter && (
@@ -600,6 +963,9 @@ const RosterShiftPage = () => {
           </div>
         </div>
       </div>
+
+        </> /* end viewMode === 'table' */
+      )}
 
       {/* ── Create/Edit Modal ── */}
       {showModal && (

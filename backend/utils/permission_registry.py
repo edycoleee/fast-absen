@@ -99,6 +99,18 @@ PERMISSIONS = {
     "face.register": "Mendaftarkan/register wajah pegawai (upload embeddings)",
     "face.delete": "Menghapus face embeddings pegawai",
     "face.verify": "Verifikasi/validasi wajah untuk login dan absensi",
+
+    # Kamus Kode Shift Management
+    "kamus_kode_shift.read": "Melihat data kamus kode shift",
+    "kamus_kode_shift.create": "Membuat kode shift baru",
+    "kamus_kode_shift.update": "Mengubah data kode shift",
+    "kamus_kode_shift.delete": "Menghapus kode shift",
+
+    # Kamus Pola Shift Management
+    "kamus_pola_shift.read": "Melihat data kamus pola shift",
+    "kamus_pola_shift.create": "Membuat pola shift baru",
+    "kamus_pola_shift.update": "Mengubah data pola shift",
+    "kamus_pola_shift.delete": "Menghapus pola shift",
 }
 
 
@@ -192,6 +204,18 @@ class PermissionKeys:
     USER_SESSIONS_CREATE = "user_sessions.create"
     USER_SESSIONS_UPDATE = "user_sessions.update"
     USER_SESSIONS_DELETE = "user_sessions.delete"
+
+    # Kamus Kode Shift Management
+    KAMUS_KODE_SHIFT_READ   = "kamus_kode_shift.read"
+    KAMUS_KODE_SHIFT_CREATE = "kamus_kode_shift.create"
+    KAMUS_KODE_SHIFT_UPDATE = "kamus_kode_shift.update"
+    KAMUS_KODE_SHIFT_DELETE = "kamus_kode_shift.delete"
+
+    # Kamus Pola Shift Management
+    KAMUS_POLA_SHIFT_READ   = "kamus_pola_shift.read"
+    KAMUS_POLA_SHIFT_CREATE = "kamus_pola_shift.create"
+    KAMUS_POLA_SHIFT_UPDATE = "kamus_pola_shift.update"
+    KAMUS_POLA_SHIFT_DELETE = "kamus_pola_shift.delete"
 
     # Face Recognition Management
     FACE_READ = "face.read"

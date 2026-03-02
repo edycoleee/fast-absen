@@ -21,6 +21,8 @@ from models.user_session import UserSession
 from models.approval_pengajuan_absensi import ApprovalPengajuanAbsensi
 from models.approval_pengajuan_absensi_log import ApprovalPengajuanAbsensiLog
 from models.face_embedding import FaceEmbedding
+from models.kamus_kode_shift import KamusKodeShift
+from models.kamus_pola_shift import KamusPolaShift
 
 __all__ = [
     "Base",
@@ -40,4 +42,8 @@ __all__ = [
     "Absensi",
     "UserSession",
     "ApprovalPengajuanAbsensi",
-    "ApprovalPengajuanAbsensiLog"    "FaceEmbedding",]
+    "ApprovalPengajuanAbsensiLog",
+    "FaceEmbedding",
+    "KamusKodeShift",
+    "KamusPolaShift",
+]

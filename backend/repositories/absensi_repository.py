@@ -16,16 +16,21 @@ class AbsensiRepository(BaseRepository[Absensi]):
     def __init__(self, db: Session):
         super().__init__(Absensi, db)
     
-    def get_by_pegawai(self, id_pegawai: str, skip: int = 0, limit: int = 100) -> List[Absensi]:
-        """Get absensi records by pegawai ID"""
-        return (
-            self.db.query(Absensi)
-            .filter(Absensi.id_pegawai == id_pegawai)
-            .order_by(Absensi.tanggal.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+    def get_by_pegawai(
+        self,
+        id_pegawai: str,
+        skip: int = 0,
+        limit: int = 100,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+    ) -> List[Absensi]:
+        """Get absensi records by pegawai ID, optionally filtered by date range"""
+        q = self.db.query(Absensi).filter(Absensi.id_pegawai == id_pegawai)
+        if start_date:
+            q = q.filter(Absensi.tanggal >= start_date)
+        if end_date:
+            q = q.filter(Absensi.tanggal <= end_date)
+        return q.order_by(Absensi.tanggal.desc()).offset(skip).limit(limit).all()
     
     def get_by_pegawai_and_id(self, id_pegawai: str, absensi_id: int) -> Optional[Absensi]:
         """Get specific absensi record for a pegawai"""
@@ -265,11 +270,19 @@ class AbsensiRepository(BaseRepository[Absensi]):
         
         return summary
     
-    def count_by_pegawai(self, id_pegawai: str) -> int:
-        """Count total absensi for a pegawai"""
-        return self.db.query(func.count(Absensi.id)).filter(
-            Absensi.id_pegawai == id_pegawai
-        ).scalar()
+    def count_by_pegawai(
+        self,
+        id_pegawai: str,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+    ) -> int:
+        """Count total absensi for a pegawai, optionally filtered by date range"""
+        q = self.db.query(func.count(Absensi.id)).filter(Absensi.id_pegawai == id_pegawai)
+        if start_date:
+            q = q.filter(Absensi.tanggal >= start_date)
+        if end_date:
+            q = q.filter(Absensi.tanggal <= end_date)
+        return q.scalar()
     
     def get_pending_checkout(self, id_pegawai: Optional[str] = None) -> List[Absensi]:
         """

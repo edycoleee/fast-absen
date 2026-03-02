@@ -10,6 +10,7 @@ import { formatErrorMessage, formatErrorForAlert } from '../../../utils/errorHan
 import PegawaiSearchInput from '../../components/common/PegawaiSearchInput';
 import apiClient from '../../../data/api/client';
 import RosterShiftRepository from '../../../data/repositories/RosterShiftRepository';
+import KamusPolaShiftRepository from '../../../data/repositories/KamusPolaShiftRepository';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -189,9 +190,20 @@ const RosterAdapterPage = () => {
   const [editingKamus, setEditingKamus] = useState(false);
   const [kamEdits, setKamEdits] = useState(DEFAULT_KAMUS);
 
+  // ─ Kamus pola
+  const [editingPola, setEditingPola] = useState(false);
+  const [polaList, setPolaList] = useState([]);
+  const [polaLoading, setPolaLoading] = useState(false);
+  const [polaError, setPolaError] = useState('');
+  const [polaForm, setPolaForm] = useState(null); // null | { id?, nama, pola, offset_default, deskripsi }
+  const [polaSaving, setPolaSaving] = useState(false);
+
   // ─ Grid rows
   const [rows, setRows] = useState([]);
   const [addPegawai, setAddPegawai] = useState({ id_pegawai: '', nama: '', id_unit: null });
+
+  // ─ Copy/paste grid
+  const [copiedGrid, setCopiedGrid] = useState(null); // { grid, nama }
 
   // ─ Cell popup
   const [popup, setPopup] = useState(null); // { rowIdx, day, rect }
@@ -216,7 +228,69 @@ const RosterAdapterPage = () => {
         setShiftKelompokList(items);
       })
       .catch(() => {});
+    // Pre-load pola list for fill dialog
+    KamusPolaShiftRepository.getAll({ only_active: true })
+      .then(res => setPolaList(res?.data?.items ?? []))
+      .catch(() => {});
   }, []);
+
+  // ── Pola CRUD helpers
+  const loadPolaList = useCallback(async () => {
+    setPolaLoading(true);
+    setPolaError('');
+    try {
+      const res = await KamusPolaShiftRepository.getAll();
+      setPolaList(res?.data?.items ?? []);
+    } catch { setPolaError('Gagal memuat kamus pola.'); }
+    finally { setPolaLoading(false); }
+  }, []);
+
+  const openPolaEditor = useCallback(() => {
+    setPolaForm(null);
+    setPolaError('');
+    setEditingPola(true);
+    loadPolaList();
+  }, [loadPolaList]);
+
+  const handlePolaFormChange = (field, value) =>
+    setPolaForm(prev => ({ ...prev, [field]: value }));
+
+  const handleSavePola = async () => {
+    if (!polaForm) return;
+    const { id, nama, pola, offset_default, deskripsi } = polaForm;
+    if (!nama?.trim() || !pola?.trim()) { setPolaError('Nama dan pola wajib diisi.'); return; }
+    setPolaSaving(true);
+    setPolaError('');
+    try {
+      const payload = {
+        nama: nama.trim(),
+        pola: pola.trim().toUpperCase(),
+        offset_default: parseInt(offset_default ?? 0, 10),
+        deskripsi: deskripsi || null,
+      };
+      if (id) {
+        await KamusPolaShiftRepository.update(id, payload);
+      } else {
+        await KamusPolaShiftRepository.create(payload);
+      }
+      await loadPolaList();
+      setPolaForm(null);
+    } catch (err) {
+      const d = err?.response?.data;
+      setPolaError(d?.detail || d?.message || err?.message || 'Gagal menyimpan pola.');
+    } finally { setPolaSaving(false); }
+  };
+
+  const handleDeletePola = async (id) => {
+    if (!window.confirm('Hapus pola ini? Data tidak dapat dipulihkan.')) return;
+    try {
+      await KamusPolaShiftRepository.delete(id);
+      await loadPolaList();
+    } catch (err) {
+      const d = err?.response?.data;
+      setPolaError(d?.detail || d?.message || err?.message || 'Gagal menghapus pola.');
+    }
+  };
 
   // ── Cell click handler
   const handleCellClick = useCallback((e, rowIdx, day) => {
@@ -278,6 +352,18 @@ const RosterAdapterPage = () => {
 
   const handleClearRow = (rowIdx) => {
     setRows(prev => prev.map((r, i) => i === rowIdx ? { ...r, grid: {} } : r));
+  };
+
+  const handleCopyGrid = (rowIdx) => {
+    const row = rows[rowIdx];
+    setCopiedGrid({ grid: { ...row.grid }, nama: row.nama });
+  };
+
+  const handlePasteGrid = (rowIdx) => {
+    if (!copiedGrid) return;
+    setRows(prev => prev.map((r, i) =>
+      i === rowIdx ? { ...r, grid: { ...copiedGrid.grid } } : r
+    ));
   };
 
   // ── Kamus editor
@@ -353,6 +439,12 @@ const RosterAdapterPage = () => {
             className="px-3 py-1.5 text-sm border border-indigo-300 text-indigo-700 rounded hover:bg-indigo-50"
           >
             📖 Kamus Kode
+          </button>
+          <button
+            onClick={openPolaEditor}
+            className="px-3 py-1.5 text-sm border border-purple-300 text-purple-700 rounded hover:bg-purple-50"
+          >
+            🔁 Kamus Pola
           </button>
           <button
             onClick={handlePreview}
@@ -487,9 +579,19 @@ const RosterAdapterPage = () => {
         </div>
       ) : (
         <div className="bg-white border rounded-lg overflow-hidden">
-          <div className="p-3 border-b bg-gray-50 flex items-center gap-2">
+          <div className="p-3 border-b bg-gray-50 flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold text-gray-700">{rows.length} pegawai</span>
             <span className="text-xs text-gray-400">· Klik sel untuk memilih kode shift</span>
+            {copiedGrid && (
+              <span className="ml-auto flex items-center gap-1.5 text-xs bg-orange-50 border border-orange-200 text-orange-700 px-2 py-1 rounded">
+                📋 Clipboard: <strong>{copiedGrid.nama}</strong>
+                <button
+                  onClick={() => setCopiedGrid(null)}
+                  className="ml-1 text-orange-400 hover:text-orange-700 font-bold leading-none"
+                  title="Hapus clipboard"
+                >✕</button>
+              </span>
+            )}
           </div>
           <div className="overflow-x-auto" style={{ maxHeight: '60vh' }}>
             <table className="border-collapse text-xs" style={{ minWidth: `${48 + rows.length * 0}px` }}>
@@ -547,27 +649,49 @@ const RosterAdapterPage = () => {
                     })}
                     {/* Action cell */}
                     <td className="sticky right-0 z-10 bg-white border border-gray-200 px-2 py-1 text-center whitespace-nowrap">
-                      <button
-                        onClick={() => setFillDialog({ rowIdx: ri, pattern: '', offset: 0 })}
-                        className="px-1.5 py-0.5 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 mr-1"
-                        title="Isi dengan pola berulang"
-                      >
-                        🔁 Pola
-                      </button>
-                      <button
-                        onClick={() => handleClearRow(ri)}
-                        className="px-1.5 py-0.5 text-xs bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200 mr-1"
-                        title="Kosongkan baris ini"
-                      >
-                        🗑 Hapus Isi
-                      </button>
-                      <button
-                        onClick={() => handleRemoveRow(ri)}
-                        className="px-1.5 py-0.5 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
-                        title="Hapus pegawai dari grid"
-                      >
-                        ✕
-                      </button>
+                      <div className="flex flex-wrap gap-1 justify-center">
+                        <button
+                          onClick={() => setFillDialog({ rowIdx: ri, pattern: '', offset: 0 })}
+                          className="px-1.5 py-0.5 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+                          title="Isi dengan pola berulang"
+                        >
+                          🔁 Pola
+                        </button>
+                        <button
+                          onClick={() => handleCopyGrid(ri)}
+                          className={`px-1.5 py-0.5 text-xs rounded border transition-colors ${
+                            copiedGrid?.nama === row.nama && JSON.stringify(copiedGrid?.grid) === JSON.stringify(row.grid)
+                              ? 'bg-green-500 text-white border-green-500'
+                              : 'bg-green-100 text-green-700 border-transparent hover:bg-green-200'
+                          }`}
+                          title="Salin pola baris ini"
+                        >
+                          📋 Copy
+                        </button>
+                        {copiedGrid && (
+                          <button
+                            onClick={() => handlePasteGrid(ri)}
+                            className="px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded hover:bg-orange-200 border border-orange-300"
+                            title={`Tempel pola dari ${copiedGrid.nama}`}
+                          >
+                            📌 Paste
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleClearRow(ri)}
+                          className="px-1.5 py-0.5 text-xs bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200"
+                          title="Kosongkan baris ini"
+                        >
+                          🗑 Hapus
+                        </button>
+                        <button
+                          onClick={() => handleRemoveRow(ri)}
+                          className="px-1.5 py-0.5 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                          title="Hapus pegawai dari grid"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -679,6 +803,31 @@ const RosterAdapterPage = () => {
             <div className="mb-4 p-3 bg-gray-50 rounded text-xs text-gray-600">
               Tersedia: {kamus.map(k => k.kode).join(', ')}
             </div>
+            {/* Pilih dari kamus */}
+            {polaList.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs font-medium text-gray-600 mb-1.5">Pilih dari Kamus Pola:</p>
+                <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+                  {polaList.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => setFillDialog(d => ({ ...d, pattern: p.pola, offset: p.offset_default ?? 0 }))}
+                      className={`px-2 py-1 text-xs rounded border transition-colors ${
+                        fillDialog.pattern === p.pola && String(fillDialog.offset) === String(p.offset_default ?? 0)
+                          ? 'bg-purple-600 text-white border-purple-600'
+                          : 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100'
+                      }`}
+                      title={p.deskripsi || p.pola}
+                    >
+                      <span className="font-semibold">{p.nama}</span>
+                      <span className="ml-1 opacity-70 font-mono">{p.pola}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="border-t border-dashed border-gray-200 my-3" />
+              </div>
+            )}
+
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Pola (pisah koma)
             </label>
@@ -709,6 +858,184 @@ const RosterAdapterPage = () => {
                 className="px-4 py-2 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
               >
                 Isi Grid
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Kamus Pola Modal ────────────────────────────────────────────── */}
+      {editingPola && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setEditingPola(false)}>
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold">🔁 Kamus Pola Shift</h2>
+              <button onClick={() => setEditingPola(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              Simpan pola shift berulang (e.g. <code className="bg-gray-100 px-1 rounded">P1,S1,M1,L1,L1</code>) agar bisa dipilih cepat saat mengisi grid.
+            </p>
+
+            {polaError && (
+              <div className="mb-3 p-2 bg-red-50 border border-red-200 text-red-700 rounded text-sm">{polaError}</div>
+            )}
+
+            {/* Form tambah / edit */}
+            {polaForm !== null && (
+              <div className="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                <h3 className="text-sm font-semibold text-purple-800 mb-3">
+                  {polaForm.id ? '✏️ Edit Pola' : '➕ Tambah Pola Baru'}
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Nama Pola <span className="text-red-500">*</span></label>
+                    <input
+                      className="border rounded px-2 py-1.5 w-full text-sm"
+                      placeholder="Shift 5-Hari IGD"
+                      value={polaForm.nama ?? ''}
+                      onChange={e => handlePolaFormChange('nama', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Offset Default</label>
+                    <input
+                      type="number"
+                      min="0"
+                      className="border rounded px-2 py-1.5 w-full text-sm"
+                      value={polaForm.offset_default ?? 0}
+                      onChange={e => handlePolaFormChange('offset_default', e.target.value)}
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Pola (pisah koma) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      className="border rounded px-2 py-1.5 w-full text-sm font-mono"
+                      placeholder="P1,S1,M1,L1,L1"
+                      value={polaForm.pola ?? ''}
+                      onChange={e => handlePolaFormChange('pola', e.target.value)}
+                    />
+                    {polaForm.pola && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {polaForm.pola.split(',').map((k, i) => {
+                          const entry = kamMap[k.trim().toUpperCase()];
+                          const colors = entry?.is_libur ? JENIS_COLOR_MAP.LIBUR : JENIS_COLOR_MAP.AKTIF;
+                          return (
+                            <span key={i} className={`px-1.5 py-0.5 rounded text-xs font-medium border ${
+                              entry ? `${colors.bg} ${colors.text} ${colors.border}` : 'bg-yellow-50 text-yellow-700 border-yellow-300'
+                            }`}>
+                              {k.trim().toUpperCase() || '—'}
+                            </span>
+                          );
+                        })}
+                        <span className="text-xs text-gray-400 self-center">
+                          · siklus {polaForm.pola.split(',').filter(k => k.trim()).length} hari
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Deskripsi (opsional)</label>
+                    <input
+                      className="border rounded px-2 py-1.5 w-full text-sm"
+                      placeholder="Keterangan tambahan…"
+                      value={polaForm.deskripsi ?? ''}
+                      onChange={e => handlePolaFormChange('deskripsi', e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setPolaForm(null); setPolaError(''); }}
+                    className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={handleSavePola}
+                    disabled={polaSaving}
+                    className="px-4 py-1.5 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 ml-auto"
+                  >
+                    {polaSaving ? 'Menyimpan…' : '💾 Simpan'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* List */}
+            <div className="flex-1 overflow-y-auto">
+              {polaLoading ? (
+                <div className="text-center text-gray-400 py-8 text-sm">Memuat…</div>
+              ) : polaList.length === 0 ? (
+                <div className="text-center text-gray-400 py-8">
+                  <div className="text-3xl mb-2">🔁</div>
+                  <div className="text-sm">Belum ada pola tersimpan</div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {polaList.map(p => (
+                    <div key={p.id} className="border border-gray-200 rounded-lg p-3 hover:bg-gray-50">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-sm text-gray-800">{p.nama}</span>
+                            <span className="text-xs text-gray-400">offset: {p.offset_default}</span>
+                            <span className="text-xs text-gray-400">· {p.panjang_siklus ?? p.pola.split(',').length} hari</span>
+                          </div>
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {p.pola.split(',').map((k, i) => {
+                              const entry = kamMap[k.trim()];
+                              const colors = entry?.is_libur ? JENIS_COLOR_MAP.LIBUR : JENIS_COLOR_MAP.AKTIF;
+                              return (
+                                <span key={i} className={`px-1.5 py-0.5 rounded text-xs font-medium border ${
+                                  entry ? `${colors.bg} ${colors.text} ${colors.border}` : 'bg-yellow-50 text-yellow-700 border-yellow-300'
+                                }`}>{k.trim()}</span>
+                              );
+                            })}
+                          </div>
+                          {p.deskripsi && (
+                            <p className="text-xs text-gray-500 mt-1">{p.deskripsi}</p>
+                          )}
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <button
+                            onClick={() => setPolaForm({ id: p.id, nama: p.nama, pola: p.pola, offset_default: p.offset_default, deskripsi: p.deskripsi ?? '' })}
+                            className="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeletePola(p.id)}
+                            className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                          >
+                            🗑
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex gap-2 pt-4 border-t border-gray-100 mt-4">
+              {polaForm === null && (
+                <button
+                  onClick={() => setPolaForm({ nama: '', pola: '', offset_default: 0, deskripsi: '' })}
+                  className="px-3 py-1.5 text-sm border border-dashed border-purple-400 text-purple-600 rounded hover:bg-purple-50"
+                >
+                  + Tambah Pola Baru
+                </button>
+              )}
+              <button
+                onClick={() => setEditingPola(false)}
+                className="ml-auto px-4 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50"
+              >
+                Tutup
               </button>
             </div>
           </div>

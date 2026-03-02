@@ -46,10 +46,12 @@ const remove = async (id) => {
   return response.data;
 };
 
-/** Get current user attendance history with pagination. */
-const getMyAbsensi = async (page = 1, limit = 10) => {
+/** Get current user attendance history with pagination and optional date range. */
+const getMyAbsensi = async (page = 1, limit = 10, startDate = null, endDate = null) => {
   const skip = (page - 1) * limit;
   const params = new URLSearchParams({ skip, limit });
+  if (startDate) params.append('start_date', startDate);
+  if (endDate)   params.append('end_date', endDate);
   const response = await apiClient.get(`/absensi/history?${params}`);
   return response.data;
 };

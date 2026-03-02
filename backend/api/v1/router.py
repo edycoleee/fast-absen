@@ -23,6 +23,8 @@ from api.v1.endpoints import (
 	approval_pengajuan_absensi_log,
 	approval_pengajuan_absensi,
 	face,
+	kamus_kode_shift,
+	kamus_pola_shift,
 )
 
 api_router = APIRouter()
@@ -80,6 +82,12 @@ api_router.include_router(stats.router)
 
 # Face Recognition (User + Admin)
 api_router.include_router(face.router)
+
+# Kamus Kode Shift Master (Admin)
+api_router.include_router(kamus_kode_shift.router)
+
+# Kamus Pola Shift Master (Admin)
+api_router.include_router(kamus_pola_shift.router)
 
 # Legacy/Example endpoint
 api_router.include_router(halo.router)

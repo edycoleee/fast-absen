@@ -111,18 +111,16 @@ def get_today_status(
 def get_my_history(
     skip: int = 0,
     limit: int = 30,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission(PermissionKeys.ABSENSI_READ))
 ):
-    """Get absensi history for current user (last 30 days by default)"""
+    """Get absensi history for current user with optional date range filter"""
     service = AbsensiService(db)
-    
-    # Get id_pegawai from current user token
     id_pegawai = current_user.id_pegawai
-    
-    absensi_list = service.get_user_history(id_pegawai, skip=skip, limit=limit)
-    total = service.count_user_history(id_pegawai)
-    
+    absensi_list = service.get_user_history(id_pegawai, skip=skip, limit=limit, start_date=start_date, end_date=end_date)
+    total = service.count_user_history(id_pegawai, start_date=start_date, end_date=end_date)
     return success_response(
         message="Your absensi history retrieved successfully",
         data={"items": [a.model_dump() for a in absensi_list], "total": total, "skip": skip, "limit": limit}
