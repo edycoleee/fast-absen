@@ -23,6 +23,7 @@ from models.approval_pengajuan_absensi_log import ApprovalPengajuanAbsensiLog
 from models.face_embedding import FaceEmbedding
 from models.kamus_kode_shift import KamusKodeShift
 from models.kamus_pola_shift import KamusPolaShift
+from models.ip_whitelist import IpWhitelist
 
 __all__ = [
     "Base",
@@ -46,4 +47,5 @@ __all__ = [
     "FaceEmbedding",
     "KamusKodeShift",
     "KamusPolaShift",
+    "IpWhitelist",
 ]

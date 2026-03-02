@@ -15,6 +15,7 @@ from repositories.absensi_repository import AbsensiRepository
 from repositories.pegawai_repository import PegawaiRepository
 from utils.device_detector import get_client_ip
 from models.absensi import Absensi
+from services.ip_whitelist_service import IpWhitelistService
 
 
 class AbsensiService:
@@ -108,7 +109,15 @@ class AbsensiService:
         
         # Capture IP address from request
         client_ip = get_client_ip(request)
-        
+
+        # Validasi IP terhadap whitelist
+        ip_service = IpWhitelistService(self.db)
+        if not ip_service.is_ip_allowed(client_ip):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Absen Gagal, Anda wajib absen di lingkungan Rumah Sakit"
+            )
+
         # Create absensi data dict for repository
         absensi_dict = {
             "id_pegawai": id_pegawai,

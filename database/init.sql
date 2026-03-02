@@ -760,3 +760,40 @@ FROM roles r
 JOIN permissions p ON p.name IN ('app_settings.read', 'app_settings.update')
 WHERE r.name IN ('super-admin', 'super_admin', 'superadmin')
 ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- IP Whitelist — Pembatasan Lokasi Absensi (Absensi dari IP RS)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS ip_whitelist (
+    id          SERIAL PRIMARY KEY,
+    ip_address  VARCHAR(50)   NOT NULL UNIQUE,   -- IP tunggal (103.1.2.3) atau CIDR (192.168.1.0/24)
+    label       VARCHAR(100)  NOT NULL,           -- Deskripsi, e.g. "WiFi RS Lantai 1"
+    is_active   BOOLEAN       NOT NULL DEFAULT TRUE,
+    created_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    created_by  INTEGER       REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_ip_whitelist_active ON ip_whitelist(is_active);
+
+-- Seed permissions
+INSERT INTO permissions (name, description) VALUES
+    ('ip_whitelist.read',   'Melihat daftar IP yang diizinkan absensi'),
+    ('ip_whitelist.create', 'Menambahkan IP ke whitelist absensi'),
+    ('ip_whitelist.update', 'Mengubah data IP whitelist'),
+    ('ip_whitelist.delete', 'Menghapus IP dari whitelist')
+ON CONFLICT (name) DO NOTHING;
+
+-- Grant ip_whitelist permissions to super-admin and admin
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+JOIN permissions p ON p.name IN (
+    'ip_whitelist.read',
+    'ip_whitelist.create',
+    'ip_whitelist.update',
+    'ip_whitelist.delete'
+)
+WHERE r.name IN ('super-admin', 'super_admin', 'superadmin', 'admin')
+ON CONFLICT DO NOTHING;

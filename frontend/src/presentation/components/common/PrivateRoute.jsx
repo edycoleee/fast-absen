@@ -30,7 +30,8 @@ const canAccessRoute = (pathname, menuGuard = {}) => {
     pathname.startsWith('/roles') ||
     pathname.startsWith('/permissions') ||
     pathname.startsWith('/unit') ||
-    pathname.startsWith('/pegawai')
+    pathname.startsWith('/pegawai') ||
+    pathname.startsWith('/ip-whitelist')
   ) {
     return isEmpty || isAdmin;
   }

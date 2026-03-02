@@ -29,6 +29,7 @@ import {
   RosterAdapterPage,
   FaceRegistrationPage,
   SystemSettingsPage,
+  IpWhitelistPage,
 } from './presentation/pages'
 import { useAuth, useSessionHeartbeat } from './domain/hooks'
 
@@ -97,6 +98,7 @@ function App() {
             <Route path="approval" element={<ApprovalPage />} />
             <Route path="rekap-unit-role" element={<KpiUnitRolePage />} />
             <Route path="system-settings" element={<SystemSettingsPage />} />
+            <Route path="ip-whitelist" element={<IpWhitelistPage />} />
           </Route>
 
           {/* Fallback */}

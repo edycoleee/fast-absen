@@ -104,6 +104,12 @@ PERMISSIONS = {
     "app_settings.read": "Melihat konfigurasi sistem",
     "app_settings.update": "Mengubah konfigurasi sistem",
 
+    # IP Whitelist Management
+    "ip_whitelist.read":   "Melihat daftar IP yang diizinkan absensi",
+    "ip_whitelist.create": "Menambahkan IP ke whitelist absensi",
+    "ip_whitelist.update": "Mengubah data IP whitelist",
+    "ip_whitelist.delete": "Menghapus IP dari whitelist",
+
     # Kamus Kode Shift Management
     "kamus_kode_shift.read": "Melihat data kamus kode shift",
     "kamus_kode_shift.create": "Membuat kode shift baru",
@@ -230,6 +236,12 @@ class PermissionKeys:
     # App Settings Management
     APP_SETTINGS_READ   = "app_settings.read"
     APP_SETTINGS_UPDATE = "app_settings.update"
+
+    # IP Whitelist Management
+    IP_WHITELIST_READ   = "ip_whitelist.read"
+    IP_WHITELIST_CREATE = "ip_whitelist.create"
+    IP_WHITELIST_UPDATE = "ip_whitelist.update"
+    IP_WHITELIST_DELETE = "ip_whitelist.delete"
 
 
 def list_permissions() -> list[str]:

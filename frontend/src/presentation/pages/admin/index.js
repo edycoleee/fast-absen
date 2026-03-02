@@ -17,3 +17,4 @@ export { default as RosterAdapterPage } from './RosterAdapterPage';
 export { default as PenilaianShiftAbsensiPage } from './PenilaianShiftAbsensiPage';
 export { default as FaceRegistrationPage } from './FaceRegistrationPage';
 export { default as SystemSettingsPage } from './SystemSettingsPage';
+export { default as IpWhitelistPage } from './IpWhitelistPage';

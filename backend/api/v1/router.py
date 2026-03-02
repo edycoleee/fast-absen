@@ -26,6 +26,7 @@ from api.v1.endpoints import (
     kamus_kode_shift,
     kamus_pola_shift,
     app_settings,
+    ip_whitelist,
 )
 
 api_router = APIRouter()
@@ -92,6 +93,9 @@ api_router.include_router(kamus_pola_shift.router)
 
 # App Settings (Admin read/write, public read)
 api_router.include_router(app_settings.router)
+
+# IP Whitelist — pembatasan lokasi absensi (Admin)
+api_router.include_router(ip_whitelist.router)
 
 # Legacy/Example endpoint
 api_router.include_router(halo.router)

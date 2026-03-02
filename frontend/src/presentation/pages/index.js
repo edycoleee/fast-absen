@@ -21,4 +21,5 @@ export {
   PenilaianShiftAbsensiPage,
   FaceRegistrationPage,
   SystemSettingsPage,
+  IpWhitelistPage,
 } from './admin';
