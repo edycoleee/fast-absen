@@ -18,9 +18,18 @@ const apiClient = axios.create({
 /**
  * Request Interceptor
  * Automatically adds authentication token to requests
+ * Also prefixes all absolute paths (starting with /) with /api/v1
+ * because axios ignores the baseURL path segment when the request
+ * path starts with a leading slash.
  */
 apiClient.interceptors.request.use(
   (config) => {
+    // Prefix bare absolute paths with /api/v1 so requests like
+    // /auth/login resolve to /api/v1/auth/login through nginx.
+    if (config.url && config.url.startsWith('/') && !config.url.startsWith('/api/')) {
+      config.url = '/api/v1' + config.url;
+    }
+
     const token = LocalStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

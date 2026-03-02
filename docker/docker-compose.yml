@@ -22,9 +22,9 @@ services:
   backend:
     container_name: fastapi-backend
     build:
-      context: ../../backend
+      context: ../backend
     env_file:
-      - ../../backend/.env          # local overrides (passwords, secret key, ...)
+      - ../backend/.env             # local overrides (passwords, secret key, ...)
     environment:
       # These always override .env so the container talks to the DB container
       POSTGRES_HOST: postgres
@@ -44,7 +44,7 @@ services:
   frontend:
     container_name: vite-frontend
     build:
-      context: ../../frontend
+      context: ../frontend
       args:
         # URL the browser uses to reach the API – goes through nginx
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://192.10.10.154/api/v1}

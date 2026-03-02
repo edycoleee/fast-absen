@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libgomp1 \
     curl \
+    patchelf \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -21,7 +22,9 @@ WORKDIR /app
 # --- Python dependencies (cached layer) ---
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+    && pip install --no-cache-dir -r requirements.txt \
+    && find /usr/local/lib/python3.11/site-packages/onnxruntime -name "*.so" \
+       -exec patchelf --clear-execstack {} \;
 
 # --- Pre-download InsightFace buffalo_l models (baked into image) ---
 # This runs once at build time; images without internet access at runtime
