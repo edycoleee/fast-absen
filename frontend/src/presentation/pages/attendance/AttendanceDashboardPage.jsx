@@ -1065,7 +1065,7 @@ const AbsensiDashboard = () => {
   };
 
   const handleLogout = async () => {
-    try { await logout(); } catch { /* ignore */ } finally { navigate('/login-absensi'); }
+    try { await logout(); } catch { /* ignore */ } finally { navigate('/login-face-absensi'); }
   };
 
   return (

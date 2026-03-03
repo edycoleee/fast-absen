@@ -10,8 +10,11 @@ import { useState, useRef, useCallback } from 'react';
  * @returns {object} { videoRef, cameraActive, error, startCamera, stopCamera, captureFrame }
  */
 export function useCamera() {
-  const videoRef  = useRef(null);   // ref ke <video> element
-  const streamRef = useRef(null);   // ref ke MediaStream aktif
+  const videoRef    = useRef(null);   // ref ke <video> element
+  const streamRef   = useRef(null);   // ref ke MediaStream aktif
+  // cancelledRef: diset true saat stopCamera dipanggil sebelum getUserMedia selesai
+  // agar stream yang baru tiba langsung dimatikan (race-condition unmount)
+  const cancelledRef = useRef(false);
 
   const [cameraActive, setCameraActive] = useState(false);
   const [error, setError]               = useState(null);
@@ -23,6 +26,7 @@ export function useCamera() {
   const startCamera = useCallback(async () => {
     try {
       setError(null);
+      cancelledRef.current = false;   // reset flag setiap kali kamera diminta
 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -34,7 +38,12 @@ export function useCamera() {
         audio: false,
       });
 
-      if (!videoRef.current) return;
+      // Jika stopCamera dipanggil saat getUserMedia masih pending
+      // (mis. user pindah halaman sebelum kamera siap), matikan stream sekarang
+      if (cancelledRef.current || !videoRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
 
       videoRef.current.srcObject = stream;
       streamRef.current          = stream;
@@ -64,8 +73,12 @@ export function useCamera() {
 
   /**
    * Menghentikan semua track pada stream aktif dan mereset state.
+   * Juga menandai cancelledRef agar startCamera yang masih berjalan async
+   * langsung mematikan stream begitu getUserMedia selesai.
    */
   const stopCamera = useCallback(() => {
+    cancelledRef.current = true;       // cegah startCamera yang masih pending
+
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
 
