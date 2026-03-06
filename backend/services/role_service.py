@@ -93,9 +93,12 @@ class RoleService:
             created_role = self.role_repo.set_permissions(created_role, permissions)
         
         # Return response
-        role_dict = RoleResponse.model_validate(created_role).model_dump()
-        role_dict["permissions"] = [perm.name for perm in created_role.permissions]
-        
+        role_dict = {
+            "id": created_role.id,
+            "name": created_role.name,
+            "description": created_role.description,
+            "permissions": [perm.name for perm in created_role.permissions]
+        }
         return RoleResponse(**role_dict)
     
     def update(self, role_id: int, role_data: RoleUpdate) -> RoleResponse:
@@ -149,9 +152,12 @@ class RoleService:
             updated_role = self.role_repo.set_permissions(updated_role, permissions)
         
         # Return response
-        role_dict = RoleResponse.model_validate(updated_role).model_dump()
-        role_dict["permissions"] = [perm.name for perm in updated_role.permissions]
-        
+        role_dict = {
+            "id": updated_role.id,
+            "name": updated_role.name,
+            "description": updated_role.description,
+            "permissions": [perm.name for perm in updated_role.permissions]
+        }
         return RoleResponse(**role_dict)
     
     def delete(self, role_id: int) -> None:
