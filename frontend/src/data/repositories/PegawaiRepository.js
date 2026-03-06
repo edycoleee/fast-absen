@@ -46,8 +46,18 @@ const remove = async (id) => {
 const getPhotoUrl = (filename) => {
   if (!filename) return null;
   if (filename.startsWith('http')) return filename;
-  // Backend mounts uploads/ at origin root: GET {origin}/uploads/photos/{filename}
-  const origin = new URL(apiClient.defaults.baseURL).origin;
+  // baseURL may be a relative path (e.g. "/api/v1") when served behind a
+  // reverse proxy — new URL() requires an absolute URL, so fall back to
+  // window.location.origin when the baseURL has no host.
+  let origin;
+  try {
+    const base = apiClient.defaults.baseURL || '';
+    origin = base.startsWith('http')
+      ? new URL(base).origin
+      : window.location.origin;
+  } catch {
+    origin = window.location.origin;
+  }
   return `${origin}/uploads/photos/${filename}`;
 };
 

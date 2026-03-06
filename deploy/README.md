@@ -102,6 +102,7 @@ server {
     ssl_certificate     /path/to/fullchain.pem;
     ssl_certificate_key /path/to/privkey.pem;
 
+    # Harus sama atau lebih besar dari client_max_body_size di app server (10m)
     client_max_body_size 10m;
 
     location / {
