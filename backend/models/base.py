@@ -2,7 +2,7 @@
 Base Model Classes untuk SQLAlchemy
 Provide common fields dan methods untuk semua models
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, DateTime, Boolean
 from sqlalchemy.ext.declarative import declared_attr
 from config.database import Base
@@ -36,7 +36,7 @@ class SoftDeleteMixin:
     def soft_delete(self):
         """Mark record as deleted"""
         self.is_deleted = True
-        self.deleted_at = datetime.now()
+        self.deleted_at = datetime.now(timezone.utc)
     
     def restore(self):
         """Restore soft-deleted record"""

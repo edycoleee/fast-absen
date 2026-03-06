@@ -1,7 +1,7 @@
 """
 Approval Pengajuan Absensi Service
 """
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any, List
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -234,7 +234,7 @@ class ApprovalPengajuanAbsensiService:
             )
 
         setattr(item, "status_pengajuan", payload.action)
-        setattr(item, "diputuskan_pada", datetime.now())
+        setattr(item, "diputuskan_pada", datetime.now(timezone.utc))
         setattr(item, "approved_by_pegawai", approver_id)
         setattr(item, "catatan_approval", payload.catatan_approval)
 

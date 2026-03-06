@@ -45,6 +45,7 @@ const formatDatetime = (isoStr) => {
   if (!isoStr) return '-';
   try {
     return new Date(isoStr).toLocaleString('id-ID', {
+      timeZone: 'Asia/Jakarta',
       day: '2-digit', month: 'short', year: 'numeric',
       hour: '2-digit', minute: '2-digit',
     });
@@ -89,8 +90,8 @@ const exportToCSV = (data, filename) => {
     item.unit_nama ?? (item.id_unit ? `ID ${item.id_unit}` : ''),
     item.shift_kelompok_nama ?? (item.shift_kelompok_id ? `ID ${item.shift_kelompok_id}` : ''),
     item.tanggal_shift ?? '',
-    item.jam_mulai ? new Date(item.jam_mulai).toLocaleString('id-ID') : '',
-    item.jam_selesai ? new Date(item.jam_selesai).toLocaleString('id-ID') : '',
+    item.jam_mulai ? new Date(item.jam_mulai).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }) : '',
+    item.jam_selesai ? new Date(item.jam_selesai).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }) : '',
     item.nomor_sesi ?? '',
     item.status_roster ?? '',
     item.grace_telat_override_menit ?? '',

@@ -3,7 +3,7 @@ User Sessions Endpoints
 Admin monitoring untuk user sessions & aktivitas user
 """
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from config.database import get_db
@@ -212,7 +212,7 @@ def get_sessions_statistics(
     ).count()
     
     # Today's sessions
-    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     today_count = repo.db.query(repo.model).filter(
         repo.model.login_at >= today_start
     ).count()

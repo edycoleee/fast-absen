@@ -149,8 +149,8 @@ const SessionsMonitor = () => {
   // Format timestamp
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return '-';
-    const date = new Date(timestamp);
-    return date.toLocaleString('id-ID', {
+    return new Date(timestamp).toLocaleString('id-ID', {
+      timeZone: 'Asia/Jakarta',
       day: '2-digit',
       month: 'short',
       year: 'numeric',

@@ -3,7 +3,7 @@ User Session Repository
 Database operations for UserSession model
 """
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, func
 from models.user_session import UserSession
@@ -55,7 +55,7 @@ class UserSessionRepository(BaseRepository[UserSession]):
         
         # Filter by inactivity timeout
         if inactivity_minutes:
-            cutoff_time = datetime.now() - timedelta(minutes=inactivity_minutes)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=inactivity_minutes)
             filters.append(UserSession.last_activity >= cutoff_time)
         
         return self.db.query(UserSession).filter(
@@ -69,7 +69,7 @@ class UserSessionRepository(BaseRepository[UserSession]):
         ]
 
         if inactivity_minutes:
-            cutoff_time = datetime.now() - timedelta(minutes=inactivity_minutes)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=inactivity_minutes)
             filters.append(UserSession.last_activity >= cutoff_time)
 
         return self.db.query(UserSession).filter(and_(*filters)).count()
@@ -89,7 +89,7 @@ class UserSessionRepository(BaseRepository[UserSession]):
         """Update last activity timestamp"""
         session = self.get_by_session_id(session_id)
         if session and session.logout_at is None:
-            session.last_activity = datetime.now()
+            session.last_activity = datetime.now(timezone.utc)
             self.db.commit()
             self.db.refresh(session)
         return session
@@ -98,7 +98,7 @@ class UserSessionRepository(BaseRepository[UserSession]):
         """Mark session as logged out"""
         session = self.get_by_session_id(session_id)
         if session:
-            session.logout_at = datetime.now()
+            session.logout_at = datetime.now(timezone.utc)
             self.db.commit()
             self.db.refresh(session)
         return session
@@ -110,19 +110,19 @@ class UserSessionRepository(BaseRepository[UserSession]):
                 UserSession.id_pegawai == id_pegawai,
                 UserSession.logout_at.is_(None)
             )
-        ).update({"logout_at": datetime.now()})
+        ).update({"logout_at": datetime.now(timezone.utc)})
         self.db.commit()
         return count
     
     def cleanup_expired_sessions(self, expiry_hours: int = 24) -> int:
         """Auto-logout sessions that have been idle for too long"""
-        expiry_time = datetime.now() - timedelta(hours=expiry_hours)
+        expiry_time = datetime.now(timezone.utc) - timedelta(hours=expiry_hours)
         count = self.db.query(UserSession).filter(
             and_(
                 UserSession.logout_at.is_(None),
                 UserSession.last_activity < expiry_time
             )
-        ).update({"logout_at": datetime.now()})
+        ).update({"logout_at": datetime.now(timezone.utc)})
         self.db.commit()
         return count
     
@@ -133,7 +133,7 @@ class UserSessionRepository(BaseRepository[UserSession]):
         hours: int = 24
     ) -> List[UserSession]:
         """Get failed authentication attempts within time window"""
-        since = datetime.now() - timedelta(hours=hours)
+        since = datetime.now(timezone.utc) - timedelta(hours=hours)
         
         filters = [
             UserSession.login_status.in_(['failed', 'blocked']),

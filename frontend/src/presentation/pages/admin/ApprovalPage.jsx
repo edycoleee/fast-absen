@@ -38,10 +38,11 @@ const TIPE_LABEL = {
 
 const LIMIT = 20;
 
+const TZ = 'Asia/Jakarta';
 const formatDate = (d) =>
-  d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+  d ? new Date(d).toLocaleDateString('id-ID', { timeZone: TZ, day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 const formatDt = (d) =>
-  d ? new Date(d).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+  d ? new Date(d).toLocaleString('id-ID', { timeZone: TZ, day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
 
 const ApprovalPage = () => {
   const { user } = useAuth();

@@ -3,7 +3,7 @@ Absensi Service
 Business logic for attendance management with check-in/check-out system
 """
 from typing import List, Optional
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status, Request
 from schemas.absensi import (
@@ -122,7 +122,7 @@ class AbsensiService:
         absensi_dict = {
             "id_pegawai": id_pegawai,
             "tanggal": date.today(),
-            "jam_masuk": datetime.now(),
+            "jam_masuk": datetime.now(timezone.utc),
             "status": absensi_data.status,
             "keterangan": absensi_data.keterangan,
             "dokumen_pendukung": absensi_data.dokumen_pendukung,

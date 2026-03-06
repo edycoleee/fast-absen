@@ -336,7 +336,7 @@ const KaUnitPanel = ({ user, menuGuard }) => {
           <span>📅 Per tanggal: <strong>{watermark.as_of ?? '-'}</strong></span>
           <span>🕐 Terakhir dievaluasi: <strong>
             {watermark.last_evaluated_at
-              ? new Date(watermark.last_evaluated_at).toLocaleString('id-ID')
+              ? new Date(watermark.last_evaluated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })
               : '-'}
           </strong></span>
           <span>

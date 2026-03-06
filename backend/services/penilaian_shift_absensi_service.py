@@ -1,7 +1,7 @@
 """
 Penilaian Shift Absensi Service
 """
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -144,13 +144,13 @@ class PenilaianShiftAbsensiService:
                     for key, value in evaluated_data.items():
                         setattr(existing, key, value)
                     existing.evaluation_version = current_version + 1
-                    existing.evaluated_at = datetime.now()
+                    existing.evaluated_at = datetime.now(timezone.utc)
                     updated_count += 1
                 else:
                     new_item = PenilaianShiftAbsensi(
                         **evaluated_data,
                         evaluation_version=1,
-                        evaluated_at=datetime.now(),
+                        evaluated_at=datetime.now(timezone.utc),
                     )
                     if self.db.bind and self.db.bind.dialect.name == "sqlite":
                         new_item.id = self._next_penilaian_id()

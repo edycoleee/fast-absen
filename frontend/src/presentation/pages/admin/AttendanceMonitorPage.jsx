@@ -160,8 +160,8 @@ const AbsensiMonitor = () => {
   // Format date
   const formatDate = (dateString) => {
     if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', {
+    return new Date(dateString).toLocaleDateString('id-ID', {
+      timeZone: 'Asia/Jakarta',
       day: '2-digit',
       month: 'short',
       year: 'numeric',
@@ -172,8 +172,8 @@ const AbsensiMonitor = () => {
   // Format time
   const formatTime = (timeString) => {
     if (!timeString) return '-';
-    const time = new Date(timeString);
-    return time.toLocaleTimeString('id-ID', {
+    return new Date(timeString).toLocaleTimeString('id-ID', {
+      timeZone: 'Asia/Jakarta',
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit'

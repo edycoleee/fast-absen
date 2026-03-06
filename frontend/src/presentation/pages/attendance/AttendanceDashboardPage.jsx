@@ -43,32 +43,42 @@ const NAMA_HARI = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
-const todayStr = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const todayStr = () =>
+  // en-CA locale returns 'YYYY-MM-DD' — easiest way to get WIB date as ISO string
+  new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
+
+// Ambil jam dalam WIB (bukan jam UTC browser)
+const getWIBHour = (iso) => {
+  if (!iso) return -1;
+  return parseInt(
+    new Intl.DateTimeFormat('id-ID', { timeZone: TZ, hour: 'numeric', hour12: false }).format(new Date(iso)),
+    10
+  );
 };
+
+const TZ = 'Asia/Jakarta';
 
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
-  try { return new Date(dateString).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }); }
+  try { return new Date(dateString).toLocaleDateString('id-ID', { timeZone: TZ, year: 'numeric', month: 'long', day: 'numeric' }); }
   catch { return dateString; }
 };
 
 const formatTime = (dateString) => {
   if (!dateString) return 'N/A';
-  try { return new Date(dateString).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+  try { return new Date(dateString).toLocaleTimeString('id-ID', { timeZone: TZ, hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
   catch { return dateString; }
 };
 
 const formatTimeShort = (iso) => {
   if (!iso) return '';
-  try { return new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }); }
+  try { return new Date(iso).toLocaleTimeString('id-ID', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }); }
   catch { return iso; }
 };
 
 const getDayName = (dateString) => {
   if (!dateString) return '';
-  try { return new Date(dateString).toLocaleDateString('id-ID', { weekday: 'long' }); }
+  try { return new Date(dateString).toLocaleDateString('id-ID', { timeZone: TZ, weekday: 'long' }); }
   catch { return ''; }
 };
 
@@ -79,7 +89,7 @@ const isNightShift = (s) => {
 };
 
 const shiftColorClass = (s) => {
-  const h = s.jam_mulai ? new Date(s.jam_mulai).getHours() : -1;
+  const h = getWIBHour(s.jam_mulai);
   if (h >= 5  && h < 12) return 'bg-amber-50  text-amber-800  border-amber-200';
   if (h >= 12 && h < 18) return 'bg-sky-50    text-sky-800    border-sky-200';
   if (h !== -1)          return 'bg-indigo-50 text-indigo-800 border-indigo-200';
@@ -166,8 +176,54 @@ const AppSidebar = ({ user, activeMenu, setActiveMenu, sidebarOpen, setSidebarOp
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Dashboard sub-components
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Success Toast (fixed overlay) ──────────────────────────────────────────
+const SuccessToast = ({ msg, onClose }) => {
+  useEffect(() => {
+    if (!msg) return;
+    const t = setTimeout(onClose, 5000);
+    return () => clearTimeout(t);
+  }, [msg, onClose]);
+  if (!msg) return null;
+  const isOut = msg.type === 'checkout';
+  return (
+    <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[9999] w-[92vw] max-w-md
+      rounded-2xl shadow-2xl px-6 py-5 flex items-start gap-4 animate-bounce-once
+      ${isOut ? 'bg-blue-600' : 'bg-green-600'} text-white`}
+    >
+      <span className="text-4xl select-none">{isOut ? '🏁' : '✅'}</span>
+      <div className="flex-1">
+        <p className="font-bold text-lg leading-tight">
+          {isOut ? 'Check-Out Berhasil!' : 'Check-In Berhasil!'}
+        </p>
+        <p className="text-sm opacity-90 mt-0.5">{msg.detail}</p>
+        <p className="text-xs opacity-75 mt-1 font-mono">{msg.time}</p>
+      </div>
+      <button onClick={onClose} className="text-white opacity-70 hover:opacity-100 text-xl leading-none mt-0.5">✕</button>
+    </div>
+  );
+};
+
+
+const LiveClock = () => {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const fmt = (opts) => new Intl.DateTimeFormat('id-ID', { timeZone: TZ, ...opts }).format(now);
+  return (
+    <div className="flex flex-col items-center bg-indigo-50 border border-indigo-200 rounded-xl px-6 py-4">
+      <span className="text-4xl font-mono font-bold text-indigo-700 tracking-widest tabular-nums">
+        {fmt({ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+      </span>
+      <span className="text-sm text-indigo-500 mt-1 font-semibold">
+        {fmt({ weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+      </span>
+      <span className="text-xs text-indigo-400 mt-0.5">WIB (Asia/Jakarta)</span>
+    </div>
+  );
+};
+
 
 const TodayStatusCard = ({ todayStatus }) => {
   if (!todayStatus) return null;
@@ -274,15 +330,21 @@ const DeviceSessionCard = ({ user, deviceInfo, todayStatus }) => (
 
 const DashboardView = ({
   user, todayStatus, deviceInfo,
-  checkInLoading, checkInError, checkInSuccess, checkOutSuccess,
+  checkInLoading, checkInError,
   status, setStatus, keterangan, setKeterangan,
   onCheckIn, onCheckOut,
+  cooldownSeconds,
 }) => (
   <>
     {/* Welcome */}
     <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
-      <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Selamat Datang di Absensi Dashboard</h2>
-      <p className="text-sm sm:text-base text-gray-600 mb-4">Sistem Absensi RSUD Sulfat</p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-2">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Selamat Datang di Absensi Dashboard</h2>
+          <p className="text-sm sm:text-base text-gray-600">Sistem Absensi RSUD Sulfat</p>
+        </div>
+        <LiveClock />
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-6">
         <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
           <p className="text-sm text-gray-600 mb-1">Username</p>
@@ -298,9 +360,6 @@ const DashboardView = ({
         </div>
       </div>
     </div>
-
-    <TodayStatusCard todayStatus={todayStatus} />
-    <DeviceSessionCard user={user} deviceInfo={deviceInfo} todayStatus={todayStatus} />
 
     {/* Actions */}
     <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
@@ -350,13 +409,25 @@ const DashboardView = ({
       )}
 
       {todayStatus?.can_check_out && !todayStatus?.absensi?.jam_keluar && (
-        <button
-          onClick={onCheckOut}
-          disabled={checkInLoading}
-          className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {checkInLoading ? 'Processing…' : '🚪 Check-Out Sekarang'}
-        </button>
+        <div className="mt-2">
+          {cooldownSeconds > 0 ? (
+            <div className="w-full px-6 py-3 bg-gray-100 border border-gray-300 rounded-lg text-center">
+              <p className="text-sm text-gray-500 font-medium">⏳ Check-Out tersedia dalam</p>
+              <p className="text-2xl font-mono font-bold text-orange-500 tabular-nums">
+                {String(Math.floor(cooldownSeconds / 60)).padStart(2,'0')}:{String(cooldownSeconds % 60).padStart(2,'0')}
+              </p>
+              <p className="text-xs text-gray-400">Jeda minimal 5 menit setelah Check-In</p>
+            </div>
+          ) : (
+            <button
+              onClick={onCheckOut}
+              disabled={checkInLoading}
+              className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {checkInLoading ? 'Processing…' : '🚪 Check-Out Sekarang'}
+            </button>
+          )}
+        </div>
       )}
 
       {todayStatus?.completed_today && (
@@ -365,10 +436,11 @@ const DashboardView = ({
         </div>
       )}
 
-      {checkInSuccess  && <div className="mt-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">✅ Check-in berhasil! Absensi Anda telah tercatat.</div>}
-      {checkOutSuccess && <div className="mt-4 bg-blue-50  border border-blue-200  text-blue-700  px-4 py-3 rounded-lg">✅ Check-out berhasil! Waktu keluar Anda telah tercatat.</div>}
-      {checkInError    && <div className="mt-4 bg-red-50   border border-red-200   text-red-700   px-4 py-3 rounded-lg">❌ {checkInError}</div>}
+      {checkInError && <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">❌ {checkInError}</div>}
     </div>
+
+    <TodayStatusCard todayStatus={todayStatus} />
+    <DeviceSessionCard user={user} deviceInfo={deviceInfo} todayStatus={todayStatus} />
 
     {/* Info */}
     <div className="bg-blue-50 rounded-lg p-4 sm:p-6 border border-blue-200">
@@ -606,7 +678,7 @@ const RiwayatView = () => {
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-bold text-gray-900">
                           {item.tanggal
-                            ? new Date(item.tanggal + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+                            ? new Date(item.tanggal + 'T00:00:00').toLocaleDateString('id-ID', { timeZone: TZ, day: '2-digit', month: 'short', year: 'numeric' })
                             : 'N/A'}
                         </p>
                         <span className="text-xs text-gray-500">{getDayName(item.tanggal)}</span>
@@ -708,9 +780,9 @@ const JadwalShiftView = ({ jadwalList, jadwalLoading, jadwalError, jadwalBulan, 
 
   const cells = [...Array(firstDow).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
 
-  const pagi  = jadwalList.filter(s => { const h = s.jam_mulai ? new Date(s.jam_mulai).getHours() : -1; return h >= 5  && h < 12; }).length;
-  const sore  = jadwalList.filter(s => { const h = s.jam_mulai ? new Date(s.jam_mulai).getHours() : -1; return h >= 12 && h < 18; }).length;
-  const malam = jadwalList.filter(s => { const h = s.jam_mulai ? new Date(s.jam_mulai).getHours() : -1; return h >= 18 || (h !== -1 && h < 5); }).length;
+  const pagi  = jadwalList.filter(s => { const h = getWIBHour(s.jam_mulai); return h >= 5  && h < 12; }).length;
+  const sore  = jadwalList.filter(s => { const h = getWIBHour(s.jam_mulai); return h >= 12 && h < 18; }).length;
+  const malam = jadwalList.filter(s => { const h = getWIBHour(s.jam_mulai); return h >= 18 || (h !== -1 && h < 5); }).length;
 
   return (
     <div className="space-y-4">
@@ -845,18 +917,18 @@ const JadwalShiftView = ({ jadwalList, jadwalLoading, jadwalError, jadwalBulan, 
                     <tr key={s.id || i} className={isTodayRow ? 'bg-green-50 font-semibold' : 'hover:bg-gray-50'}>
                       <td className="border border-gray-200 px-3 py-2 text-gray-400">{i + 1}</td>
                       <td className="border border-gray-200 px-3 py-2">
-                        {s.tanggal_shift ? new Date(s.tanggal_shift + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+                        {s.tanggal_shift ? new Date(s.tanggal_shift + 'T00:00:00').toLocaleDateString('id-ID', { timeZone: TZ, day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
                         {isTodayRow && <span className="ml-1 text-xs text-green-600 font-bold">← Hari ini</span>}
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-gray-500">
-                        {s.tanggal_shift ? new Date(s.tanggal_shift + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'long' }) : '-'}
+                        {s.tanggal_shift ? new Date(s.tanggal_shift + 'T00:00:00').toLocaleDateString('id-ID', { timeZone: TZ, weekday: 'long' }) : '-'}
                       </td>
                       <td className="border border-gray-200 px-3 py-2 font-mono">
-                        {s.jam_mulai  ? new Date(s.jam_mulai).toLocaleTimeString('id-ID',  { hour: '2-digit', minute: '2-digit' }) : '-'}
+                        {s.jam_mulai  ? new Date(s.jam_mulai).toLocaleTimeString('id-ID',  { timeZone: TZ, hour: '2-digit', minute: '2-digit' }) : '-'}
                       </td>
                       <td className="border border-gray-200 px-3 py-2 font-mono">
                         {s.jam_selesai ? (
-                          <>{new Date(s.jam_selesai).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}{isNightShift(s) && <span className="ml-1 text-indigo-500">🌙</span>}</>
+                          <>{new Date(s.jam_selesai).toLocaleTimeString('id-ID', { timeZone: TZ, hour: '2-digit', minute: '2-digit' })}{isNightShift(s) && <span className="ml-1 text-indigo-500">🌙</span>}</>
                         ) : '-'}
                       </td>
                       <td className="border border-gray-200 px-3 py-2">
@@ -959,8 +1031,9 @@ const AbsensiDashboard = () => {
   const [keterangan,      setKeterangan]      = useState('');
   const [checkInLoading,  setCheckInLoading]  = useState(false);
   const [checkInError,    setCheckInError]    = useState(null);
-  const [checkInSuccess,  setCheckInSuccess]  = useState(false);
-  const [checkOutSuccess, setCheckOutSuccess] = useState(false);
+  const [successMsg,      setSuccessMsg]      = useState(null);   // { type, detail, time }
+  // Cooldown: seconds remaining until check-out is allowed (5 min after check-in)
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
 
   // Today status
   const [todayStatus,  setTodayStatus]  = useState(null);
@@ -994,6 +1067,22 @@ const AbsensiDashboard = () => {
     else if (/iPhone|iPad/.test(ua))   os = 'iOS';
     setDeviceInfo({ browser, device, os });
   }, []);
+
+  // Cooldown timer — recompute every second based on jam_masuk
+  useEffect(() => {
+    const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+    const tick = () => {
+      const jamMasuk = todayStatus?.absensi?.jam_masuk;
+      const jamKeluar = todayStatus?.absensi?.jam_keluar;
+      if (!jamMasuk || jamKeluar) { setCooldownSeconds(0); return; }
+      const elapsed = Date.now() - new Date(jamMasuk).getTime();
+      const remaining = Math.max(0, Math.ceil((COOLDOWN_MS - elapsed) / 1000));
+      setCooldownSeconds(remaining);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [todayStatus]);
 
   // Initial load
   useEffect(() => {
@@ -1040,12 +1129,13 @@ const AbsensiDashboard = () => {
     try {
       setCheckInLoading(true);
       setCheckInError(null);
-      setCheckInSuccess(false);
+      setSuccessMsg(null);
       await checkIn({ status, ...(keterangan.trim() ? { keterangan: keterangan.trim() } : {}) });
-      setCheckInSuccess(true);
+      const nowWIB = new Intl.DateTimeFormat('id-ID', { timeZone: TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date());
+      setSuccessMsg({ type: 'checkin', detail: `Status: ${status}`, time: `Tercatat pukul ${nowWIB} WIB` });
       setStatus('HADIR');
       setKeterangan('');
-      setTimeout(() => { getMyAbsensi(1, 10); loadTodayStatus(); setCheckInSuccess(false); }, 2000);
+      setTimeout(() => { getMyAbsensi(1, 10); loadTodayStatus(); }, 2000);
     } catch (err) {
       setCheckInError(err.message || 'Gagal melakukan check-in');
     } finally { setCheckInLoading(false); }
@@ -1055,10 +1145,11 @@ const AbsensiDashboard = () => {
     try {
       setCheckInLoading(true);
       setCheckInError(null);
-      setCheckOutSuccess(false);
+      setSuccessMsg(null);
       await checkOutService();
-      setCheckOutSuccess(true);
-      setTimeout(() => { getMyAbsensi(1, 10); loadTodayStatus(); setCheckOutSuccess(false); }, 2000);
+      const nowWIB = new Intl.DateTimeFormat('id-ID', { timeZone: TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date());
+      setSuccessMsg({ type: 'checkout', detail: 'Waktu keluar telah tercatat.', time: `Tercatat pukul ${nowWIB} WIB` });
+      setTimeout(() => { getMyAbsensi(1, 10); loadTodayStatus(); }, 2000);
     } catch (err) {
       setCheckInError(err.message || 'Gagal melakukan check-out');
     } finally { setCheckInLoading(false); }
@@ -1070,7 +1161,7 @@ const AbsensiDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Mobile top bar */}
+      <SuccessToast msg={successMsg} onClose={() => setSuccessMsg(null)} />
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-white shadow-md z-40 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
@@ -1100,7 +1191,7 @@ const AbsensiDashboard = () => {
           <DashboardView
             user={user} todayStatus={todayStatus} deviceInfo={deviceInfo}
             checkInLoading={checkInLoading} checkInError={checkInError}
-            checkInSuccess={checkInSuccess} checkOutSuccess={checkOutSuccess}
+            cooldownSeconds={cooldownSeconds}
             status={status} setStatus={setStatus}
             keterangan={keterangan} setKeterangan={setKeterangan}
             onCheckIn={handleCheckIn} onCheckOut={handleCheckOut}

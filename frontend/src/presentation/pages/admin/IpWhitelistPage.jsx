@@ -329,7 +329,7 @@ const IpWhitelistPage = () => {
                     </td>
                     <td className="px-4 py-3 text-gray-400 text-xs">
                       {item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID', {
-                        year: 'numeric', month: 'short', day: 'numeric'
+                        timeZone: 'Asia/Jakarta', year: 'numeric', month: 'short', day: 'numeric'
                       }) : '-'}
                     </td>
                     <td className="px-4 py-3 text-right">

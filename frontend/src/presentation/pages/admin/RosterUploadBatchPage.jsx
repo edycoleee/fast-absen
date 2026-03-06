@@ -10,7 +10,7 @@ const STATUS_CONFIG = {
   FAILED:    { label: 'Failed',    cls: 'bg-red-100 text-red-800' },
 };
 
-const fmtDate = (v) => (v ? new Date(v).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : '-');
+const fmtDate = (v) => (v ? new Date(v).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'short' }) : '-');
 
 const RosterUploadBatchPage = () => {
   const { user } = useAuth();

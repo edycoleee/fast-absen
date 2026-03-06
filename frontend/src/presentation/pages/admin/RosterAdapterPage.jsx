@@ -1072,10 +1072,10 @@ const RosterAdapterPage = () => {
                       <td className="border px-2 py-1 font-medium">{p.id_pegawai}</td>
                       <td className="border px-2 py-1">{p.tanggal_shift}</td>
                       <td className="border px-2 py-1 font-mono">
-                        {new Date(p.jam_mulai).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        {new Date(p.jam_mulai).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </td>
                       <td className="border px-2 py-1 font-mono">
-                        {new Date(p.jam_selesai).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        {new Date(p.jam_selesai).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </td>
                     </tr>
                   ))}

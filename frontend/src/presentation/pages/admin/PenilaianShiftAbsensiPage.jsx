@@ -19,6 +19,7 @@ const formatDt = (isoStr) => {
   if (!isoStr) return '-';
   try {
     return new Date(isoStr).toLocaleString('id-ID', {
+      timeZone: 'Asia/Jakarta',
       day: '2-digit', month: 'short', year: 'numeric',
       hour: '2-digit', minute: '2-digit',
     });

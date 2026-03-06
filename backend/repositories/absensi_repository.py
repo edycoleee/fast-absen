@@ -3,7 +3,7 @@ Absensi Repository
 Database operations for Absensi model - Updated for check-in/check-out system
 """
 from typing import List, Optional, Dict
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, func, extract
 from models.absensi import Absensi
@@ -99,7 +99,7 @@ class AbsensiRepository(BaseRepository[Absensi]):
         
         # Set jam_masuk to now if not provided
         if 'jam_masuk' not in absensi_data or absensi_data['jam_masuk'] is None:
-            absensi_data['jam_masuk'] = datetime.now()
+            absensi_data['jam_masuk'] = datetime.now(timezone.utc)
         
         absensi = Absensi(**absensi_data)
         self.db.add(absensi)
@@ -117,7 +117,7 @@ class AbsensiRepository(BaseRepository[Absensi]):
         if absensi.jam_keluar:
             raise ValueError("Sudah check-out sebelumnya")
         
-        absensi.jam_keluar = datetime.now()
+        absensi.jam_keluar = datetime.now(timezone.utc)
         if ip_address:
             absensi.ip_address = ip_address
         
