@@ -82,6 +82,11 @@ docker logs absen-frontend -f --tail 20
 docker logs absen-nginx    -f --tail 20
 ```
 
+### Rebuild frontend dan reload nginx:
+```
+cd /home/sultan/fast-absen/deploy && docker compose build frontend && docker compose up -d frontend && docker compose exec nginx nginx -s reload && echo "DONE"
+```
+
 ---
 
 ## 3. Setup Reverse Proxy (192.10.10.15)
@@ -102,8 +107,8 @@ server {
     ssl_certificate     /path/to/fullchain.pem;
     ssl_certificate_key /path/to/privkey.pem;
 
-    # Harus sama atau lebih besar dari client_max_body_size di app server (10m)
-    client_max_body_size 10m;
+    # Harus sama atau lebih besar dari client_max_body_size di app server (50m)
+    client_max_body_size 50m;
 
     location / {
         proxy_pass         http://192.10.10.152:3000;
