@@ -7,7 +7,8 @@
 -- EXTENSIONS (optional but recommended)
 -- ============================================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS vector;  -- pgvector: face embedding similarity search
+CREATE EXTENSION IF NOT EXISTS vector;           -- pgvector: face embedding similarity search
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements; -- Monitor slow queries
 
 -- ============================================================
 -- TABLE: unit (Master Unit/Instalasi)
@@ -215,6 +216,13 @@ CREATE INDEX idx_roster_shift_tanggal ON roster_shift(tanggal_shift);
 CREATE INDEX idx_roster_shift_kelompok ON roster_shift(shift_kelompok_id);
 CREATE UNIQUE INDEX uq_roster_shift_per_sesi
     ON roster_shift(id_pegawai, jam_mulai, jam_selesai, nomor_sesi);
+-- Composite: paling sering — cari jadwal pegawai pada tanggal tertentu
+CREATE INDEX idx_roster_shift_pegawai_tanggal
+    ON roster_shift(id_pegawai, tanggal_shift);
+-- Filter roster aktif saja (bukan BATAL/DIUBAH)
+CREATE INDEX idx_roster_shift_aktif
+    ON roster_shift(tanggal_shift, id_pegawai)
+    WHERE status_roster = 'AKTIF';
 
 -- ============================================================
 -- TABLE: kamus_kode_shift (Master Kamus Kode Shift untuk RosterAdapter)
@@ -304,6 +312,10 @@ CREATE INDEX idx_approval_pengajuan_absensi_pegawai ON approval_pengajuan_absens
 CREATE INDEX idx_approval_pengajuan_absensi_assigned_approver ON approval_pengajuan_absensi(assigned_approver_id_pegawai);
 CREATE INDEX idx_approval_pengajuan_absensi_status ON approval_pengajuan_absensi(status_pengajuan);
 CREATE INDEX idx_approval_pengajuan_absensi_roster ON approval_pengajuan_absensi(roster_shift_id);
+-- Antrian approval untuk atasan: semua PENDING yang perlu diputuskan
+CREATE INDEX idx_approval_pending
+    ON approval_pengajuan_absensi(assigned_approver_id_pegawai, diajukan_pada DESC)
+    WHERE status_pengajuan = 'PENDING';
 
 -- ============================================================
 -- TABLE: approval_pengajuan_absensi_log (Audit trail approval)
@@ -368,6 +380,10 @@ CREATE INDEX idx_sessions_pegawai ON user_sessions(id_pegawai);
 CREATE INDEX idx_sessions_session_id ON user_sessions(session_id);
 CREATE INDEX idx_sessions_ip ON user_sessions(ip_address);
 CREATE INDEX idx_sessions_login_at ON user_sessions(login_at DESC);
+-- Partial: session yang masih aktif (logout_at IS NULL)
+CREATE INDEX idx_sessions_aktif
+    ON user_sessions(id_pegawai, last_activity DESC)
+    WHERE logout_at IS NULL;
 
 -- ============================================================
 -- TABLE: absensi
@@ -394,6 +410,30 @@ CREATE TABLE absensi (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- ============================================================
+-- INDEX: absensi — Optimasi query 800 karyawan
+-- ============================================================
+-- Filter by tanggal (laporan harian, rekap bulanan)
+CREATE INDEX idx_absensi_tanggal
+    ON absensi(tanggal DESC);
+
+-- Paling sering: cek absensi hari ini per pegawai
+CREATE INDEX idx_absensi_pegawai_tanggal
+    ON absensi(id_pegawai, tanggal DESC);
+
+-- Rekap status per periode
+CREATE INDEX idx_absensi_status_tanggal
+    ON absensi(status, tanggal DESC);
+
+-- Laporan per unit: JOIN ke pegawai.id_unit — covered index untuk admin
+CREATE INDEX idx_absensi_created_at
+    ON absensi(created_at DESC);
+
+-- Filter sesi yang belum checkout (jam_keluar IS NULL)
+CREATE INDEX idx_absensi_aktif
+    ON absensi(id_pegawai, tanggal)
+    WHERE jam_keluar IS NULL;
 
 -- ============================================================
 -- TABLE: penilaian_shift_absensi (Hasil compare roster vs absensi)
@@ -432,6 +472,13 @@ CREATE TABLE penilaian_shift_absensi (
 CREATE INDEX idx_penilaian_shift_absensi_pegawai ON penilaian_shift_absensi(id_pegawai);
 CREATE INDEX idx_penilaian_shift_absensi_status ON penilaian_shift_absensi(status_final);
 CREATE INDEX idx_penilaian_shift_absensi_evaluated ON penilaian_shift_absensi(evaluated_at DESC);
+-- Composite: rekap KPI per pegawai per bulan
+CREATE INDEX idx_penilaian_pegawai_evaluated
+    ON penilaian_shift_absensi(id_pegawai, evaluated_at DESC);
+-- Partial: yang belum dievaluasi (for background job)
+CREATE INDEX idx_penilaian_pending
+    ON penilaian_shift_absensi(roster_shift_id)
+    WHERE matched_absensi_id IS NULL;
 
 -- ============================================================
 -- TABLE: face_embeddings (Face Recognition - InsightFace Buffalo_L)
@@ -451,11 +498,12 @@ CREATE TABLE face_embeddings (
 
 CREATE INDEX idx_face_embeddings_pegawai ON face_embeddings(id_pegawai);
 CREATE INDEX idx_face_embeddings_pegawai_avg ON face_embeddings(id_pegawai, is_average);
--- IVFFlat index untuk fast cosine similarity search (1:N identification)
--- lists = 100 sesuai rekomendasi pgvector untuk dataset ratusan-ribuan embeddings
+-- HNSW index untuk fast cosine similarity search (1:N identification)
+-- Lebih cepat dari IVFFlat untuk dataset < 100k, tidak perlu VACUUM sebelum query
+-- m=16: jumlah koneksi per node, ef_construction=64: akurasi build
 CREATE INDEX idx_face_embeddings_vector
-    ON face_embeddings USING ivfflat (embedding vector_cosine_ops)
-    WITH (lists = 100);
+    ON face_embeddings USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64);
 
 -- ============================================================
 -- NOTE: Multiple absensi records per employee per day are allowed

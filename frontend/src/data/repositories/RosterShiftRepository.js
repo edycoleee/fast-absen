@@ -39,6 +39,29 @@ const RosterShiftRepository = {
     const response = await apiClient.post(`${BASE}/batch`, payloads);
     return response.data;
   },
+
+  exportRekap: async ({ tanggal_mulai, tanggal_selesai, id_unit, id_pegawai, status_roster } = {}) => {
+    const params = {};
+    if (tanggal_mulai)  params.tanggal_mulai  = tanggal_mulai;
+    if (tanggal_selesai) params.tanggal_selesai = tanggal_selesai;
+    if (id_unit)        params.id_unit        = id_unit;
+    if (id_pegawai)     params.id_pegawai     = id_pegawai;
+    if (status_roster)  params.status_roster  = status_roster;
+    const response = await apiClient.get(`${BASE}/export/rekap`, {
+      params,
+      responseType: 'blob',
+    });
+    const url = URL.createObjectURL(new Blob([response.data]));
+    const a = document.createElement('a');
+    a.href = url;
+    const start = tanggal_mulai ? tanggal_mulai.replace(/-/g, '') : 'all';
+    const end   = tanggal_selesai ? tanggal_selesai.replace(/-/g, '') : 'all';
+    a.download = `roster_shift_${start}_${end}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
 };
 
 export default RosterShiftRepository;

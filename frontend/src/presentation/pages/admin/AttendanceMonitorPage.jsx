@@ -47,6 +47,10 @@ const AbsensiMonitor = () => {
   const [selectedAbsensi, setSelectedAbsensi] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
+  // Export Excel
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportError, setExportError] = useState('');
+
   useEffect(() => {
     if (!showDetailModal) return;
     const handleEsc = (event) => { if (event.key === 'Escape') setShowDetailModal(false); };
@@ -191,6 +195,41 @@ const AbsensiMonitor = () => {
     const hours = Math.floor(diff / 60);
     const mins = diff % 60;
     return `${hours}j ${mins}m`;
+  };
+
+  // Export rekap Excel per periode
+  const handleExportExcel = async () => {
+    const start = filters.start_date;
+    const end   = filters.end_date;
+
+    if (!start || !end) {
+      setExportError('Isi Tanggal Mulai dan Tanggal Akhir terlebih dahulu sebelum export.');
+      return;
+    }
+    const diffDays = (new Date(end) - new Date(start)) / 86400000;
+    if (diffDays < 0) {
+      setExportError('Tanggal Akhir tidak boleh lebih awal dari Tanggal Mulai.');
+      return;
+    }
+    if (diffDays > 61) {
+      setExportError('Maksimal rentang export 62 hari.');
+      return;
+    }
+
+    try {
+      setExportLoading(true);
+      setExportError('');
+      await AbsensiRepository.exportRekap({
+        start_date: start,
+        end_date: end,
+        id_unit: filters.id_unit || undefined,
+      });
+    } catch (err) {
+      setExportError('Gagal export Excel. Pastikan filter tanggal sudah diisi.');
+      console.error('Export failed:', err);
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   // Load data based on active tab
@@ -372,17 +411,32 @@ const AbsensiMonitor = () => {
 
             {/* Absensi Table */}
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <div className="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <h2 className="text-lg font-semibold text-gray-800">
                   Data Absensi ({allAbsensi.length})
                 </h2>
-                <button
-                  onClick={loadAllAbsensi}
-                  disabled={loading}
-                  className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors"
-                >
-                  {loading ? '⏳ Refresh...' : '🔄 Refresh'}
-                </button>
+                <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                  {exportError && (
+                    <span className="text-xs text-red-600 bg-red-50 px-3 py-1 rounded-full border border-red-200">
+                      ⚠️ {exportError}
+                    </span>
+                  )}
+                  <button
+                    onClick={handleExportExcel}
+                    disabled={exportLoading || !filters.start_date || !filters.end_date}
+                    title="Export rekap absensi ke Excel (isi tanggal terlebih dahulu)"
+                    className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors font-medium text-sm"
+                  >
+                    {exportLoading ? '⏳ Mengunduh...' : '📥 Export Excel'}
+                  </button>
+                  <button
+                    onClick={loadAllAbsensi}
+                    disabled={loading}
+                    className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    {loading ? '⏳ Refresh...' : '🔄 Refresh'}
+                  </button>
+                </div>
               </div>
 
               {loading ? (

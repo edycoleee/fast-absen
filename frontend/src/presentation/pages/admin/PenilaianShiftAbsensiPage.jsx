@@ -3,6 +3,7 @@ import { usePenilaianShiftAbsensi, useAuth } from '../../../domain/hooks';
 import { formatErrorMessage, formatErrorForAlert } from '../../../utils/errorHandler';
 import PegawaiSearchInput from '../../components/common/PegawaiSearchInput';
 import UnitSearchInput from '../../components/common/UnitSearchInput';
+import PenilaianShiftAbsensiRepository from '../../../data/repositories/PenilaianShiftAbsensiRepository';
 
 const STATUS_FINAL_COLORS = {
   TEPAT_WAKTU: 'bg-green-100 text-green-800',
@@ -60,6 +61,15 @@ const emptyEvalForm = {
   force_recalculate: false,
 };
 
+const emptyFilter = {
+  start_date: '',
+  end_date: '',
+  id_unit: '',
+  id_pegawai: '',
+  pegawai_display: '',
+  status_final: '',
+};
+
 const PenilaianShiftAbsensiPage = () => {
   const { user } = useAuth();
   const {
@@ -70,6 +80,30 @@ const PenilaianShiftAbsensiPage = () => {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
   const totalPages = Math.ceil(pagination.total / pageSize) || 1;
+
+  // Filters
+  const [filters, setFilters]               = useState(emptyFilter);
+  const [appliedFilters, setAppliedFilters] = useState(emptyFilter);
+  const [showFilters, setShowFilters]       = useState(false);
+
+  // Export
+  const [exporting, setExporting]     = useState(false);
+  const [exportError, setExportError] = useState('');
+
+  const hasActiveFilter = Object.entries(appliedFilters)
+    .filter(([k]) => k !== 'pegawai_display')
+    .some(([, v]) => v !== '');
+
+  const applyFilters = () => {
+    setAppliedFilters({ ...filters });
+    setPage(1);
+  };
+
+  const resetFilters = () => {
+    setFilters(emptyFilter);
+    setAppliedFilters(emptyFilter);
+    setPage(1);
+  };
 
   // CRUD modal
   const [showModal, setShowModal] = useState(false);
@@ -90,8 +124,8 @@ const PenilaianShiftAbsensiPage = () => {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    fetchPenilaian(page, pageSize);
-  }, [fetchPenilaian, page, pageSize]);
+    fetchPenilaian(page, pageSize, appliedFilters);
+  }, [fetchPenilaian, page, pageSize, appliedFilters]);
 
   const openCreate = useCallback(() => {
     setEditTarget(null);
@@ -177,6 +211,32 @@ const PenilaianShiftAbsensiPage = () => {
     setShowEvalModal(true);
   }, []);
 
+  const handleExportExcel = useCallback(async () => {
+    const start = appliedFilters.start_date;
+    const end   = appliedFilters.end_date;
+    if (!start || !end) {
+      setExportError('Isi filter Tanggal Mulai dan Tanggal Akhir terlebih dahulu.');
+      return;
+    }
+    const diff = (new Date(end) - new Date(start)) / 86400000;
+    if (diff < 0) { setExportError('Tanggal akhir tidak boleh lebih awal dari tanggal mulai.'); return; }
+    if (diff > 61) { setExportError('Maksimal rentang export 62 hari.'); return; }
+    try {
+      setExporting(true);
+      setExportError('');
+      await PenilaianShiftAbsensiRepository.exportRekap({
+        start_date: start,
+        end_date:   end,
+        id_unit:    appliedFilters.id_unit   || undefined,
+        id_pegawai: appliedFilters.id_pegawai || undefined,
+      });
+    } catch {
+      setExportError('Gagal export Excel. Pastikan filter tanggal sudah diisi.');
+    } finally {
+      setExporting(false);
+    }
+  }, [appliedFilters]);
+
   const handleEvaluate = useCallback(async () => {
     setEvaluating(true);
     setEvalError('');
@@ -202,15 +262,34 @@ const PenilaianShiftAbsensiPage = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">⚖️ Penilaian Shift Absensi</h1>
           <p className="text-gray-500 text-sm mt-1">Hasil evaluasi roster vs kehadiran aktual</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Export Excel */}
+          <button
+            onClick={handleExportExcel}
+            disabled={exporting || !appliedFilters.start_date || !appliedFilters.end_date}
+            title="Isi filter tanggal mulai & akhir terlebih dahulu, lalu klik Terapkan"
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+          >
+            {exporting ? '⏳ Mengunduh...' : '📥 Export Excel'}
+          </button>
+          <button
+            onClick={() => setShowFilters(f => !f)}
+            className={`px-4 py-2 rounded-lg border transition-colors text-sm font-medium flex items-center gap-1 ${
+              hasActiveFilter
+                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            🔍 Filter {hasActiveFilter && <span className="ml-1 px-1.5 py-0.5 bg-blue-500 text-white text-xs rounded-full">ON</span>}
+          </button>
           <button
             onClick={openEvalModal}
-            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium"
+            className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors text-sm font-medium"
           >
             ▶ Jalankan Evaluasi
           </button>
@@ -222,6 +301,110 @@ const PenilaianShiftAbsensiPage = () => {
           </button>
         </div>
       </div>
+
+      {/* Export error */}
+      {exportError && (
+        <div className="bg-red-50 text-red-700 px-4 py-2 rounded-lg text-sm border border-red-200">
+          ⚠️ {exportError}
+        </div>
+      )}
+
+      {/* Filter Panel */}
+      {showFilters && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai</label>
+              <input
+                type="date"
+                value={filters.start_date}
+                onChange={e => setFilters(f => ({ ...f, start_date: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Akhir</label>
+              <input
+                type="date"
+                value={filters.end_date}
+                onChange={e => setFilters(f => ({ ...f, end_date: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status Final</label>
+              <select
+                value={filters.status_final}
+                onChange={e => setFilters(f => ({ ...f, status_final: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
+              >
+                <option value="">Semua Status</option>
+                {['TEPAT_WAKTU','TERLAMBAT','PULANG_CEPAT','TIDAK_ABSEN_MASUK','TIDAK_ABSEN_PULANG','MANGKIR','TIDAK_DIHITUNG'].map(s => (
+                  <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+              <UnitSearchInput
+                value={filters.id_unit}
+                onChange={id => setFilters(f => ({ ...f, id_unit: id ?? '' }))}
+                placeholder="Semua unit..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Pegawai</label>
+              <PegawaiSearchInput
+                value={filters.id_pegawai}
+                displayValue={filters.pegawai_display}
+                onChange={(id, nama) => setFilters(f => ({ ...f, id_pegawai: id ?? '', pegawai_display: nama ?? '' }))}
+                placeholder="Semua pegawai..."
+              />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-2">
+            <button
+              onClick={applyFilters}
+              className="px-5 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors"
+            >
+              Terapkan Filter
+            </button>
+            {hasActiveFilter && (
+              <button
+                onClick={resetFilters}
+                className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+              >
+                Reset
+              </button>
+            )}
+            {appliedFilters.start_date && appliedFilters.end_date && (
+              <span className="text-xs text-gray-500 ml-2">
+                Klik “Export Excel” untuk mengunduh rekap periode ini
+              </span>
+            )}
+          </div>
+          {/* Active filter chips */}
+          {hasActiveFilter && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {appliedFilters.start_date && appliedFilters.end_date && (
+                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
+                  📅 {appliedFilters.start_date} – {appliedFilters.end_date}
+                </span>
+              )}
+              {appliedFilters.status_final && (
+                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
+                  Status: {appliedFilters.status_final.replace(/_/g, ' ')}
+                </span>
+              )}
+              {appliedFilters.pegawai_display && (
+                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
+                  Pegawai: {appliedFilters.pegawai_display}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Error */}
       {error && (

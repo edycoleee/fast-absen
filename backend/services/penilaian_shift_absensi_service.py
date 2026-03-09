@@ -35,12 +35,37 @@ class PenilaianShiftAbsensiService:
         self.db = db
         self.repo = PenilaianShiftAbsensiRepository(db)
 
-    def get_all(self, skip: int = 0, limit: int = 100) -> List[PenilaianShiftAbsensiResponse]:
-        items = self.repo.get_all_with_relations(skip=skip, limit=limit)
+    def get_all(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        start_date=None,
+        end_date=None,
+        id_unit=None,
+        id_pegawai=None,
+        status_final=None,
+    ) -> List[PenilaianShiftAbsensiResponse]:
+        items = self.repo.get_all_with_relations(
+            skip=skip, limit=limit,
+            start_date=start_date, end_date=end_date,
+            id_unit=id_unit, id_pegawai=id_pegawai,
+            status_final=status_final,
+        )
         return [self._to_response(item) for item in items]
 
-    def count_all(self) -> int:
-        return self.repo.count()
+    def count_all(
+        self,
+        start_date=None,
+        end_date=None,
+        id_unit=None,
+        id_pegawai=None,
+        status_final=None,
+    ) -> int:
+        return self.repo.count_filtered(
+            start_date=start_date, end_date=end_date,
+            id_unit=id_unit, id_pegawai=id_pegawai,
+            status_final=status_final,
+        )
 
     def get_by_id(self, penilaian_id: int) -> PenilaianShiftAbsensiResponse:
         item = self.repo.get_by_id_with_relations(penilaian_id)

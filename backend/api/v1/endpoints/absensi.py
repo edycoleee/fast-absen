@@ -4,8 +4,14 @@ Check-in/Check-out system with Admin CRUD + User Dashboard
 """
 from typing import List, Optional
 from datetime import date, datetime, timedelta
-from fastapi import APIRouter, Depends, status, Request
+from io import BytesIO
+from fastapi import APIRouter, Depends, status, Request, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 from config.database import get_db
 from schemas.absensi import (
     AbsensiCreate, AbsensiUpdate, AbsensiResponse, AbsensiDetail,
@@ -241,6 +247,230 @@ def get_absensi_statistics(
 
 
 # ===== Admin Endpoints =====
+
+
+@router.get("/export/rekap")
+def export_rekap_excel(
+    start_date: date = Query(..., description="Tanggal mulai (YYYY-MM-DD)"),
+    end_date: date = Query(..., description="Tanggal selesai (YYYY-MM-DD)"),
+    id_unit: Optional[int] = Query(None, description="Filter unit (opsional)"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission(PermissionKeys.ABSENSI_READ)),
+):
+    """
+    Export laporan rekap absensi ke Excel.
+
+    Format: satu baris per pegawai, kolom pasangan Masuk/Keluar untuk setiap tanggal.
+    Contoh header: No | Nama | Unit | 01/03 Masuk | 01/03 Keluar | 02/03 Masuk | ...
+    """
+    from models.absensi import Absensi
+    from models.pegawai import Pegawai
+    from models.unit import Unit
+    from collections import defaultdict
+
+    # --- Batas maksimal 31 hari untuk mencegah file terlalu besar ---
+    if (end_date - start_date).days > 61:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Rentang maksimal 62 hari per ekspor")
+
+    # --- 1. Ambil semua tanggal dalam rentang ---
+    total_days = (end_date - start_date).days + 1
+    date_range = [start_date + timedelta(days=i) for i in range(total_days)]
+
+    # --- 2. Ambil semua pegawai dalam scope ---
+    pegawai_q = (
+        db.query(
+            Pegawai.id_pegawai,
+            Pegawai.nama,
+            Pegawai.id_unit,
+            Unit.nama_unit,
+        )
+        .join(Unit, Unit.id_unit == Pegawai.id_unit, isouter=True)
+        .filter(Pegawai.status.notin_(["Tidak Aktif", "TIDAK AKTIF", "Non Aktif"]))
+    )
+    if id_unit is not None:
+        pegawai_q = pegawai_q.filter(Pegawai.id_unit == id_unit)
+    pegawai_rows = pegawai_q.order_by(Pegawai.id_unit, Pegawai.nama).all()
+
+    # --- 3. Ambil semua absensi dalam rentang ---
+    absensi_q = (
+        db.query(Absensi)
+        .filter(Absensi.tanggal >= start_date, Absensi.tanggal <= end_date)
+    )
+    if id_unit is not None:
+        absensi_q = absensi_q.join(Pegawai, Pegawai.id_pegawai == Absensi.id_pegawai).filter(
+            Pegawai.id_unit == id_unit
+        )
+
+    # index: {id_pegawai: {tanggal: Absensi}}
+    absensi_map: dict[str, dict[date, "Absensi"]] = defaultdict(dict)
+    for ab in absensi_q.all():
+        absensi_map[ab.id_pegawai][ab.tanggal] = ab
+
+    # --- 4. Bangun Excel ---
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = f"Rekap {start_date.strftime('%d%b')}-{end_date.strftime('%d%b%Y')}"
+
+    # Style constants
+    thin = Side(border_style="thin", color="BBBBBB")
+    border_all = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    header_fill_dark = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+    header_fill_masuk = PatternFill(start_color="1A6B3C", end_color="1A6B3C", fill_type="solid")
+    header_fill_keluar = PatternFill(start_color="7B3F00", end_color="7B3F00", fill_type="solid")
+    white_font = Font(color="FFFFFF", bold=True, size=9)
+    bold_font = Font(bold=True, size=9)
+    normal_font = Font(size=9)
+    center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    left = Alignment(horizontal="left", vertical="center")
+
+    # ---- Row 1: Judul ----
+    judul_cols = 3 + total_days * 2
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=judul_cols)
+    judul_cell = ws.cell(row=1, column=1)
+    unit_label = ""
+    if id_unit and pegawai_rows:
+        unit_label = f" — {pegawai_rows[0].nama_unit}"
+    judul_cell.value = (
+        f"LAPORAN ABSENSI PEGAWAI{unit_label}\n"
+        f"Periode: {start_date.strftime('%d %B %Y')} s/d {end_date.strftime('%d %B %Y')}"
+    )
+    judul_cell.font = Font(bold=True, size=12, color="1F4E79")
+    judul_cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    ws.row_dimensions[1].height = 40
+
+    # ---- Row 2: Sub-header tanggal (merged pair Masuk+Keluar) ----
+    # Col 1 = No, Col 2 = Nama, Col 3 = Unit
+    for col_idx in range(1, 4):
+        c = ws.cell(row=2, column=col_idx)
+        c.fill = header_fill_dark
+        c.font = white_font
+        c.alignment = center
+        c.border = border_all
+    ws.cell(row=2, column=1).value = "No"
+    ws.cell(row=2, column=2).value = "Nama Pegawai"
+    ws.cell(row=2, column=3).value = "Unit"
+    ws.merge_cells(start_row=2, start_column=2, end_row=3, end_column=2)
+    ws.merge_cells(start_row=2, start_column=3, end_row=3, end_column=3)
+    ws.merge_cells(start_row=2, start_column=1, end_row=3, end_column=1)
+
+    start_col = 4
+    for i, d in enumerate(date_range):
+        col_m = start_col + i * 2      # Masuk column
+        col_k = start_col + i * 2 + 1  # Keluar column
+        # Merge 2 cells for the date label
+        ws.merge_cells(start_row=2, start_column=col_m, end_row=2, end_column=col_k)
+        date_cell = ws.cell(row=2, column=col_m)
+        hari = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"][d.weekday()]
+        date_cell.value = f"{hari}\n{d.strftime('%d/%m')}"
+        date_cell.fill = header_fill_dark
+        date_cell.font = white_font
+        date_cell.alignment = center
+        date_cell.border = border_all
+        ws.cell(row=2, column=col_k).border = border_all
+
+    # ---- Row 3: Sub-header Masuk / Keluar per tanggal ----
+    for i in range(total_days):
+        col_m = start_col + i * 2
+        col_k = start_col + i * 2 + 1
+        cm = ws.cell(row=3, column=col_m, value="Masuk")
+        cm.fill = header_fill_masuk
+        cm.font = white_font
+        cm.alignment = center
+        cm.border = border_all
+
+        ck = ws.cell(row=3, column=col_k, value="Keluar")
+        ck.fill = header_fill_keluar
+        ck.font = white_font
+        ck.alignment = center
+        ck.border = border_all
+
+    ws.row_dimensions[2].height = 28
+    ws.row_dimensions[3].height = 18
+
+    # ---- Rows 4+: Data ----
+    row_num = 4
+    for no, peg in enumerate(pegawai_rows, start=1):
+        ws.cell(row=row_num, column=1, value=no).font = normal_font
+        ws.cell(row=row_num, column=1).alignment = center
+        ws.cell(row=row_num, column=1).border = border_all
+
+        nama_cell = ws.cell(row=row_num, column=2, value=peg.nama or peg.id_pegawai)
+        nama_cell.font = normal_font
+        nama_cell.alignment = left
+        nama_cell.border = border_all
+
+        unit_cell = ws.cell(row=row_num, column=3, value=peg.nama_unit or "-")
+        unit_cell.font = normal_font
+        unit_cell.alignment = left
+        unit_cell.border = border_all
+
+        for i, d in enumerate(date_range):
+            col_m = start_col + i * 2
+            col_k = start_col + i * 2 + 1
+
+            ab = absensi_map.get(peg.id_pegawai, {}).get(d)
+
+            if ab and ab.jam_masuk:
+                jam_m = ab.jam_masuk.astimezone().strftime("%H:%M:%S")
+            else:
+                jam_m = ""
+            if ab and ab.jam_keluar:
+                jam_k = ab.jam_keluar.astimezone().strftime("%H:%M:%S")
+            else:
+                jam_k = ""
+
+            cm = ws.cell(row=row_num, column=col_m, value=jam_m)
+            cm.font = normal_font
+            cm.alignment = center
+            cm.border = border_all
+
+            ck = ws.cell(row=row_num, column=col_k, value=jam_k)
+            ck.font = normal_font
+            ck.alignment = center
+            ck.border = border_all
+
+            # Highlight terlambat / alpha
+            if ab:
+                if ab.status in ("TERLAMBAT",):
+                    cm.fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
+                elif ab.status in ("ALPHA", "IZIN", "SAKIT", "CUTI"):
+                    cm.fill = PatternFill(start_color="FCE4D6", end_color="FCE4D6", fill_type="solid")
+                    ck.fill = PatternFill(start_color="FCE4D6", end_color="FCE4D6", fill_type="solid")
+
+        row_num += 1
+
+    # ---- Column widths ----
+    ws.column_dimensions["A"].width = 5
+    ws.column_dimensions["B"].width = 30
+    ws.column_dimensions["C"].width = 22
+    for i in range(total_days * 2):
+        col_letter = get_column_letter(start_col + i)
+        ws.column_dimensions[col_letter].width = 9
+
+    # ---- Freeze panes: beku 3 baris header + 3 kolom kiri ----
+    ws.freeze_panes = ws.cell(row=4, column=start_col)
+
+    # ---- Keterangan warna di bawah ----
+    ws.cell(row=row_num + 1, column=1, value="Keterangan:").font = bold_font
+    ws.cell(row=row_num + 2, column=1, value="Kuning").fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
+    ws.cell(row=row_num + 2, column=2, value="= Terlambat").font = normal_font
+    ws.cell(row=row_num + 3, column=1, value="Oranye").fill = PatternFill(start_color="FCE4D6", end_color="FCE4D6", fill_type="solid")
+    ws.cell(row=row_num + 3, column=2, value="= Alpha / Izin / Sakit / Cuti").font = normal_font
+
+    # ---- Stream response ----
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    filename = f"rekap_absensi_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.xlsx"
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
 
 @router.get("/", response_model=dict)
 def get_all_absensi(

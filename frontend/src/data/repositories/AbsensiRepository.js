@@ -104,6 +104,35 @@ const getStatistics = async (startDate, endDate) => {
   return response.data;
 };
 
+/**
+ * Export rekap absensi ke Excel (cross-tab per pegawai × tanggal).
+ * Otomatis trigger download file ke browser.
+ */
+const exportRekap = async ({ start_date, end_date, id_unit } = {}) => {
+  const params = new URLSearchParams({ start_date, end_date });
+  if (id_unit) params.append('id_unit', String(id_unit));
+
+  const response = await apiClient.get(`/absensi/export/rekap?${params}`, {
+    responseType: 'blob',
+  });
+
+  // Buat link download sementara
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+
+  // Ambil nama file dari header Content-Disposition atau gunakan default
+  const disposition = response.headers?.['content-disposition'] || '';
+  const match = disposition.match(/filename=([^;]+)/);
+  const filename = match ? match[1].trim() : `rekap_absensi_${start_date}_${end_date}.xlsx`;
+
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
 const AbsensiRepository = {
   getAll,
   getById,
@@ -119,6 +148,7 @@ const AbsensiRepository = {
   getHistory,
   getSummary,
   getStatistics,
+  exportRekap,
 };
 
 export default AbsensiRepository;

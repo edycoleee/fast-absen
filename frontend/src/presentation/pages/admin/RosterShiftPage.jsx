@@ -221,15 +221,21 @@ const RosterShiftPage = () => {
     setPage(1);
   }, []);
 
-  // ─ Export all filtered records as CSV
-  const handleExport = useCallback(async () => {
+  // ─ Export rekap roster sebagai Excel (cross-tab per tanggal)
+  const handleExportExcel = useCallback(async () => {
+    if (!appliedFilters.tanggal_mulai || !appliedFilters.tanggal_selesai) {
+      alert('Terapkan filter Tanggal Mulai dan Tanggal Selesai terlebih dahulu sebelum export.');
+      return;
+    }
     setExporting(true);
     try {
-      const data = await RosterShiftRepository.getAll(0, 99999, appliedFilters);
-      const items = data?.data?.items ?? data?.items ?? [];
-      const now = new Date();
-      const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
-      exportToCSV(items, `roster_shift_${ts}.csv`);
+      await RosterShiftRepository.exportRekap({
+        tanggal_mulai:  appliedFilters.tanggal_mulai,
+        tanggal_selesai: appliedFilters.tanggal_selesai,
+        id_unit:         appliedFilters.id_unit || undefined,
+        id_pegawai:      appliedFilters.id_pegawai || undefined,
+        status_roster:   appliedFilters.status_roster || undefined,
+      });
     } catch (err) {
       alert(formatErrorForAlert(formatErrorMessage(err, 'Gagal mengekspor data', user)));
     } finally {
@@ -362,11 +368,12 @@ const RosterShiftPage = () => {
           {viewMode === 'table' && (
             <>
               <button
-                onClick={handleExport}
+                onClick={handleExportExcel}
                 disabled={exporting}
+                title={!appliedFilters.tanggal_mulai || !appliedFilters.tanggal_selesai ? 'Terapkan filter tanggal terlebih dahulu' : 'Export rekap ke Excel'}
                 className="px-4 py-2 text-sm border border-green-400 text-green-700 rounded-lg hover:bg-green-50 disabled:opacity-50 transition-colors font-medium"
               >
-                {exporting ? '⏳ Mengekspor...' : '⬇️ Export CSV'}
+                {exporting ? '⏳ Mengekspor...' : '📥 Export Excel'}
               </button>
               <button
                 onClick={() => setShowFilters(v => !v)}

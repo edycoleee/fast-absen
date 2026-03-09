@@ -7,12 +7,12 @@ export const usePenilaianShiftAbsensi = () => {
   const [error, setError] = useState(null);
   const [pagination, setPagination] = useState({ total: 0, skip: 0, limit: 20 });
 
-  const fetchPenilaian = useCallback(async (page = 1, limit = 20) => {
+  const fetchPenilaian = useCallback(async (page = 1, limit = 20, filters = {}) => {
     setLoading(true);
     setError(null);
     try {
       const skip = (page - 1) * limit;
-      const data = await PenilaianShiftAbsensiRepository.getAll(skip, limit);
+      const data = await PenilaianShiftAbsensiRepository.getAll(skip, limit, filters);
       const items = data?.data?.items ?? data?.items ?? [];
       const total = data?.data?.total ?? data?.total ?? 0;
       setPenilaian(items);

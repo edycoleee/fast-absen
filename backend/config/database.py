@@ -8,13 +8,20 @@ from config.settings import settings
 from utils.logger import logger
 
 # Create SQLAlchemy engine
+# pool_size=10 + max_overflow=20 = maks 30 koneksi bersamaan
+# Cukup untuk ~800 karyawan dengan pola spike jam masuk/pulang
+# Setiap worker Uvicorn berbagi pool ini
 engine = create_engine(
     settings.DATABASE_URL,
-    pool_pre_ping=True,  # Verify connections before using
-    pool_size=5,  # Number of connections to maintain
-    max_overflow=10,  # Max number of connections to create beyond pool_size
-    pool_recycle=3600,  # Recycle connections after 1 hour
-    echo=settings.DEBUG,  # Log SQL queries in debug mode
+    pool_pre_ping=True,       # Verify connections before using (handles DB restarts)
+    pool_size=10,             # Koneksi idle permanen (naik dari 5)
+    max_overflow=20,          # Koneksi extra saat spike (total maks: 30)
+    pool_recycle=1800,        # Recycle setiap 30 menit (lebih konservatif dari 1 jam)
+    pool_timeout=30,          # Timeout tunggu koneksi dari pool (detik)
+    echo=settings.DEBUG,      # Log SQL queries in debug mode
+    connect_args={
+        "options": "-c statement_timeout=30000"  # Kill query > 30 detik otomatis
+    },
 )
 
 # Create SessionLocal class
