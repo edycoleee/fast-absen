@@ -6,6 +6,8 @@ from typing import Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from models.pegawai import Pegawai
+from models.absensi import Absensi
+from models.approval_pengajuan_absensi import ApprovalPengajuanAbsensi
 from repositories.base import BaseRepository
 
 
@@ -42,6 +44,22 @@ class PegawaiRepository(BaseRepository[Pegawai]):
         self.db.commit()
         self.db.refresh(pegawai)
         return pegawai
+
+    def count_absensi(self, pegawai_id: str) -> int:
+        """Count absensi records belonging to a pegawai"""
+        return (
+            self.db.query(Absensi)
+            .filter(Absensi.id_pegawai == pegawai_id)
+            .count()
+        )
+
+    def count_approval_pengajuan(self, pegawai_id: str) -> int:
+        """Count approval pengajuan absensi records belonging to a pegawai"""
+        return (
+            self.db.query(ApprovalPengajuanAbsensi)
+            .filter(ApprovalPengajuanAbsensi.id_pegawai == pegawai_id)
+            .count()
+        )
 
     def delete(self, pegawai_id: str) -> bool:
         """Delete pegawai by ID (id_pegawai)"""

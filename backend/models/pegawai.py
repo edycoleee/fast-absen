@@ -26,13 +26,14 @@ class Pegawai(Base):
     # Relationships
     users = relationship("User", back_populates="pegawai")
     absensi = relationship("Absensi", back_populates="pegawai")
-    user_sessions = relationship("UserSession", back_populates="pegawai")
+    user_sessions = relationship("UserSession", back_populates="pegawai", cascade="all, delete-orphan")
     unit = relationship("Unit", foreign_keys=[id_unit], back_populates="pegawai")
     kepala_unit = relationship("Unit", foreign_keys=[kepala_id_unit])
-    pegawai_shift_kelompok = relationship("PegawaiShiftKelompok", back_populates="pegawai")
+    # passive_deletes=True: FK has ondelete="CASCADE" at DB level, let DB handle it
+    pegawai_shift_kelompok = relationship("PegawaiShiftKelompok", back_populates="pegawai", passive_deletes=True)
     uploaded_roster_batches = relationship("RosterUploadBatch", back_populates="uploader")
-    roster_shifts = relationship("RosterShift", back_populates="pegawai")
-    penilaian_shift_absensi = relationship("PenilaianShiftAbsensi", foreign_keys="PenilaianShiftAbsensi.id_pegawai", back_populates="pegawai")
+    roster_shifts = relationship("RosterShift", back_populates="pegawai", passive_deletes=True)
+    penilaian_shift_absensi = relationship("PenilaianShiftAbsensi", foreign_keys="PenilaianShiftAbsensi.id_pegawai", back_populates="pegawai", passive_deletes=True)
     approved_penilaian_shift_absensi = relationship("PenilaianShiftAbsensi", foreign_keys="PenilaianShiftAbsensi.approved_by_pegawai", back_populates="approved_by")
     approval_pengajuan_logs = relationship("ApprovalPengajuanAbsensiLog", back_populates="action_by")
     face_embeddings = relationship("FaceEmbedding", back_populates="pegawai", cascade="all, delete-orphan")

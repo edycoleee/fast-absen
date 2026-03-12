@@ -55,6 +55,11 @@ export const formatErrorMessage = (error, defaultMessage = 'Terjadi kesalahan', 
     return '⚠️ Data yang Anda masukkan tidak valid. Periksa kembali form Anda.';
   }
   
+  // Handle conflict errors (409 - e.g. tidak bisa hapus karena ada relasi data)
+  if (statusCode === 409) {
+    return `⚠️ ${errorDetail || errorMessage || defaultMessage}`;
+  }
+
   // Handle server errors (500)
   if (statusCode >= 500) {
     return '⚡ Terjadi kesalahan pada server. Silakan coba lagi nanti atau hubungi administrator.';

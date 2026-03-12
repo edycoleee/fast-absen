@@ -150,9 +150,33 @@ class PegawaiService:
         if not pegawai:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Pegawai with id {pegawai_id} not found"
+                detail=f"Pegawai dengan ID '{pegawai_id}' tidak ditemukan."
             )
         
+        # Cegah hapus jika pegawai masih memiliki data absensi
+        jumlah_absensi = self.pegawai_repo.count_absensi(pegawai_id)
+        if jumlah_absensi > 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Pegawai '{pegawai.nama}' (ID: {pegawai_id}) tidak dapat dihapus "
+                    f"karena masih memiliki {jumlah_absensi} data absensi. "
+                    f"Hapus atau arsipkan data absensi pegawai tersebut terlebih dahulu."
+                )
+            )
+
+        # Cegah hapus jika pegawai masih memiliki pengajuan absensi
+        jumlah_pengajuan = self.pegawai_repo.count_approval_pengajuan(pegawai_id)
+        if jumlah_pengajuan > 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Pegawai '{pegawai.nama}' (ID: {pegawai_id}) tidak dapat dihapus "
+                    f"karena masih memiliki {jumlah_pengajuan} data pengajuan absensi. "
+                    f"Hapus atau selesaikan pengajuan absensi pegawai tersebut terlebih dahulu."
+                )
+            )
+
         # Delete photo if exists
         if pegawai.foto:
             photo_path = os.path.join(self.upload_dir, pegawai.foto)
