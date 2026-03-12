@@ -68,6 +68,7 @@ async def create_pegawai(
     id_unit: Optional[int] = Form(None),
     kepala_id_unit: Optional[int] = Form(None),
     status: Optional[str] = Form(None),
+    nohp: Optional[str] = Form(None),
     foto: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
@@ -84,6 +85,7 @@ async def create_pegawai(
     - **id_unit**: Unit ID (optional)
     - **kepala_id_unit**: Head Unit ID for approval routing (optional)
     - **status**: Status (optional)
+    - **nohp**: Phone number / WA number (optional)
     - **foto**: Photo file (JPG/PNG) (optional)
     """
     service = PegawaiService(db)
@@ -110,7 +112,8 @@ async def create_pegawai(
         alamat=alamat,
         id_unit=id_unit,
         kepala_id_unit=kepala_id_unit,
-        status=status
+        status=status,
+        nohp=nohp,
     )
     
     pegawai = await service.create(pegawai_data, foto)
@@ -142,6 +145,7 @@ async def download_pegawai_template():
         ("id_unit",                      10),
         ("kepala_id_unit",               15),
         ("status (AKTIF/TIDAK_AKTIF)",   25),
+        ("nohp",                         18),
     ]
 
     header_font  = Font(bold=True, color="FFFFFF")
@@ -160,7 +164,7 @@ async def download_pegawai_template():
     # Example data row
     example = [
         "EMP001", "199001012020011001", "Budi Santoso", "L",
-        "Surabaya", "1990-01-01", "Jl. Merdeka No. 1", "1", "", "AKTIF",
+        "Surabaya", "1990-01-01", "Jl. Merdeka No. 1", "1", "", "AKTIF", "08123456789",
     ]
     example_fill  = PatternFill("solid", fgColor="EFF6FF")
     for col, val in enumerate(example, 1):
@@ -268,6 +272,7 @@ async def import_pegawai(
                 id_unit        = to_int_or_none(row[7] if len(row) > 7 else None),
                 kepala_id_unit = to_int_or_none(row[8] if len(row) > 8 else None),
                 status         = (cell_str(row[9] if len(row) > 9 else None) or "AKTIF").upper(),
+                nohp           = cell_str(row[10] if len(row) > 10 else None),
             )
 
             await service.create(pegawai_data, foto=None)
@@ -316,6 +321,7 @@ async def update_pegawai(
     id_unit: Optional[int] = Form(None),
     kepala_id_unit: Optional[int] = Form(None),
     status: Optional[str] = Form(None),
+    nohp: Optional[str] = Form(None),
     foto: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
@@ -332,6 +338,7 @@ async def update_pegawai(
     - **id_unit**: Unit ID (optional)
     - **kepala_id_unit**: Head Unit ID for approval routing (optional)
     - **status**: Status (optional)
+    - **nohp**: Phone number / WA number (optional)
     - **foto**: Photo file (JPG/PNG) (optional)
     """
     service = PegawaiService(db)
@@ -368,6 +375,8 @@ async def update_pegawai(
         update_dict["kepala_id_unit"] = kepala_id_unit if kepala_id_unit != 0 else None
     if status is not None:
         update_dict["status"] = status
+    if nohp is not None:
+        update_dict["nohp"] = nohp
     
     pegawai_data = PegawaiUpdate(**update_dict)
     

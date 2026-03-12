@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../domain/hooks';
 import { useAbsensi } from '../../../domain/hooks/useAbsensi';
 import RosterShiftRepository from '../../../data/repositories/RosterShiftRepository';
 import AbsensiRepository from '../../../data/repositories/AbsensiRepository';
+import AuthRepository from '../../../data/repositories/AuthRepository';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -962,25 +963,123 @@ const JadwalShiftView = ({ jadwalList, jadwalLoading, jadwalError, jadwalBulan, 
 // Profil View
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ProfilView = ({ user, absensi }) => (
+const ProfilView = ({ user, absensi }) => {
+  const [profile,      setProfile]      = useState(null);
+  const [uploading,    setUploading]    = useState(false);
+  const [uploadError,  setUploadError]  = useState('');
+  const [uploadSuccess,setUploadSuccess]= useState('');
+  const [fotoKey,      setFotoKey]      = useState(0); // force img re-render after upload
+  const fileInputRef = useRef(null);
+
+  const fotoBaseUrl = `${window.location.origin}/uploads/photos/`;
+
+  const loadProfile = useCallback(async () => {
+    try {
+      const res = await AuthRepository.getCurrentUser();
+      setProfile(res?.data ?? null);
+    } catch {
+      // silently ignore — fall back to token user data
+    }
+  }, []);
+
+  useEffect(() => { loadProfile(); }, [loadProfile]);
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError('');
+    setUploadSuccess('');
+    setUploading(true);
+    try {
+      await AuthRepository.uploadProfilePhoto(file);
+      setUploadSuccess('Foto profil berhasil diperbarui!');
+      setFotoKey(k => k + 1);
+      await loadProfile();
+    } catch (err) {
+      setUploadError(err?.response?.data?.detail || 'Gagal mengupload foto.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const foto = profile?.pegawai?.foto;
+  const nama  = profile?.pegawai?.nama || user?.username;
+  const pegawai = profile?.pegawai;
+
+  return (
   <div className="space-y-6">
     <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
       <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">Profil Saya</h2>
       <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6 mb-6 pb-6 border-b border-gray-200">
-        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-          <span className="text-green-700 font-bold text-4xl">{user?.username?.charAt(0).toUpperCase()}</span>
+
+        {/* Avatar */}
+        <div className="relative flex-shrink-0">
+          <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-green-100 shadow-md bg-green-100 flex items-center justify-center">
+            {foto ? (
+              <img
+                key={fotoKey}
+                src={`${fotoBaseUrl}${foto}?v=${fotoKey}`}
+                alt="Foto Profil"
+                className="w-full h-full object-cover"
+                onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex'; }}
+              />
+            ) : null}
+            <span
+              className="text-green-700 font-bold text-4xl"
+              style={{ display: foto ? 'none' : 'flex' }}
+            >
+              {user?.username?.charAt(0).toUpperCase()}
+            </span>
+          </div>
+
+          {/* Upload button overlay */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            title="Ganti foto profil"
+            className="absolute bottom-0 right-0 w-8 h-8 bg-green-600 hover:bg-green-700 text-white rounded-full flex items-center justify-center shadow-md transition-colors disabled:opacity-60"
+          >
+            {uploading ? (
+              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            )}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png"
+            className="hidden"
+            onChange={handleFileChange}
+          />
         </div>
+
         <div className="text-center sm:text-left">
-          <h3 className="text-xl font-bold text-gray-900">{user?.username}</h3>
+          <h3 className="text-xl font-bold text-gray-900">{nama}</h3>
           <p className="text-gray-600">{user?.roles?.[0] || 'user'}</p>
           <span className="inline-block mt-2 px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">✓ Active</span>
+          <p className="mt-3 text-xs text-gray-400">Klik ikon kamera untuk ganti foto (JPG/PNG, maks 5 MB)</p>
+          {uploadSuccess && <p className="mt-2 text-sm text-green-600 font-medium">✅ {uploadSuccess}</p>}
+          {uploadError   && <p className="mt-2 text-sm text-red-600">❌ {uploadError}</p>}
         </div>
       </div>
+
       <div className="space-y-4">
         {[
           { label: 'Username',    value: user?.username || 'N/A' },
+          { label: 'Nama',        value: pegawai?.nama   || '-'   },
+          { label: 'NIP',         value: pegawai?.nip    || '-'   },
+          { label: 'No. HP / WA', value: pegawai?.nohp   || '-'   },
           { label: 'Role',        value: user?.roles?.[0] || 'user' },
           { label: 'User ID',     value: user?.id || 'N/A' },
+          { label: 'ID Pegawai',  value: pegawai?.id_pegawai || '-' },
           { label: 'Status Akun', value: '✓ Aktif', valueClass: 'text-green-600' },
         ].map(({ label, value, valueClass }) => (
           <div key={label}>
@@ -1006,12 +1105,15 @@ const ProfilView = ({ user, absensi }) => (
         </div>
         <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
           <p className="text-sm text-gray-600 mb-1">Member Since</p>
-          <p className="text-lg font-bold text-purple-600">2026</p>
+          <p className="text-lg font-bold text-purple-600">
+            {profile?.created_at ? new Date(profile.created_at).getFullYear() : '2026'}
+          </p>
         </div>
       </div>
     </div>
   </div>
-);
+  );
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Root component

@@ -14,6 +14,7 @@ export function Pegawai(data = {}) {
     id_unit: data.id_unit ?? null,
     kepala_id_unit: data.kepala_id_unit ?? null,
     status: data.status || 'PNS',
+    nohp: data.nohp || null,
     foto: data.foto || null,
     created_at: data.created_at || null,
   };
@@ -38,6 +39,7 @@ export function Pegawai(data = {}) {
     id_unit: entity.id_unit,
     kepala_id_unit: entity.kepala_id_unit,
     status: entity.status,
+    nohp: entity.nohp,
     foto: entity.foto,
     created_at: entity.created_at
   });

@@ -37,11 +37,22 @@ const getCurrentUser = async () => {
   return response.data;
 };
 
+/** Upload or replace current user's profile photo. */
+const uploadProfilePhoto = async (file) => {
+  const formData = new FormData();
+  formData.append('foto', file);
+  const response = await apiClient.post('/auth/me/photo', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+};
+
 const AuthRepository = {
   login,
   refreshToken,
   logout,
   getCurrentUser,
+  uploadProfilePhoto,
   checkUsername,
 
   /** Login menggunakan verifikasi wajah (username + foto base64). */

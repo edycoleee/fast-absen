@@ -2,7 +2,9 @@
 Auth Endpoints
 Login with JWT Access Token (localStorage) & Refresh Token (HTTP-only cookie) + Session Tracking
 """
-from fastapi import APIRouter, Depends, status, Response, Cookie, HTTPException, Request
+import io
+import os
+from fastapi import APIRouter, Depends, status, Response, Cookie, HTTPException, Request, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import Optional
 from config.database import get_db
@@ -15,6 +17,7 @@ from utils.response import success_response
 from utils.auth import decode_refresh_token, create_access_token
 from utils.dependencies import get_current_user
 from repositories.user_repository import UserRepository
+from repositories.pegawai_repository import PegawaiRepository
 from models.user import User
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -324,4 +327,113 @@ def login_face(
             "face_similarity": round(similarity, 4),
         },
         message="Login wajah berhasil.",
+    )
+
+
+@router.get("/me", response_model=dict, status_code=status.HTTP_200_OK)
+def get_current_user_profile(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get current authenticated user profile including linked pegawai data."""
+    pegawai_data = None
+    if current_user.id_pegawai:
+        pegawai_repo = PegawaiRepository(db)
+        pegawai = pegawai_repo.get(current_user.id_pegawai)
+        if pegawai:
+            pegawai_data = {
+                "id_pegawai": pegawai.id_pegawai,
+                "nip": pegawai.nip,
+                "nama": pegawai.nama,
+                "jenis_kelamin": pegawai.jenis_kelamin,
+                "tempat_lahir": pegawai.tempat_lahir,
+                "tanggal_lahir": str(pegawai.tanggal_lahir) if pegawai.tanggal_lahir else None,
+                "alamat": pegawai.alamat,
+                "status": pegawai.status,
+                "nohp": pegawai.nohp,
+                "foto": pegawai.foto,
+            }
+
+    return success_response(
+        data={
+            "id": current_user.id,
+            "username": current_user.username,
+            "id_pegawai": current_user.id_pegawai,
+            "is_active": current_user.is_active,
+            "roles": [r.name for r in current_user.roles],
+            "created_at": str(current_user.created_at) if current_user.created_at else None,
+            "pegawai": pegawai_data,
+        },
+        message="Profile retrieved successfully",
+    )
+
+
+@router.post("/me/photo", response_model=dict, status_code=status.HTTP_200_OK)
+async def upload_profile_photo(
+    foto: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Upload or replace the current user's profile photo.
+    The user must have a linked pegawai record.
+    """
+    if not current_user.id_pegawai:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Akun ini tidak terhubung ke data pegawai. Hubungi admin.",
+        )
+
+    allowed_types = ["image/jpeg", "image/jpg", "image/png"]
+    if foto.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File harus berformat JPG atau PNG.",
+        )
+
+    contents = await foto.read()
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ukuran file maksimal 5 MB.",
+        )
+
+    try:
+        from PIL import Image as PILImage
+        img = PILImage.open(io.BytesIO(contents))
+        if img.mode in ("RGBA", "LA", "P"):
+            bg = PILImage.new("RGB", img.size, (255, 255, 255))
+            if img.mode == "P":
+                img = img.convert("RGBA")
+            bg.paste(img, mask=img.split()[-1] if img.mode == "RGBA" else None)
+            img = bg
+        elif img.mode != "RGB":
+            img = img.convert("RGB")
+
+        max_size = (800, 800)
+        if img.size[0] > max_size[0] or img.size[1] > max_size[1]:
+            img.thumbnail(max_size, PILImage.Resampling.LANCZOS)
+
+        upload_dir = os.path.join(os.getcwd(), "uploads", "photos")
+        os.makedirs(upload_dir, exist_ok=True)
+
+        filename = f"{current_user.id_pegawai}.jpg"
+        file_path = os.path.join(upload_dir, filename)
+        img.save(file_path, "JPEG", optimize=True, quality=85)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Gagal memproses gambar: {str(e)}",
+        )
+
+    pegawai_repo = PegawaiRepository(db)
+    pegawai = pegawai_repo.get(current_user.id_pegawai)
+    pegawai.foto = filename
+    pegawai_repo.update(pegawai)
+
+    return success_response(
+        data={"foto": filename},
+        message="Foto profil berhasil diperbarui.",
     )

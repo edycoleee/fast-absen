@@ -20,6 +20,7 @@ class Pegawai(Base):
     id_unit = Column(Integer, ForeignKey("unit.id_unit"), nullable=True)
     kepala_id_unit = Column(Integer, ForeignKey("unit.id_unit"), nullable=True)
     status = Column(String(20), nullable=True)
+    nohp = Column(String(20), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     foto = Column(String(255), nullable=True)
 

@@ -17,6 +17,7 @@ class PegawaiBase(BaseModel):
     id_unit: Optional[int] = None
     kepala_id_unit: Optional[int] = None
     status: Optional[str] = None
+    nohp: Optional[str] = None
     foto: Optional[str] = None
 
 

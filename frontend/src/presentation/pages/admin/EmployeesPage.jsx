@@ -48,6 +48,7 @@ const Pegawai = () => {
     id_unit: '',
     kepala_id_unit: '',
     status: '',
+    nohp: '',
     foto: null
   });
 
@@ -127,6 +128,7 @@ const Pegawai = () => {
       id_unit: '',
       kepala_id_unit: '',
       status: '',
+      nohp: '',
       foto: null
     });
     setEditingId(null);
@@ -156,6 +158,7 @@ const Pegawai = () => {
       id_unit: pegawaiItem.id_unit ? String(pegawaiItem.id_unit) : '',
       kepala_id_unit: pegawaiItem.kepala_id_unit ? String(pegawaiItem.kepala_id_unit) : '',
       status: pegawaiItem.status || '',
+      nohp: pegawaiItem.nohp || '',
       foto: null
     });
     setCurrentPhoto(pegawaiItem.foto || '');
@@ -199,7 +202,8 @@ const Pegawai = () => {
       tanggal_lahir: formData.tanggal_lahir,
       alamat: formData.alamat,
       id_unit: formData.id_unit,
-      status: formData.status
+      status: formData.status,
+      nohp: formData.nohp,
     };
 
     Object.entries(entries).forEach(([key, value]) => {
@@ -325,6 +329,9 @@ const Pegawai = () => {
                       NIP
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      No. HP / WA
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       ID Unit
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -368,6 +375,21 @@ const Pegawai = () => {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-700">{p.nip || '-'}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {p.nohp ? (
+                            <a
+                              href={`https://wa.me/${p.nohp.replace(/^0/, '62').replace(/[^0-9]/g, '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-green-600 hover:text-green-800 flex items-center gap-1"
+                              title="Buka di WhatsApp"
+                            >
+                              <span>📱</span>{p.nohp}
+                            </a>
+                          ) : (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-700">
@@ -528,6 +550,20 @@ const Pegawai = () => {
                   onChange={(e) => handleFormChange('status', e.target.value)}
                   className="input-field"
                   placeholder="PNS / Kontrak"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  No. HP / WA
+                  <span className="ml-1 text-xs text-gray-400">(untuk notifikasi)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.nohp}
+                  onChange={(e) => handleFormChange('nohp', e.target.value)}
+                  className="input-field"
+                  placeholder="08xxxxxxxxxx"
                 />
               </div>
 
