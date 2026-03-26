@@ -5,7 +5,7 @@ Admin-only CRUD operations for employees
 from typing import List, Optional
 from io import BytesIO
 from datetime import date as date_type
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 import openpyxl
@@ -26,6 +26,7 @@ async def get_pegawai(
     skip: int = 0,
     limit: int = 10,
     search: Optional[str] = None,
+    id_unit: Optional[int] = Query(None, description="Filter pegawai berdasarkan unit"),
     db: Session = Depends(get_db)
 ):
     """
@@ -33,17 +34,32 @@ async def get_pegawai(
     - **skip**: Number of items to skip (default: 0)
     - **limit**: Items per page (default: 10)
     - **search**: Search query for name or NIP (optional)
+    - **id_unit**: Filter by unit ID (optional)
     """
+    from models.pegawai import Pegawai as PegawaiModel
+    from sqlalchemy import or_
+
     service = PegawaiService(db)
 
-    
-    if search:
+    if id_unit:
+        # Filter langsung per unit via query
+        q = db.query(PegawaiModel).filter(PegawaiModel.id_unit == id_unit)
+        if search:
+            q = q.filter(or_(
+                PegawaiModel.nama.ilike(f"%{search}%"),
+                PegawaiModel.nip.ilike(f"%{search}%"),
+            ))
+        total = q.count()
+        pegawai_objs = q.order_by(PegawaiModel.nama).offset(skip).limit(limit).all()
+        from schemas.pegawai import PegawaiResponse
+        pegawai_list = [PegawaiResponse.model_validate(p) for p in pegawai_objs]
+    elif search:
         total = service.count_search(search)
         pegawai_list = service.search(search, skip=skip, limit=limit)
     else:
         total = service.count_all()
         pegawai_list = service.get_all(skip=skip, limit=limit)
-    
+
     return success_response(
         message="Pegawai retrieved successfully",
         data={
@@ -51,10 +67,10 @@ async def get_pegawai(
             "total": total,
             "skip": skip,
             "limit": limit,
-            "search": search
+            "search": search,
+            "id_unit": id_unit,
         }
     )
-
 
 @router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission(PermissionKeys.PEGAWAI_CREATE))])
 async def create_pegawai(

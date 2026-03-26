@@ -20,6 +20,19 @@ class UserRepository(BaseRepository[User]):
     def get_by_username(self, username: str) -> Optional[User]:
         """Get user by username"""
         return self.db.query(User).filter(User.username == username).first()
+
+    def get_by_nohp(self, nohp: str) -> Optional[User]:
+        """Get user by pegawai phone number (nohp).
+        Normalize: strip spaces, leading zeros kept.
+        """
+        nohp_clean = nohp.strip()
+        return (
+            self.db.query(User)
+            .join(Pegawai, Pegawai.id_pegawai == User.id_pegawai)
+            .filter(Pegawai.nohp == nohp_clean)
+            .filter(User.is_active == True)
+            .first()
+        )
     
     def get_with_roles(self, user_id: int) -> Optional[User]:
         """Get user with roles eager loaded"""

@@ -62,6 +62,47 @@ const RosterShiftRepository = {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   },
+
+  downloadTemplate: async ({ tahun, bulan, id_unit, id_pegawai } = {}) => {
+    const params = { tahun, bulan };
+    if (id_unit) params.id_unit = id_unit;
+    // id_pegawai bisa array → kirim sebagai param berulang (?id_pegawai=x&id_pegawai=y)
+    const response = await apiClient.get(`${BASE}/template/download`, {
+      params: id_pegawai?.length
+        ? { ...params, id_pegawai }
+        : params,
+      paramsSerializer: p => {
+        const sp = new URLSearchParams();
+        Object.entries(p).forEach(([k, v]) => {
+          if (Array.isArray(v)) v.forEach(val => sp.append(k, val));
+          else if (v !== undefined && v !== null) sp.append(k, v);
+        });
+        return sp.toString();
+      },
+      responseType: 'blob',
+    });
+    const BULAN = ['', 'januari', 'februari', 'maret', 'april', 'mei', 'juni',
+                   'juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
+    const fname = `template_roster_${BULAN[bulan] || bulan}_${tahun}${id_unit ? `_unit${id_unit}` : ''}.xlsx`;
+    const url = URL.createObjectURL(new Blob([response.data]));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+
+  parseTemplate: async (file, { tahun, bulan } = {}) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post(`${BASE}/template/parse`, formData, {
+      params: { tahun, bulan },
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
 };
 
 export default RosterShiftRepository;

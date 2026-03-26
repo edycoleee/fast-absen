@@ -17,14 +17,14 @@ class PermissionService:
         self.db = db
         self.permission_repo = PermissionRepository(db)
     
-    def get_all(self, skip: int = 0, limit: int = 100) -> List[PermissionResponse]:
-        """Get all permissions"""
-        permissions = self.permission_repo.get_all(skip=skip, limit=limit)
+    def get_all(self, skip: int = 0, limit: int = 100, search: str = None) -> List[PermissionResponse]:
+        """Get all permissions with optional search"""
+        permissions = self.permission_repo.get_all_filtered(skip=skip, limit=limit, search=search)
         return [PermissionResponse.model_validate(perm) for perm in permissions]
 
-    def count_all(self) -> int:
-        """Count all permissions"""
-        return self.permission_repo.count_all()
+    def count_all(self, search: str = None) -> int:
+        """Count permissions"""
+        return self.permission_repo.count_filtered(search=search)
     
     def get_by_id(self, permission_id: int) -> PermissionResponse:
         """Get permission by ID"""

@@ -1033,9 +1033,10 @@ const RosterShiftPage = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Shift <span className="text-red-500">*</span></label>
                   <input type="date" value={form.tanggal_shift}
                     onChange={e => setForm(f => ({
-                      ...f, tanggal_shift: e.target.value,
-                      jam_mulai_date: f.jam_mulai_date || e.target.value,
-                      jam_selesai_date: f.jam_selesai_date || e.target.value,
+                      ...f,
+                      tanggal_shift: e.target.value,
+                      jam_mulai_date: e.target.value,
+                      jam_selesai_date: e.target.value,
                     }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
                   />
@@ -1053,6 +1054,9 @@ const RosterShiftPage = () => {
                       className="w-20 border border-gray-300 rounded-lg px-2 py-2 text-sm font-mono text-center focus:outline-none focus:ring-2 focus:ring-primary-400"
                     />
                   </div>
+                  {form.jam_mulai_date && form.tanggal_shift && form.jam_mulai_date !== form.tanggal_shift && (
+                    <p className="text-xs text-amber-600 mt-1">⚠ Tanggal berbeda dari tanggal shift</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Jam Selesai <span className="text-red-500">*</span></label>
@@ -1067,6 +1071,9 @@ const RosterShiftPage = () => {
                       className="w-20 border border-gray-300 rounded-lg px-2 py-2 text-sm font-mono text-center focus:outline-none focus:ring-2 focus:ring-primary-400"
                     />
                   </div>
+                  {form.jam_selesai_date && form.tanggal_shift && form.jam_selesai_date !== form.tanggal_shift && (
+                    <p className="text-xs text-purple-600 mt-1">🌙 Lintas tanggal (selesai {form.jam_selesai_date})</p>
+                  )}
                 </div>
               </div>
 

@@ -247,14 +247,18 @@ def login_face(
     auth_service = AuthService(db)
     face_service = FaceService(db)
 
-    # 1. Cari user berdasarkan username
+    # 1. Cari user berdasarkan username atau no HP pegawai
     user_repo = UserRepository(db)
     user = user_repo.get_by_username(login_data.username)
+
+    # Fallback: cari by nomor HP pegawai jika username tidak cocok
+    if not user and login_data.username.strip().lstrip('0').isdigit():
+        user = user_repo.get_by_nohp(login_data.username.strip())
 
     if not user or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Username tidak ditemukan atau akun tidak aktif.",
+            detail="Username / No HP tidak ditemukan atau akun tidak aktif.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

@@ -160,14 +160,14 @@ export default function FaceLoginPage() {
           {/* ══ STEP: USERNAME ══════════════════════════════ */}
           {step === STEP.USERNAME && (
             <div className="p-8">
-              <h2 className="text-lg font-semibold text-gray-800 mb-1">Masukkan Username</h2>
+              <h2 className="text-lg font-semibold text-gray-800 mb-1">Masukkan Username / No HP</h2>
               <p className="text-sm text-gray-500 mb-6">
-                Masukkan username Anda, lalu kamera akan terbuka untuk verifikasi wajah.
+                Masukkan username atau nomor HP, lalu kamera akan terbuka untuk verifikasi wajah.
               </p>
               <form onSubmit={handleUsernameSubmit} className="space-y-5">
                 <div>
                   <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                    Username
+                    Username / No HP
                   </label>
                   <input
                     id="username"
@@ -175,7 +175,7 @@ export default function FaceLoginPage() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="input-field"
-                    placeholder="Masukkan username"
+                    placeholder="Username atau No HP (contoh: 08122850264)"
                     required
                     autoFocus
                   />

@@ -11,6 +11,7 @@ import PegawaiSearchInput from '../../components/common/PegawaiSearchInput';
 import apiClient from '../../../data/api/client';
 import RosterShiftRepository from '../../../data/repositories/RosterShiftRepository';
 import KamusPolaShiftRepository from '../../../data/repositories/KamusPolaShiftRepository';
+import KamusKodeShiftRepository from '../../../data/repositories/KamusKodeShiftRepository';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -28,12 +29,12 @@ const JENIS_COLOR_MAP = {
 };
 
 const DEFAULT_KAMUS = [
-  { kode: 'P1', jam_mulai: '07:00', jam_selesai: '14:00', is_libur: false },
-  { kode: 'P2', jam_mulai: '07:00', jam_selesai: '11:00', is_libur: false },
-  { kode: 'P3', jam_mulai: '07:00', jam_selesai: '12:30', is_libur: false },
-  { kode: 'S1', jam_mulai: '14:00', jam_selesai: '21:00', is_libur: false },
-  { kode: 'M1', jam_mulai: '21:00', jam_selesai: '07:00', is_libur: false },
-  { kode: 'L1', jam_mulai: '',      jam_selesai: '',      is_libur: true  },
+  { kode: 'P1', label: 'Pagi 1',  jam_mulai: '07:00', jam_selesai: '14:00', is_libur: false },
+  { kode: 'P2', label: 'Pagi 2',  jam_mulai: '07:00', jam_selesai: '11:00', is_libur: false },
+  { kode: 'P3', label: 'Pagi 3',  jam_mulai: '07:00', jam_selesai: '12:30', is_libur: false },
+  { kode: 'S1', label: 'Sore 1',  jam_mulai: '14:00', jam_selesai: '21:00', is_libur: false },
+  { kode: 'M1', label: 'Malam 1', jam_mulai: '21:00', jam_selesai: '07:00', is_libur: false },
+  { kode: 'L1', label: 'Libur',   jam_mulai: '',      jam_selesai: '',      is_libur: true  },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -189,6 +190,8 @@ const RosterAdapterPage = () => {
   const [kamus, setKamus] = useState(DEFAULT_KAMUS);
   const [editingKamus, setEditingKamus] = useState(false);
   const [kamEdits, setKamEdits] = useState(DEFAULT_KAMUS);
+  const [kamusLoading, setKamusLoading] = useState(false);
+  const [kamusSaveError, setKamusSaveError] = useState('');
 
   // ─ Kamus pola
   const [editingPola, setEditingPola] = useState(false);
@@ -201,6 +204,20 @@ const RosterAdapterPage = () => {
   // ─ Grid rows
   const [rows, setRows] = useState([]);
   const [addPegawai, setAddPegawai] = useState({ id_pegawai: '', nama: '', id_unit: null });
+
+  // ─ Bulk add by unit
+  const [unitList, setUnitList] = useState([]);
+  const [bulkUnit, setBulkUnit] = useState('');
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  // ─ Download template
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+
+  // ─ Upload Excel
+  const [uploadError, setUploadError] = useState('');
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadResult, setUploadResult] = useState(null); // { total_rows, errors }
+  const uploadInputRef = useRef(null);
 
   // ─ Copy/paste grid
   const [copiedGrid, setCopiedGrid] = useState(null); // { grid, nama }
@@ -220,7 +237,7 @@ const RosterAdapterPage = () => {
   const days = getDaysInMonth(tahun, bulan);
   const kamMap = Object.fromEntries(kamus.map(k => [k.kode, k]));
 
-  // ── Load shift kelompok list
+  // ── Load shift kelompok list + unit list
   useEffect(() => {
     apiClient.get('/shift-kelompok/', { params: { skip: 0, limit: 500 } })
       .then(res => {
@@ -232,7 +249,113 @@ const RosterAdapterPage = () => {
     KamusPolaShiftRepository.getAll({ only_active: true })
       .then(res => setPolaList(res?.data?.items ?? []))
       .catch(() => {});
+    // Load unit list for bulk add
+    apiClient.get('/unit/', { params: { skip: 0, limit: 500 } })
+      .then(res => {
+        const items = res.data?.data?.items ?? res.data?.items ?? [];
+        setUnitList(items);
+      })
+      .catch(() => {});
+    // Load kamus kode dari backend (persistent)
+    KamusKodeShiftRepository.getAll({ only_active: false })
+      .then(items => {
+        if (items && items.length > 0) setKamus(items);
+      })
+      .catch(() => {});
   }, []);
+
+  // ── Bulk add by unit
+  const handleBulkAddByUnit = useCallback(async () => {
+    if (!bulkUnit) return;
+    setBulkLoading(true);
+    try {
+      const res = await apiClient.get('/pegawai/', { params: { skip: 0, limit: 1000, id_unit: bulkUnit } });
+      const items = res.data?.data?.items ?? res.data?.items ?? [];
+      if (items.length === 0) {
+        alert('Tidak ada pegawai aktif di unit ini.');
+        return;
+      }
+      let added = 0;
+      setRows(prev => {
+        const existingIds = new Set(prev.map(r => r.id_pegawai));
+        const newRows = items
+          .filter(p => !existingIds.has(p.id_pegawai))
+          .map(p => ({ id_pegawai: p.id_pegawai, nama: p.nama, id_unit: p.id_unit, grid: {} }));
+        added = newRows.length;
+        return [...prev, ...newRows];
+      });
+      // show brief result (use timeout to read added after setState)
+      setTimeout(() => {
+        if (added === 0) alert('Semua pegawai dari unit ini sudah ada di grid.');
+      }, 50);
+      setBulkUnit('');
+    } catch {
+      alert('Gagal memuat pegawai unit. Coba lagi.');
+    } finally {
+      setBulkLoading(false);
+    }
+  }, [bulkUnit]);
+
+  // ── Download template Excel
+  const handleDownloadTemplate = useCallback(async () => {
+    setDownloadingTemplate(true);
+    try {
+      // Jika grid sudah ada isinya → kirim id pegawai yang ada di grid
+      // Jika grid kosong → fallback ke filter unit
+      const gridIds = rows.map(r => r.id_pegawai).filter(Boolean);
+      await RosterShiftRepository.downloadTemplate({
+        tahun,
+        bulan,
+        id_unit: gridIds.length === 0 ? (idUnit || undefined) : undefined,
+        id_pegawai: gridIds.length > 0 ? gridIds : undefined,
+      });
+    } catch {
+      alert('Gagal mengunduh template. Coba lagi.');
+    } finally {
+      setDownloadingTemplate(false);
+    }
+  }, [tahun, bulan, idUnit, rows]);
+
+  // ── Upload Excel template
+  const handleUploadExcel = useCallback(async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset input so user can re-upload same file
+    e.target.value = '';
+    setUploadError('');
+    setUploadResult(null);
+    setUploadLoading(true);
+    try {
+      const res = await RosterShiftRepository.parseTemplate(file, { tahun, bulan });
+      const data = res?.data ?? res;
+      const parsedRows = data?.rows ?? [];
+      if (parsedRows.length === 0) {
+        setUploadError('Tidak ada data pegawai yang ditemukan di file Excel. Pastikan file menggunakan template yang benar.');
+        return;
+      }
+      // Merge ke grid yang ada (tambah baru, update yang sudah ada)
+      setRows(prev => {
+        const existingMap = Object.fromEntries(prev.map(r => [r.id_pegawai, r]));
+        const result = [...prev];
+        for (const r of parsedRows) {
+          if (existingMap[r.id_pegawai]) {
+            // Update grid yang sudah ada
+            const idx = result.findIndex(x => x.id_pegawai === r.id_pegawai);
+            if (idx >= 0) result[idx] = { ...result[idx], grid: { ...r.grid } };
+          } else {
+            result.push({ id_pegawai: r.id_pegawai, nama: r.nama, id_unit: r.id_unit, grid: r.grid });
+          }
+        }
+        return result;
+      });
+      setUploadResult({ total_rows: parsedRows.length, errors: data?.errors ?? [] });
+    } catch (err) {
+      const msg = err?.response?.data?.detail || err?.message || 'Gagal memproses file Excel.';
+      setUploadError(msg);
+    } finally {
+      setUploadLoading(false);
+    }
+  }, [tahun, bulan]);
 
   // ── Pola CRUD helpers
   const loadPolaList = useCallback(async () => {
@@ -369,17 +492,56 @@ const RosterAdapterPage = () => {
   // ── Kamus editor
   const openKamusEditor = () => {
     setKamEdits([...kamus]);
+    setKamusSaveError('');
     setEditingKamus(true);
   };
-  const saveKamus = () => {
+  const saveKamus = async () => {
     const codes = kamEdits.map(k => k.kode.trim().toUpperCase()).filter(Boolean);
     const unique = new Set(codes);
     if (unique.size !== codes.length) { alert('Kode kamus tidak boleh duplikat.'); return; }
-    setKamus(kamEdits.map(k => ({ ...k, kode: k.kode.trim().toUpperCase() })));
-    setEditingKamus(false);
+    if (codes.length === 0) { alert('Minimal satu kode harus diisi.'); return; }
+
+    setKamusLoading(true);
+    setKamusSaveError('');
+    try {
+      const originalIds = new Set(kamus.filter(k => k.id).map(k => k.id));
+      const newEdits = kamEdits.map(k => ({ ...k, kode: k.kode.trim().toUpperCase() }));
+
+      const saved = [];
+      for (const k of newEdits) {
+        const payload = {
+          kode:        k.kode,
+          label:       k.label || null,
+          jam_mulai:   k.is_libur ? null : (k.jam_mulai || '00:00'),
+          jam_selesai: k.is_libur ? null : (k.jam_selesai || '00:00'),
+          is_libur:    k.is_libur,
+          is_active:   k.is_active !== false,
+        };
+        if (k.id) {
+          const updated = await KamusKodeShiftRepository.update(k.id, payload);
+          saved.push(updated);
+          originalIds.delete(k.id);
+        } else {
+          const created = await KamusKodeShiftRepository.create(payload);
+          saved.push(created);
+        }
+      }
+      // Hapus yang dihilangkan dari editor
+      for (const deletedId of originalIds) {
+        await KamusKodeShiftRepository.delete(deletedId);
+      }
+
+      setKamus(saved);
+      setEditingKamus(false);
+    } catch (err) {
+      const msg = err?.response?.data?.detail ?? err?.message ?? 'Gagal menyimpan kamus.';
+      setKamusSaveError(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    } finally {
+      setKamusLoading(false);
+    }
   };
   const addKamusRow = () => setKamEdits(prev => [...prev,
-    { kode: '', jam_mulai: '07:00', jam_selesai: '14:00', is_libur: false }
+    { kode: '', label: '', jam_mulai: '07:00', jam_selesai: '14:00', is_libur: false }
   ]);
   const updateKamusRow = (idx, field, value) => setKamEdits(prev =>
     prev.map((k, i) => i === idx ? { ...k, [field]: value } : k)
@@ -447,6 +609,28 @@ const RosterAdapterPage = () => {
             🔁 Kamus Pola
           </button>
           <button
+            onClick={handleDownloadTemplate}
+            disabled={downloadingTemplate}
+            className="px-3 py-1.5 text-sm border border-green-400 text-green-700 rounded hover:bg-green-50 disabled:opacity-50"
+            title={`Download template Excel roster ${NAMA_BULAN[bulan]} ${tahun}`}
+          >
+            {downloadingTemplate ? '⏳ Mengunduh…' : '📥 Template Excel'}
+          </button>
+          <label
+            className="px-3 py-1.5 text-sm border border-orange-400 text-orange-700 rounded hover:bg-orange-50 cursor-pointer"
+            title="Upload Excel template yang sudah diisi"
+          >
+            {uploadLoading ? '⏳ Memproses…' : '📤 Upload Excel'}
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={handleUploadExcel}
+              disabled={uploadLoading}
+            />
+          </label>
+          <button
             onClick={handlePreview}
             disabled={rows.length === 0}
             className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
@@ -513,6 +697,7 @@ const RosterAdapterPage = () => {
             return (
               <div key={k.kode} className={`px-2 py-1 rounded border text-xs font-medium ${colors.bg} ${colors.text} ${colors.border}`}>
                 <span className="font-bold">{k.kode}</span>
+                {k.label ? ` · ${k.label}` : ''}
                 {k.is_libur ? ' · Libur' : ` · ${k.jam_mulai}–${k.jam_selesai}`}
                 {!k.is_libur && isLintasTanggal(k.jam_mulai, k.jam_selesai) && (
                   <span className="ml-1 text-purple-600" title="Lintas Tanggal">🌙</span>
@@ -526,24 +711,82 @@ const RosterAdapterPage = () => {
         </div>
       </div>
 
-      {/* Add employee */}
-      <div className="bg-white border rounded-lg p-3 flex flex-wrap gap-3 items-end">
-        <div className="flex-1 min-w-48">
-          <label className="block text-xs font-medium text-gray-600 mb-1">Tambah Pegawai ke Grid</label>
-          <PegawaiSearchInput
-            value={addPegawai.id_pegawai}
-            displayValue={addPegawai.nama}
-            onChange={(id, nama, id_unit) => setAddPegawai({ id_pegawai: id || '', nama: nama || '', id_unit: id_unit ?? null })}
-            placeholder="Cari nama / ID pegawai..."
-          />
+      {/* Upload result banner */}
+      {uploadResult && (
+        <div className="bg-green-50 border border-green-300 rounded-lg p-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-green-800">
+              ✅ Excel berhasil diparsing: {uploadResult.total_rows} pegawai dimuat ke grid
+            </span>
+            <button onClick={() => setUploadResult(null)} className="text-xs text-gray-400 hover:text-gray-600">✕</button>
+          </div>
+          {uploadResult.errors?.length > 0 && (
+            <div className="mt-2">
+              <p className="text-xs font-medium text-amber-700 mb-1">⚠ Peringatan ({uploadResult.errors.length} baris):</p>
+              <ul className="text-xs text-amber-700 list-disc list-inside space-y-0.5 max-h-24 overflow-y-auto">
+                {uploadResult.errors.map((e, i) => (
+                  <li key={i}>Baris {e.baris} ({e.id_pegawai}): {e.pesan}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
-        <button
-          onClick={handleAddRow}
-          disabled={!addPegawai.id_pegawai}
-          className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-        >
-          + Tambah
-        </button>
+      )}
+      {uploadError && (
+        <div className="bg-red-50 border border-red-300 rounded-lg p-3 text-sm text-red-700 flex items-start justify-between gap-2">
+          <span>⚠ {uploadError}</span>
+          <button onClick={() => setUploadError('')} className="text-xs underline shrink-0">Tutup</button>
+        </div>
+      )}
+
+      {/* Add employee */}
+      <div className="bg-white border rounded-lg p-4 space-y-3">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tambah Pegawai ke Grid</p>
+        {/* Per orang */}
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="flex-1 min-w-48">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Cari per orang</label>
+            <PegawaiSearchInput
+              value={addPegawai.id_pegawai}
+              displayValue={addPegawai.nama}
+              onChange={(id, nama, id_unit) => setAddPegawai({ id_pegawai: id || '', nama: nama || '', id_unit: id_unit ?? null })}
+              placeholder="Cari nama / ID pegawai..."
+            />
+          </div>
+          <button
+            onClick={handleAddRow}
+            disabled={!addPegawai.id_pegawai}
+            className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+          >
+            + Tambah
+          </button>
+        </div>
+        {/* Per unit */}
+        <div className="flex flex-wrap gap-3 items-end border-t border-dashed border-gray-200 pt-3">
+          <div className="flex-1 min-w-48">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Tambah semua pegawai per unit</label>
+            <select
+              value={bulkUnit}
+              onChange={e => setBulkUnit(e.target.value)}
+              className="border rounded px-2 py-2 text-sm w-full"
+            >
+              <option value="">— Pilih unit —</option>
+              {unitList.map(u => (
+                <option key={u.id_unit} value={u.id_unit}>{u.nama_unit}</option>
+              ))}
+            </select>
+          </div>
+          <button
+            onClick={handleBulkAddByUnit}
+            disabled={!bulkUnit || bulkLoading}
+            className="px-4 py-2 text-sm bg-teal-600 text-white rounded hover:bg-teal-700 disabled:opacity-50"
+          >
+            {bulkLoading ? '⏳ Memuat…' : '+ Tambah Semua'}
+          </button>
+          <div className="text-xs text-gray-400 self-center">
+            💡 Atau download <button onClick={handleDownloadTemplate} className="underline text-green-700 hover:text-green-900">template Excel</button>, isi, lalu upload.
+          </div>
+        </div>
       </div>
 
       {/* Save Result Banner */}
@@ -715,77 +958,145 @@ const RosterAdapterPage = () => {
       {/* ─── Kamus Editor Modal ──────────────────────────────────────────── */}
       {editingKamus && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setEditingKamus(false)}>
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-1">
               <h2 className="text-lg font-bold">📖 Editor Kamus Kode Shift</h2>
-              <button onClick={() => setEditingKamus(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+              <button onClick={() => setEditingKamus(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
             </div>
-            <p className="text-sm text-gray-500 mb-4">Definisikan kode shift beserta jam dan jenisnya. Kode LIBUR tidak akan dibuat sebagai baris roster.</p>
-            <table className="w-full text-sm border-collapse mb-3">
-              <thead>
-                <tr className="bg-gray-50 text-xs text-gray-600">
-                  <th className="border px-2 py-1.5">Kode</th>
-                  <th className="border px-2 py-1.5">Jam Mulai</th>
-                  <th className="border px-2 py-1.5">Jam Selesai</th>
-                  <th className="border px-2 py-1.5">Jenis Shift</th>
-                  <th className="border px-2 py-1.5">Libur</th>
-                  <th className="border px-2 py-1.5"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {kamEdits.map((k, i) => (
-                  <tr key={i}>
-                    <td className="border px-1 py-1">
-                      <input
-                        value={k.kode}
-                        onChange={e => updateKamusRow(i, 'kode', e.target.value.toUpperCase())}
-                        className="border rounded px-1.5 py-1 w-full text-center font-mono font-bold"
-                        maxLength={6}
-                        placeholder="P1"
-                      />
-                    </td>
-                    <td className="border px-1 py-1">
-                      <input
-                        type="time"
-                        value={k.jam_mulai}
-                        onChange={e => updateKamusRow(i, 'jam_mulai', e.target.value)}
-                        disabled={k.is_libur}
-                        className="border rounded px-1.5 py-1 w-full disabled:opacity-40"
-                      />
-                    </td>
-                    <td className="border px-1 py-1">
-                      <input
-                        type="time"
-                        value={k.jam_selesai}
-                        onChange={e => updateKamusRow(i, 'jam_selesai', e.target.value)}
-                        disabled={k.is_libur}
-                        className="border rounded px-1.5 py-1 w-full disabled:opacity-40"
-                      />
-                      {!k.is_libur && isLintasTanggal(k.jam_mulai, k.jam_selesai) && (
-                        <div className="text-purple-600 text-[10px] mt-0.5">🌙 Lintas tanggal</div>
-                      )}
-                    </td>
-                    <td className="border px-1 py-1 text-center">
-                      <div
-                        onClick={() => updateKamusRow(i, 'is_libur', !k.is_libur)}
-                        className={`inline-flex items-center cursor-pointer w-10 h-5 rounded-full transition-colors ${k.is_libur ? 'bg-gray-400' : 'bg-gray-200'}`}
-                      >
-                        <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${k.is_libur ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                      </div>
-                    </td>
-                    <td className="border px-1 py-1 text-center">
-                      <button onClick={() => removeKamusRow(i)} className="text-red-500 hover:text-red-700 text-xs">✕</button>
-                    </td>
+            <p className="text-sm text-gray-500 mb-4">Definisikan kode shift beserta jam dan jenisnya. Kode bertanda <strong>Libur</strong> tidak akan dibuat sebagai baris roster.</p>
+
+            <div className="overflow-x-auto rounded border border-gray-200">
+              <table className="w-full text-sm border-collapse" style={{ minWidth: '600px' }}>
+                <thead>
+                  <tr className="bg-gray-100 text-xs text-gray-600 uppercase tracking-wide">
+                    <th className="border-b border-gray-200 px-3 py-2.5 text-left font-semibold w-20">Kode</th>
+                    <th className="border-b border-gray-200 px-3 py-2.5 text-left font-semibold">Label</th>
+                    <th className="border-b border-gray-200 px-3 py-2.5 text-left font-semibold w-32">Jam Mulai</th>
+                    <th className="border-b border-gray-200 px-3 py-2.5 text-left font-semibold w-32">Jam Selesai</th>
+                    <th className="border-b border-gray-200 px-3 py-2.5 text-center font-semibold w-28">Hari Libur?</th>
+                    <th className="border-b border-gray-200 px-3 py-2.5 text-center font-semibold w-36">Tampilan di Grid</th>
+                    <th className="border-b border-gray-200 px-2 py-2.5 w-10"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="flex gap-2">
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {kamEdits.map((k, i) => {
+                    const colors = k.is_libur ? JENIS_COLOR_MAP.LIBUR : JENIS_COLOR_MAP.AKTIF;
+                    const lintas = !k.is_libur && isLintasTanggal(k.jam_mulai, k.jam_selesai);
+                    return (
+                      <tr key={i} className={`transition-colors ${
+                        k.is_libur ? 'bg-gray-50/60' : 'bg-white'
+                      } hover:bg-blue-50/40`}>
+                        {/* Kode */}
+                        <td className="px-2 py-2">
+                          <input
+                            value={k.kode}
+                            onChange={e => updateKamusRow(i, 'kode', e.target.value.toUpperCase())}
+                            className="border rounded px-2 py-1.5 w-full text-center font-mono font-bold text-sm tracking-wider"
+                            maxLength={6}
+                            placeholder="P1"
+                          />
+                        </td>
+                        {/* Label */}
+                        <td className="px-2 py-2">
+                          <input
+                            value={k.label || ''}
+                            onChange={e => updateKamusRow(i, 'label', e.target.value)}
+                            className="border rounded px-2 py-1.5 w-full text-sm"
+                            placeholder="Pagi 1"
+                            disabled={false}
+                          />
+                        </td>
+                        {/* Jam Mulai */}
+                        <td className="px-2 py-2">
+                          <input
+                            type="time"
+                            value={k.jam_mulai}
+                            onChange={e => updateKamusRow(i, 'jam_mulai', e.target.value)}
+                            disabled={k.is_libur}
+                            className="border rounded px-2 py-1.5 w-full text-sm disabled:opacity-40 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          />
+                        </td>
+                        {/* Jam Selesai */}
+                        <td className="px-2 py-2">
+                          <input
+                            type="time"
+                            value={k.jam_selesai}
+                            onChange={e => updateKamusRow(i, 'jam_selesai', e.target.value)}
+                            disabled={k.is_libur}
+                            className="border rounded px-2 py-1.5 w-full text-sm disabled:opacity-40 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          />
+                          {lintas && (
+                            <div className="flex items-center gap-0.5 text-purple-600 text-[10px] mt-1">
+                              🌙 <span>Lintas tanggal</span>
+                            </div>
+                          )}
+                        </td>
+                        {/* Is Libur toggle */}
+                        <td className="px-2 py-2 text-center">
+                          <label className="inline-flex flex-col items-center gap-1 cursor-pointer select-none">
+                            <div
+                              onClick={() => updateKamusRow(i, 'is_libur', !k.is_libur)}
+                              className={`relative inline-flex w-11 h-6 rounded-full transition-colors cursor-pointer ${
+                                k.is_libur ? 'bg-gray-400' : 'bg-gray-200'
+                              }`}
+                            >
+                              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                                k.is_libur ? 'translate-x-6' : 'translate-x-1'
+                              }`} />
+                            </div>
+                            <span className={`text-[10px] font-medium ${
+                              k.is_libur ? 'text-gray-500' : 'text-gray-400'
+                            }`}>
+                              {k.is_libur ? 'Ya' : 'Tidak'}
+                            </span>
+                          </label>
+                        </td>
+                        {/* Preview */}
+                        <td className="px-2 py-2 text-center">
+                          <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded text-xs font-bold border ${
+                            colors.bg} ${colors.text} ${colors.border}`}>
+                            {k.kode || '—'}
+                          </span>
+                          <div className="text-gray-400 text-[10px] mt-1 leading-tight">
+                            {k.is_libur
+                              ? (k.label || 'Hari Libur')
+                              : (k.jam_mulai && k.jam_selesai
+                                  ? `${k.jam_mulai}–${k.jam_selesai}${lintas ? ' +1' : ''}`
+                                  : '—'
+                                )
+                            }
+                          </div>
+                        </td>
+                        {/* Delete */}
+                        <td className="px-2 py-2 text-center">
+                          <button
+                            onClick={() => removeKamusRow(i)}
+                            className="text-red-400 hover:text-red-600 hover:bg-red-50 rounded p-1 transition-colors"
+                            title="Hapus kode ini"
+                          >
+                            🗑
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex gap-2 mt-4 flex-wrap items-center">
               <button onClick={addKamusRow} className="px-3 py-1.5 text-sm border border-dashed border-gray-400 text-gray-600 rounded hover:bg-gray-50">
                 + Tambah Kode
               </button>
-              <button onClick={saveKamus} className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 ml-auto">
-                Simpan Kamus
+              {kamusSaveError && (
+                <p className="text-xs text-red-600 flex-1">{kamusSaveError}</p>
+              )}
+              <button
+                onClick={saveKamus}
+                disabled={kamusLoading}
+                className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 ml-auto font-medium disabled:opacity-60"
+              >
+                {kamusLoading ? 'Menyimpan…' : '💾 Simpan Kamus'}
               </button>
             </div>
           </div>

@@ -4,10 +4,12 @@ import apiClient from '../api/client';
  * Permission repository.
  * Provides permission management API operations.
  */
-/** List permissions with pagination. */
-const getAll = async (page = 1, limit = 100) => {
-  const params = new URLSearchParams({ page, limit });
-  const response = await apiClient.get(`/permissions/?${params}`);
+/** List permissions with pagination and optional search. */
+const getAll = async (page = 1, limit = 20, search = '') => {
+  const skip = (page - 1) * limit;
+  const params = { skip, limit };
+  if (search) params.search = search;
+  const response = await apiClient.get('/permissions/', { params });
   return response.data;
 };
 
