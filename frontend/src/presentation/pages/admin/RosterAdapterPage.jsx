@@ -958,7 +958,7 @@ const RosterAdapterPage = () => {
       {/* ─── Kamus Editor Modal ──────────────────────────────────────────── */}
       {editingKamus && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setEditingKamus(false)}>
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-1">
               <h2 className="text-lg font-bold">📖 Editor Kamus Kode Shift</h2>
               <button onClick={() => setEditingKamus(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
@@ -966,11 +966,11 @@ const RosterAdapterPage = () => {
             <p className="text-sm text-gray-500 mb-4">Definisikan kode shift beserta jam dan jenisnya. Kode bertanda <strong>Libur</strong> tidak akan dibuat sebagai baris roster.</p>
 
             <div className="overflow-x-auto rounded border border-gray-200">
-              <table className="w-full text-sm border-collapse" style={{ minWidth: '600px' }}>
+              <table className="w-full text-sm border-collapse" style={{ minWidth: '800px' }}>
                 <thead>
                   <tr className="bg-gray-100 text-xs text-gray-600 uppercase tracking-wide">
                     <th className="border-b border-gray-200 px-3 py-2.5 text-left font-semibold w-20">Kode</th>
-                    <th className="border-b border-gray-200 px-3 py-2.5 text-left font-semibold">Label</th>
+                    <th className="border-b border-gray-200 px-3 py-2.5 text-left font-semibold min-w-[220px]">Label</th>
                     <th className="border-b border-gray-200 px-3 py-2.5 text-left font-semibold w-32">Jam Mulai</th>
                     <th className="border-b border-gray-200 px-3 py-2.5 text-left font-semibold w-32">Jam Selesai</th>
                     <th className="border-b border-gray-200 px-3 py-2.5 text-center font-semibold w-28">Hari Libur?</th>

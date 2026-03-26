@@ -178,9 +178,10 @@ const AdminPanel = ({ user, menuGuard }) => {
     { href: '/approval',         icon: '✅', label: 'Approval',           desc: 'Kelola pengajuan koreksi'      },
     { href: '/rekap-unit-role',  icon: '📈', label: 'KPI Unit/Role',      desc: 'Rekap performa per unit'       },
     { href: '/roster-upload',    icon: '📄', label: 'Roster Upload',      desc: 'Import roster dari Excel'      },
-    { href: '/penilaian-shift',  icon: '⚖️', label: 'Evaluasi Shift',     desc: 'Jalankan evaluasi roster'      },
-    { href: '/sessions-monitor', icon: '📡', label: 'Monitor Sesi',       desc: 'Pantau sesi login pengguna'    },
-    { href: '/users',            icon: '👥', label: 'Kelola Users',       desc: 'Atur akses pengguna sistem'    },
+    { href: '/penilaian-shift',      icon: '⚖️', label: 'Evaluasi Shift',     desc: 'Jalankan evaluasi roster'        },
+    { href: '/sessions-monitor',    icon: '📡', label: 'Monitor Sesi',       desc: 'Pantau sesi login pengguna'      },
+    { href: '/users',               icon: '👥', label: 'Kelola Users',       desc: 'Atur akses pengguna sistem'      },
+    { href: '/login-face-absensi',  icon: '📷', label: 'Login Absen Face',   desc: 'Absensi wajah untuk pegawai'     },
   ];
 
   return (
