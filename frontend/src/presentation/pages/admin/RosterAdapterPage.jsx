@@ -28,6 +28,8 @@ const JENIS_COLOR_MAP = {
   LIBUR:   { bg: 'bg-gray-100',   text: 'text-gray-500',   border: 'border-gray-300' },
 };
 
+const KAMUS_PAGE_SIZE = 15;
+
 const DEFAULT_KAMUS = [
   { kode: 'P1', label: 'Pagi 1',  jam_mulai: '07:00', jam_selesai: '14:00', is_libur: false },
   { kode: 'P2', label: 'Pagi 2',  jam_mulai: '07:00', jam_selesai: '11:00', is_libur: false },
@@ -192,6 +194,8 @@ const RosterAdapterPage = () => {
   const [kamEdits, setKamEdits] = useState(DEFAULT_KAMUS);
   const [kamusLoading, setKamusLoading] = useState(false);
   const [kamusSaveError, setKamusSaveError] = useState('');
+  const [kamusPage, setKamusPage] = useState(1);
+  const [kamusDisplayPage, setKamusDisplayPage] = useState(1);
 
   // ─ Kamus pola
   const [editingPola, setEditingPola] = useState(false);
@@ -493,6 +497,7 @@ const RosterAdapterPage = () => {
   const openKamusEditor = () => {
     setKamEdits([...kamus]);
     setKamusSaveError('');
+    setKamusPage(1);
     setEditingKamus(true);
   };
   const saveKamus = async () => {
@@ -540,9 +545,11 @@ const RosterAdapterPage = () => {
       setKamusLoading(false);
     }
   };
-  const addKamusRow = () => setKamEdits(prev => [...prev,
-    { kode: '', label: '', jam_mulai: '07:00', jam_selesai: '14:00', is_libur: false }
-  ]);
+  const addKamusRow = () => setKamEdits(prev => {
+    const next = [...prev, { kode: '', label: '', jam_mulai: '07:00', jam_selesai: '14:00', is_libur: false }];
+    setKamusPage(Math.ceil(next.length / KAMUS_PAGE_SIZE));
+    return next;
+  });
   const updateKamusRow = (idx, field, value) => setKamEdits(prev =>
     prev.map((k, i) => i === idx ? { ...k, [field]: value } : k)
   );
@@ -690,9 +697,24 @@ const RosterAdapterPage = () => {
 
       {/* Kamus summary badges */}
       <div className="bg-white border rounded-lg p-3">
-        <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Kamus Kode Aktif</div>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Kamus Kode Aktif</div>
+          {(() => {
+            const totalPages = Math.ceil(kamus.length / KAMUS_PAGE_SIZE);
+            if (totalPages <= 1) return null;
+            return (
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-gray-400">{kamusDisplayPage}/{totalPages}</span>
+                <button onClick={() => setKamusDisplayPage(p => Math.max(1, p - 1))} disabled={kamusDisplayPage === 1}
+                  className="px-1.5 py-0.5 text-xs border rounded disabled:opacity-30 hover:bg-gray-50">‹</button>
+                <button onClick={() => setKamusDisplayPage(p => Math.min(totalPages, p + 1))} disabled={kamusDisplayPage === totalPages}
+                  className="px-1.5 py-0.5 text-xs border rounded disabled:opacity-30 hover:bg-gray-50">›</button>
+              </div>
+            );
+          })()}
+        </div>
         <div className="flex flex-wrap gap-2">
-          {kamus.map(k => {
+          {kamus.slice((kamusDisplayPage - 1) * KAMUS_PAGE_SIZE, kamusDisplayPage * KAMUS_PAGE_SIZE).map(k => {
             const colors = k.is_libur ? JENIS_COLOR_MAP.LIBUR : JENIS_COLOR_MAP.AKTIF;
             return (
               <div key={k.kode} className={`px-2 py-1 rounded border text-xs font-medium ${colors.bg} ${colors.text} ${colors.border}`}>
@@ -979,7 +1001,8 @@ const RosterAdapterPage = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {kamEdits.map((k, i) => {
+                  {kamEdits.slice((kamusPage - 1) * KAMUS_PAGE_SIZE, kamusPage * KAMUS_PAGE_SIZE).map((k, relIdx) => {
+                    const i = (kamusPage - 1) * KAMUS_PAGE_SIZE + relIdx;
                     const colors = k.is_libur ? JENIS_COLOR_MAP.LIBUR : JENIS_COLOR_MAP.AKTIF;
                     const lintas = !k.is_libur && isLintasTanggal(k.jam_mulai, k.jam_selesai);
                     return (
@@ -1083,6 +1106,46 @@ const RosterAdapterPage = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination */}
+            {Math.ceil(kamEdits.length / KAMUS_PAGE_SIZE) > 1 && (
+              <div className="flex items-center justify-between mt-3 px-1">
+                <p className="text-xs text-gray-500">
+                  Menampilkan {(kamusPage - 1) * KAMUS_PAGE_SIZE + 1}–{Math.min(kamusPage * KAMUS_PAGE_SIZE, kamEdits.length)} dari {kamEdits.length} kode
+                </p>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setKamusPage(1)}
+                    disabled={kamusPage === 1}
+                    className="px-2 py-1 text-xs border rounded disabled:opacity-40 hover:bg-gray-50"
+                  >«</button>
+                  <button
+                    onClick={() => setKamusPage(p => Math.max(1, p - 1))}
+                    disabled={kamusPage === 1}
+                    className="px-2 py-1 text-xs border rounded disabled:opacity-40 hover:bg-gray-50"
+                  >‹</button>
+                  {Array.from({ length: Math.ceil(kamEdits.length / KAMUS_PAGE_SIZE) }, (_, idx) => idx + 1).map(pg => (
+                    <button
+                      key={pg}
+                      onClick={() => setKamusPage(pg)}
+                      className={`px-2.5 py-1 text-xs border rounded ${
+                        pg === kamusPage ? 'bg-blue-600 text-white border-blue-600' : 'hover:bg-gray-50'
+                      }`}
+                    >{pg}</button>
+                  ))}
+                  <button
+                    onClick={() => setKamusPage(p => Math.min(Math.ceil(kamEdits.length / KAMUS_PAGE_SIZE), p + 1))}
+                    disabled={kamusPage === Math.ceil(kamEdits.length / KAMUS_PAGE_SIZE)}
+                    className="px-2 py-1 text-xs border rounded disabled:opacity-40 hover:bg-gray-50"
+                  >›</button>
+                  <button
+                    onClick={() => setKamusPage(Math.ceil(kamEdits.length / KAMUS_PAGE_SIZE))}
+                    disabled={kamusPage === Math.ceil(kamEdits.length / KAMUS_PAGE_SIZE)}
+                    className="px-2 py-1 text-xs border rounded disabled:opacity-40 hover:bg-gray-50"
+                  >»</button>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-2 mt-4 flex-wrap items-center">
               <button onClick={addKamusRow} className="px-3 py-1.5 text-sm border border-dashed border-gray-400 text-gray-600 rounded hover:bg-gray-50">
