@@ -89,6 +89,15 @@ const PrivateRoute = () => {
     return <Navigate to={fallback} replace />;
   }
 
+  // System settings & IP whitelist: only full admins (by role name)
+  const isFullAdmin = (user?.roles || []).some(r => ['admin', 'super-admin'].includes(r.toLowerCase()));
+  if (
+    (location.pathname.startsWith('/system-settings') || location.pathname.startsWith('/ip-whitelist')) &&
+    !isFullAdmin
+  ) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
     <Layout>
       <Outlet />

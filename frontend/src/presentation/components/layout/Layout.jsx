@@ -8,11 +8,13 @@ import { useAuth } from '../../../domain/hooks';
  * - Admin management menus shown only when menu_guard.is_admin === true.
  * - Safe default: hide all if menu_guard is empty (except dashboard fallback).
  */
-const buildMenuItems = (menuGuard = {}) => {
+const buildMenuItems = (menuGuard = {}, permissions = [], roles = []) => {
   const menus = menuGuard?.menus ?? {};
   const isAdmin = !!menuGuard?.is_admin;
   const isEmpty = Object.keys(menus).length === 0;
   const items = [];
+  const perms = new Set(permissions);
+  const isFullAdmin = roles.some(r => ['admin', 'super-admin'].includes(r.toLowerCase()));
 
   // --- Operational menus (DOC section 3A) ---
   // Dashboard: show if explicitly visible OR menu_guard is empty (safe fallback)
@@ -32,24 +34,26 @@ const buildMenuItems = (menuGuard = {}) => {
     items.push({ path: '/sessions-monitor', label: 'Monitor Sesi', icon: '📡' });
   }
 
-  // --- Admin management menus (only for is_admin) ---
+  // --- Admin management menus (only for is_admin, fine-grained by permission) ---
   if (isAdmin) {
-    items.push(
-      { path: '/users',           label: 'Users',           icon: '👥', divider: true },
-      { path: '/roles',           label: 'Roles',           icon: '🔐' },
-      { path: '/permissions',     label: 'Permissions',     icon: '🔑' },
-      { path: '/unit',            label: 'Unit',            icon: '🏢' },
-      { path: '/pegawai',         label: 'Pegawai',         icon: '👨‍💼' },
-      { path: '/shift-kelompok',  label: 'Shift Kelompok',  icon: '🔄' },
-      { path: '/shift-aturan',    label: 'Shift Aturan',    icon: '📋' },
-      { path: '/shift-pegawai',   label: 'Shift Pegawai',   icon: '👤' },
-      { path: '/roster-upload',   label: 'Roster Upload',   icon: '📄' },
-      { path: '/roster-adapter',  label: 'Roster Adapter',  icon: '🧩' },
-      { path: '/roster-shift',    label: 'Roster Shift',    icon: '🗓️' },
-      { path: '/penilaian-shift', label: 'Penilaian Shift', icon: '⚖️' },
-      { path: '/system-settings', label: 'Pengaturan Sistem', icon: '⚙️' },
-      { path: '/ip-whitelist',    label: 'IP Whitelist',      icon: '🛡️' },
-    );
+    if (perms.has('user.read')) {
+      items.push(
+        { path: '/users',       label: 'Users',       icon: '👥', divider: true },
+        { path: '/roles',       label: 'Roles',       icon: '🔐' },
+        { path: '/permissions', label: 'Permissions', icon: '🔑' },
+      );
+    }
+    if (perms.has('unit.create'))                   items.push({ path: '/unit',            label: 'Unit',            icon: '🏢', divider: !perms.has('user.read') });
+    if (perms.has('pegawai.create'))                items.push({ path: '/pegawai',         label: 'Pegawai',         icon: '👨‍💼' });
+    if (perms.has('shift_kelompok.create'))         items.push({ path: '/shift-kelompok',  label: 'Shift Kelompok',  icon: '🔄' });
+    if (perms.has('shift_kelompok_aturan.create'))  items.push({ path: '/shift-aturan',    label: 'Shift Aturan',    icon: '📋' });
+    if (perms.has('pegawai_shift_kelompok.create')) items.push({ path: '/shift-pegawai',   label: 'Shift Pegawai',   icon: '👤' });
+    if (perms.has('roster_upload_batch.read'))      items.push({ path: '/roster-upload',   label: 'Roster Upload',   icon: '📄', divider: true });
+    if (perms.has('roster_adapter.read'))           items.push({ path: '/roster-adapter',  label: 'Roster Adapter',  icon: '🧩' });
+    if (perms.has('roster_shift.read'))             items.push({ path: '/roster-shift',    label: 'Roster Shift',    icon: '🗓️' });
+    if (perms.has('penilaian_shift_absensi.read'))  items.push({ path: '/penilaian-shift', label: 'Penilaian Shift', icon: '⚖️' });
+    if (isFullAdmin)                                items.push({ path: '/system-settings', label: 'Pengaturan Sistem', icon: '⚙️' });
+    if (perms.has('ip_whitelist.read'))             items.push({ path: '/ip-whitelist',    label: 'IP Whitelist',      icon: '🛡️' });
   }
 
   // --- Always visible quick link ---
@@ -69,7 +73,7 @@ const Layout = ({ children }) => {
     navigate('/login-admin');
   };
 
-  const menuItems = buildMenuItems(user?.menu_guard);
+  const menuItems = buildMenuItems(user?.menu_guard, user?.permissions, user?.roles);
   const isActive = (path) => location.pathname === path;
 
   const isAdmin = !!user?.menu_guard?.is_admin;
