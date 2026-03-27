@@ -75,6 +75,7 @@ const Roles = () => {
     setFormData({
       name: '',
       description: '',
+      is_admin: false,
       permission_ids: []
     });
     setEditingId(null);
@@ -92,6 +93,7 @@ const Roles = () => {
     setFormData({
       name: role.name || '',
       description: role.description || '',
+      is_admin: role.is_admin || false,
       permission_ids: []
     });
     setPendingPermissionNames(role.permissions || []);
@@ -144,6 +146,7 @@ const Roles = () => {
       const payload = {
         name: formData.name,
         description: formData.description || null,
+        is_admin: formData.is_admin,
         permission_ids: formData.permission_ids
       };
 
@@ -212,6 +215,9 @@ const Roles = () => {
                       Deskripsi
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Admin
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Permissions
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -234,6 +240,11 @@ const Roles = () => {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-700">{role.description || '-'}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {role.is_admin
+                            ? <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">✓ Admin</span>
+                            : <span className="text-xs text-gray-400">—</span>}
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-xs text-gray-600">
@@ -349,6 +360,19 @@ const Roles = () => {
                     </label>
                   ))}
                 </div>
+              </div>
+
+              <div className="mt-2 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                <input
+                  type="checkbox"
+                  id="is_admin_flag"
+                  checked={formData.is_admin}
+                  onChange={(e) => handleFormChange('is_admin', e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="is_admin_flag" className="text-sm font-medium text-blue-800 cursor-pointer select-none">
+                  Flag Admin — akses penuh menu manajemen (Users, Pegawai, Roster, dll)
+                </label>
               </div>
 
               <div className="mt-2 flex justify-end gap-2">

@@ -9,6 +9,7 @@ class RoleBase(BaseModel):
     """Base role schema"""
     name: str = Field(..., min_length=2, max_length=50)
     description: Optional[str] = None
+    is_admin: bool = False
 
 
 class RoleCreate(RoleBase):
@@ -20,6 +21,7 @@ class RoleUpdate(BaseModel):
     """Role update schema"""
     name: Optional[str] = Field(None, min_length=2, max_length=50)
     description: Optional[str] = None
+    is_admin: Optional[bool] = None
     permission_ids: Optional[list[int]] = None
 
 

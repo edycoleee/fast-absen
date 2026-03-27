@@ -39,7 +39,7 @@ class AuthService:
 
     def build_menu_guard(self, user: User, role_names: list[str], permissions: list[str]) -> dict:
         permission_set = set(permissions)
-        is_admin = self._is_admin_roles(role_names)
+        is_admin = self._is_admin_roles(role_names) or any(getattr(r, 'is_admin', False) for r in user.roles)
         kepala_unit_scope_id = None
         if user.pegawai and user.pegawai.kepala_id_unit is not None:
             kepala_unit_scope_id = user.pegawai.kepala_id_unit

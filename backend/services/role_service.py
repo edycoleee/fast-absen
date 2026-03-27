@@ -30,6 +30,7 @@ class RoleService:
                 "id": role.id,
                 "name": role.name,
                 "description": role.description,
+                "is_admin": role.is_admin,
                 "permissions": [perm.name for perm in role.permissions]
             }
             result.append(RoleResponse(**role_dict))
@@ -55,6 +56,7 @@ class RoleService:
             "id": role.id,
             "name": role.name,
             "description": role.description,
+            "is_admin": role.is_admin,
             "permissions": [perm.name for perm in role.permissions]
         }
         
@@ -85,7 +87,8 @@ class RoleService:
         # Create role
         created_role = self.role_repo.create({
             "name": role_data.name,
-            "description": role_data.description
+            "description": role_data.description,
+            "is_admin": role_data.is_admin
         })
 
         # Add permissions
@@ -97,6 +100,7 @@ class RoleService:
             "id": created_role.id,
             "name": created_role.name,
             "description": created_role.description,
+            "is_admin": created_role.is_admin,
             "permissions": [perm.name for perm in created_role.permissions]
         }
         return RoleResponse(**role_dict)
@@ -156,6 +160,7 @@ class RoleService:
             "id": updated_role.id,
             "name": updated_role.name,
             "description": updated_role.description,
+            "is_admin": updated_role.is_admin,
             "permissions": [perm.name for perm in updated_role.permissions]
         }
         return RoleResponse(**role_dict)
