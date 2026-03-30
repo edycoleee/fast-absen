@@ -9,10 +9,12 @@ import Layout from '../layout/Layout';
  * - /dashboard & /login-absensi: always accessible when authenticated.
  * - Safe default: deny if menu_guard is present but key is missing.
  */
-const canAccessRoute = (pathname, menuGuard = {}) => {
+const canAccessRoute = (pathname, menuGuard = {}, permissions = [], roles = []) => {
   const menus = menuGuard?.menus ?? {};
   const isAdmin = !!menuGuard?.is_admin;
   const isEmpty = Object.keys(menus).length === 0;
+  const perms = new Set(permissions);
+  const isFullAdmin = roles.some(r => ['admin', 'super-admin'].includes(r.toLowerCase()));
 
   // Always accessible
   if (pathname.startsWith('/dashboard')) return true;
@@ -24,28 +26,26 @@ const canAccessRoute = (pathname, menuGuard = {}) => {
   if (pathname.startsWith('/approval'))        return !!menus.approval?.visible;
   if (pathname.startsWith('/sessions-monitor')) return isEmpty || !!menus.user_sessions?.visible;
 
-  // Admin management routes
-  if (
-    pathname.startsWith('/users') ||
-    pathname.startsWith('/roles') ||
-    pathname.startsWith('/permissions') ||
-    pathname.startsWith('/unit') ||
-    pathname.startsWith('/pegawai') ||
-    pathname.startsWith('/ip-whitelist')
-  ) {
-    return isEmpty || isAdmin;
-  }
+  if (!isAdmin) return true; // non-admin: let backend handle 403
 
-  // Shift / roster / penilaian management (admin only)
-  if (
-    pathname.startsWith('/shift-') ||
-    pathname.startsWith('/roster-') ||
-    pathname.startsWith('/penilaian-shift')
-  ) {
-    return isEmpty || isAdmin;
-  }
+  // Full-admin-only pages
+  if (pathname.startsWith('/system-settings')) return isFullAdmin;
+  if (pathname.startsWith('/ip-whitelist'))    return isFullAdmin || perms.has('ip_whitelist.read');
+  if (pathname.startsWith('/users'))      return isFullAdmin || perms.has('user.read');
+  if (pathname.startsWith('/roles'))      return isFullAdmin || perms.has('user.read');
+  if (pathname.startsWith('/permissions')) return isFullAdmin || perms.has('user.read');
 
-  // Unknown routes: allow (App.jsx fallback will handle 404)
+  // Permission-gated admin pages
+  if (pathname.startsWith('/unit'))       return isFullAdmin || perms.has('unit.create');
+  if (pathname.startsWith('/pegawai'))    return isFullAdmin || perms.has('pegawai.create');
+  if (pathname.startsWith('/shift-kelompok'))  return isFullAdmin || perms.has('shift_kelompok.create');
+  if (pathname.startsWith('/shift-aturan'))    return isFullAdmin || perms.has('shift_kelompok_aturan.create');
+  if (pathname.startsWith('/shift-pegawai'))   return isFullAdmin || perms.has('pegawai_shift_kelompok.create');
+  if (pathname.startsWith('/roster-upload'))   return isFullAdmin || perms.has('roster_upload_batch.read');
+  if (pathname.startsWith('/roster-adapter'))  return isFullAdmin || perms.has('roster_adapter.read');
+  if (pathname.startsWith('/roster-shift'))    return isFullAdmin || perms.has('roster_shift.read');
+  if (pathname.startsWith('/penilaian-shift')) return isFullAdmin || perms.has('penilaian_shift_absensi.read');
+
   return true;
 };
 
@@ -84,18 +84,9 @@ const PrivateRoute = () => {
     return <Navigate to="/login-admin" replace />;
   }
 
-  if (!canAccessRoute(location.pathname, user?.menu_guard)) {
+  if (!canAccessRoute(location.pathname, user?.menu_guard, user?.permissions || [], user?.roles || [])) {
     const fallback = getFirstAccessibleRoute(user?.menu_guard);
     return <Navigate to={fallback} replace />;
-  }
-
-  // System settings & IP whitelist: only full admins (by role name)
-  const isFullAdmin = (user?.roles || []).some(r => ['admin', 'super-admin'].includes(r.toLowerCase()));
-  if (
-    (location.pathname.startsWith('/system-settings') || location.pathname.startsWith('/ip-whitelist')) &&
-    !isFullAdmin
-  ) {
-    return <Navigate to="/dashboard" replace />;
   }
 
   return (
