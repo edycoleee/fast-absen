@@ -22,4 +22,5 @@ export {
   FaceRegistrationPage,
   SystemSettingsPage,
   IpWhitelistPage,
+  SsoMonitorPage,
 } from './admin';

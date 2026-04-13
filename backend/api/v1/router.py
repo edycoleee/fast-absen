@@ -27,6 +27,7 @@ from api.v1.endpoints import (
     kamus_pola_shift,
     app_settings,
     ip_whitelist,
+    sso,
 )
 
 api_router = APIRouter()
@@ -78,6 +79,9 @@ api_router.include_router(approval_pengajuan_absensi.router)
 
 # User Sessions Monitoring (Admin)
 api_router.include_router(user_sessions.router)
+
+# SSO App-Client Registry (Full Admin)
+api_router.include_router(sso.router)
 
 # Dashboard stats
 api_router.include_router(stats.router)

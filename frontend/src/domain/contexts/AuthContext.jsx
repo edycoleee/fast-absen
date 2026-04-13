@@ -79,6 +79,11 @@ export const AuthProvider = ({ children }) => {
           permissions,
           menu_guard,
           session_id,
+          // SSO global identity claims — ada di response mulai SSO phase 1
+          nik,
+          unit_id,
+          full_name,
+          id_pegawai,
         } = response.data;
         
         // Store token
@@ -88,14 +93,22 @@ export const AuthProvider = ({ children }) => {
         if (session_id) {
           LocalStorage.setItem(STORAGE_KEYS.SESSION_ID, session_id);
         }
+
+        // Simpan SSO identity terpisah — bisa dibaca tanpa parse full user object
+        const ssoIdentity = { nik, unit_id, full_name, id_pegawai, user_id, username: user_name };
+        LocalStorage.setItem(STORAGE_KEYS.SSO_IDENTITY, ssoIdentity);
         
-        // Create user entity
+        // Create user entity dengan SSO claims
         const userData = User({
           id: user_id,
           username: user_name,
           roles: roles,
           permissions: permissions || [],
           menu_guard: menu_guard || {},
+          nik,
+          unit_id,
+          full_name,
+          id_pegawai,
         });
         
         // Store user data
@@ -134,6 +147,10 @@ export const AuthProvider = ({ children }) => {
           permissions,
           menu_guard,
           session_id,
+          nik,
+          unit_id,
+          full_name,
+          id_pegawai,
         } = response.data;
 
         LocalStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, access_token);
@@ -141,12 +158,19 @@ export const AuthProvider = ({ children }) => {
           LocalStorage.setItem(STORAGE_KEYS.SESSION_ID, session_id);
         }
 
+        const ssoIdentity = { nik, unit_id, full_name, id_pegawai, user_id, username: user_name };
+        LocalStorage.setItem(STORAGE_KEYS.SSO_IDENTITY, ssoIdentity);
+
         const userData = User({
           id: user_id,
           username: user_name,
           roles: roles,
           permissions: permissions || [],
           menu_guard: menu_guard || {},
+          nik,
+          unit_id,
+          full_name,
+          id_pegawai,
         });
 
         LocalStorage.setItem(STORAGE_KEYS.USER, userData.toJSON());
@@ -178,6 +202,10 @@ export const AuthProvider = ({ children }) => {
       permissions,
       menu_guard,
       session_id,
+      nik,
+      unit_id,
+      full_name,
+      id_pegawai,
     } = data;
 
     LocalStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, access_token);
@@ -185,12 +213,19 @@ export const AuthProvider = ({ children }) => {
       LocalStorage.setItem(STORAGE_KEYS.SESSION_ID, session_id);
     }
 
+    const ssoIdentity = { nik, unit_id, full_name, id_pegawai, user_id, username: user_name };
+    LocalStorage.setItem(STORAGE_KEYS.SSO_IDENTITY, ssoIdentity);
+
     const userData = User({
       id: user_id,
       username: user_name,
       roles: roles,
       permissions: permissions || [],
       menu_guard: menu_guard || {},
+      nik,
+      unit_id,
+      full_name,
+      id_pegawai,
     });
 
     LocalStorage.setItem(STORAGE_KEYS.USER, userData.toJSON());
@@ -212,6 +247,7 @@ export const AuthProvider = ({ children }) => {
       LocalStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
       LocalStorage.removeItem(STORAGE_KEYS.USER);
       LocalStorage.removeItem(STORAGE_KEYS.SESSION_ID);
+      LocalStorage.removeItem(STORAGE_KEYS.SSO_IDENTITY);
       setUser(null);
       setError(null);
     }

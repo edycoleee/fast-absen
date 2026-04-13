@@ -201,6 +201,10 @@ class AuthService:
                 "username": user.username,
                 "roles": auth_context["roles"],
                 "id_pegawai": user.id_pegawai,
+                # SSO global identity — tersedia bagi semua aplikasi konsumen
+                "nik": user.pegawai.nik if user.pegawai else None,
+                "unit_id": user.pegawai.id_unit if user.pegawai else None,
+                "full_name": user.pegawai.nama if user.pegawai else None,
                 "session_id": session_id  # Include session ID in token
             }
         )

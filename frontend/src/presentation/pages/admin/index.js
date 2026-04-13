@@ -18,3 +18,4 @@ export { default as PenilaianShiftAbsensiPage } from './PenilaianShiftAbsensiPag
 export { default as FaceRegistrationPage } from './FaceRegistrationPage';
 export { default as SystemSettingsPage } from './SystemSettingsPage';
 export { default as IpWhitelistPage } from './IpWhitelistPage';
+export { default as SsoMonitorPage } from './SsoMonitorPage';

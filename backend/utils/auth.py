@@ -56,6 +56,12 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         "sub": str(data.get("user_id")),  # Subject (user identifier)
         "username": data.get("username"),
         "roles": data.get("roles", []),
+        # SSO global identity claims — dipakai oleh semua aplikasi konsumen
+        "nik": data.get("nik"),               # NIK global — kunci identitas lintas aplikasi
+        "id_pegawai": data.get("id_pegawai"), # ID internal pegawai
+        "unit_id": data.get("unit_id"),       # Unit kerja utama
+        "full_name": data.get("full_name"),   # Nama lengkap
+        "session_id": data.get("session_id"),
         "iat": int(now.timestamp()),  # Issued at
         "exp": int(expire.timestamp()),  # Expiration
         "iss": settings.JWT_ISSUER,  # Issuer

@@ -18,4 +18,11 @@ else
     echo "[entrypoint] InsightFace models already present in volume – skipping seed."
 fi
 
+# =============================================================
+# Alembic – auto-migrate before starting the server
+# =============================================================
+echo "[entrypoint] Running alembic upgrade head..."
+alembic upgrade head
+echo "[entrypoint] Migration done."
+
 exec "$@"

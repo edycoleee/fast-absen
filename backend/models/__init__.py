@@ -24,6 +24,7 @@ from models.face_embedding import FaceEmbedding
 from models.kamus_kode_shift import KamusKodeShift
 from models.kamus_pola_shift import KamusPolaShift
 from models.ip_whitelist import IpWhitelist
+from models.app_client import AppClient
 
 __all__ = [
     "Base",
@@ -48,4 +49,5 @@ __all__ = [
     "KamusKodeShift",
     "KamusPolaShift",
     "IpWhitelist",
+    "AppClient",
 ]

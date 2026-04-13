@@ -64,6 +64,25 @@ const AuthRepository = {
     });
     return response.data;
   },
+
+  /**
+   * Introspect token — validasi token user dan dapatkan identitas SSO globalnya.
+   * Dipakai oleh halaman monitoring SSO dan simulasi alur konsumen.
+   * Token diambil otomatis dari Authorization header oleh apiClient interceptor.
+   */
+  introspectToken: async () => {
+    const response = await apiClient.post('/auth/introspect');
+    return response.data;
+  },
+
+  /**
+   * Dapatkan identitas SSO standar user yang sedang login.
+   * Return: nik, unit_id, full_name, id_pegawai, roles.
+   */
+  getSsoIdentity: async () => {
+    const response = await apiClient.get('/auth/me/sso-identity');
+    return response.data;
+  },
 };
 
 export default AuthRepository;

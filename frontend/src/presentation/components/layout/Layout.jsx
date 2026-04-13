@@ -54,6 +54,7 @@ const buildMenuItems = (menuGuard = {}, permissions = [], roles = []) => {
     if (perms.has('penilaian_shift_absensi.read'))  items.push({ path: '/penilaian-shift', label: 'Penilaian Shift', icon: '⚖️' });
     if (isFullAdmin)                                items.push({ path: '/system-settings', label: 'Pengaturan Sistem', icon: '⚙️' });
     if (perms.has('ip_whitelist.read'))             items.push({ path: '/ip-whitelist',    label: 'IP Whitelist',      icon: '🛡️' });
+    if (isFullAdmin)                                items.push({ path: '/sso-monitor',     label: 'SSO Monitor',       icon: '🔐' });
   }
 
   // --- Always visible quick link ---

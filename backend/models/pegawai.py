@@ -11,6 +11,7 @@ class Pegawai(Base):
     __tablename__ = "pegawai"
 
     id_pegawai = Column(String(20), primary_key=True, index=True)
+    nik = Column(String(20), unique=True, nullable=True, index=True)  # NIK global antar aplikasi (SSO key)
     nip = Column(String(50), nullable=True)
     nama = Column(String(255), nullable=True)
     jenis_kelamin = Column(String(10), nullable=True)

@@ -185,7 +185,11 @@ def refresh_access_token(
             "user_id": user_with_roles.id,
             "username": user_with_roles.username,
             "roles": auth_context["roles"],
-            "id_pegawai": user_with_roles.id_pegawai
+            "id_pegawai": user_with_roles.id_pegawai,
+            # SSO global identity — wajib ada di setiap token termasuk saat refresh
+            "nik": user_with_roles.pegawai.nik if user_with_roles.pegawai else None,
+            "unit_id": user_with_roles.pegawai.id_unit if user_with_roles.pegawai else None,
+            "full_name": user_with_roles.pegawai.nama if user_with_roles.pegawai else None,
         }
     )
     
@@ -302,6 +306,10 @@ def login_face(
             "username": user.username,
             "roles": auth_context["roles"],
             "id_pegawai": user.id_pegawai,
+            # SSO global identity
+            "nik": user.pegawai.nik if user.pegawai else None,
+            "unit_id": user.pegawai.id_unit if user.pegawai else None,
+            "full_name": user.pegawai.nama if user.pegawai else None,
             "session_id": session_id,
         }
     )
@@ -440,4 +448,111 @@ async def upload_profile_photo(
     return success_response(
         data={"foto": filename},
         message="Foto profil berhasil diperbarui.",
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SSO ENDPOINTS — Untuk konsumsi oleh aplikasi lain (SIMRS, finance, dll.)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.post("/introspect", response_model=dict, status_code=status.HTTP_200_OK)
+def introspect_token(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Token introspection endpoint — dipakai oleh aplikasi konsumen SSO.
+
+    Aplikasi konsumen (SIMRS, finance, surat-menyurat, dll.) memanggil endpoint ini
+    untuk memvalidasi access token user dan mendapatkan identitas globalnya.
+
+    Request:
+        Header: Authorization: Bearer <access_token>
+
+    Response (token valid):
+        active: true
+        sub, nik, username, full_name, unit_id, id_pegawai, roles, iss, exp
+
+    Response (token invalid/expired):
+        active: false
+
+    Keamanan:
+    - Endpoint ini hanya mengekspos identitas global (bukan permissions aplikasi lain)
+    - Aplikasi konsumen wajib resolve permission lokalnya sendiri berdasarkan NIK
+    - Rate limit sebaiknya diterapkan di level API gateway / nginx
+    """
+    from utils.auth import decode_access_token
+
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return success_response(
+            data={"active": False, "reason": "Missing or malformed Authorization header"},
+            message="Token inactive"
+        )
+
+    token = auth_header.split(" ", 1)[1]
+    payload = decode_access_token(token)
+
+    if not payload:
+        return success_response(
+            data={"active": False, "reason": "Token invalid or expired"},
+            message="Token inactive"
+        )
+
+    # Verifikasi user masih aktif di database (opsional tapi direkomendasikan)
+    user_id = payload.get("sub")
+    if user_id:
+        user_repo = UserRepository(db)
+        user = user_repo.get_by_id(int(user_id))
+        if not user or not user.is_active:
+            return success_response(
+                data={"active": False, "reason": "User inactive or not found"},
+                message="Token inactive"
+            )
+
+    # Return hanya klaim identitas global — bukan permissions bisnis
+    return success_response(
+        data={
+            "active": True,
+            "sub": payload.get("sub"),
+            "nik": payload.get("nik"),
+            "username": payload.get("username"),
+            "full_name": payload.get("full_name"),
+            "unit_id": payload.get("unit_id"),
+            "id_pegawai": payload.get("id_pegawai"),
+            "roles": payload.get("roles", []),
+            "iss": payload.get("iss"),
+            "exp": payload.get("exp"),
+            "session_id": payload.get("session_id"),
+        },
+        message="Token active"
+    )
+
+
+@router.get("/me/sso-identity", response_model=dict, status_code=status.HTTP_200_OK)
+def get_sso_identity(
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Identitas SSO user saat ini — format standar yang dipakai lintas aplikasi.
+
+    Endpoint ini dipakai oleh frontend manapun untuk mendapatkan identitas
+    global yang konsisten setelah login.
+
+    Return klaim yang sama persis dengan isi token JWT, termasuk NIK
+    yang menjadi kunci relasi ke semua aplikasi konsumen.
+    """
+    pegawai = current_user.pegawai
+    return success_response(
+        data={
+            "user_id": current_user.id,
+            "username": current_user.username,
+            "id_pegawai": current_user.id_pegawai,
+            "nik": pegawai.nik if pegawai else None,
+            "full_name": pegawai.nama if pegawai else None,
+            "unit_id": pegawai.id_unit if pegawai else None,
+            "is_active": current_user.is_active,
+            "roles": [r.name for r in current_user.roles],
+        },
+        message="SSO identity retrieved"
     )

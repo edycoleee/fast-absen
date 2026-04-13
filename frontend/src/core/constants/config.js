@@ -18,6 +18,8 @@ export const STORAGE_KEYS = {
   ACCESS_TOKEN: 'access_token',
   USER: 'user',
   SESSION_ID: 'session_id',
+  // SSO identity cache — disimpan terpisah untuk akses cepat oleh konsumen SSO
+  SSO_IDENTITY: 'sso_identity',
 };
 
 /**
